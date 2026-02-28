@@ -1,42 +1,87 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/common/db/prisma.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
+import { UsersRepository } from 'src/common/db/repositories/users.repositories';
+import { SecurityService } from 'src/common/security/security.service';
+import { LoginAuthDto } from './dto/login-auth.dto';
+import { RegisterAuthDto } from './dto/register-auth.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private usersRepository: UsersRepository,
+    private securityService: SecurityService,
+    private jwtService: JwtService,
+  ) {}
 
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
-  }
+  async register(registerAuthDto: RegisterAuthDto) {
+    const { name, username, email, password, cpf } = registerAuthDto;
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+    const hashedCpf = this.generateHash(cpf);
 
-  async findOne(id: number) {
-    const created = await this.prisma.user.create({
+    const [emailExists, usernameExists, cpfExists] = await Promise.all([
+      this.usersRepository.getBy({ email }),
+      this.usersRepository.getBy({ username }),
+      this.usersRepository.getBy({ cpf_hash: hashedCpf }),
+    ]);
+
+    if (emailExists) throw new ConflictException('Email already exists');
+    if (usernameExists) throw new ConflictException('Username already exists');
+    if (cpfExists) throw new ConflictException('CPF already exists');
+
+    const encryptedCpf = this.securityService.encryptData(cpf);
+    const encryptedPassword = await this.generatePasswordHash(password);
+
+    const user = await this.usersRepository.create({
       data: {
-        name: 'Novo',
-        email: 'novo@email.com',
-        username: 'novo',
-        password: '[PASSWORD]',
+        email,
+        name,
+        username,
+        password: encryptedPassword,
+        cpf_hash: hashedCpf,
+        cpf: encryptedCpf,
+        wallet: { create: {} },
       },
     });
 
-    console.log(created);
+    const token = await this.jwtService.signAsync({ sub: user.id });
 
-    return created;
-
-    // return `This action returns a #${id} auth`;
+    return token;
   }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
+  async login(loginAuthDto: LoginAuthDto) {
+    const { email, password } = loginAuthDto;
+
+    const user = await this.usersRepository.getBy({ email });
+    if (!user) throw new UnauthorizedException('User not exists');
+
+    const isPasswordValid = await this.comparePassword(password, user.password);
+
+    if (!isPasswordValid)
+      throw new UnauthorizedException('Invalid credentials');
+
+    const token = await this.jwtService.signAsync({ sub: user.id });
+
+    return token;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  private async generatePasswordHash(password: string) {
+    return await bcrypt.hash(password, 12);
+  }
+
+  private async comparePassword(password: string, hash: string) {
+    return await bcrypt.compare(password, hash);
+  }
+
+  private generateHash(value: string) {
+    return crypto
+      .createHash('sha256')
+      .update(value + process.env.ENCRYPTION_KEY)
+      .digest('hex');
   }
 }
