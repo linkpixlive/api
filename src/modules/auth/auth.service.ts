@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -8,13 +9,17 @@ import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { UsersRepository } from 'src/common/db/repositories/users.repositories';
 import { SecurityService } from 'src/common/security/security.service';
+import { ChangePasswordRepository } from './../../common/db/repositories/change-password.repositorites';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersRepository: UsersRepository,
+    private changePassRepository: ChangePasswordRepository,
     private securityService: SecurityService,
     private jwtService: JwtService,
   ) {}
@@ -68,6 +73,63 @@ export class AuthService {
     const token = await this.jwtService.signAsync({ sub: user.id });
 
     return token;
+  }
+
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const { email } = forgotPasswordDto;
+
+    const responseMsg = `An email was sent to ${email} with a link to change your password.`;
+
+    const user = await this.usersRepository.getBy({ email });
+    if (!user) return responseMsg;
+
+    await this.changePassRepository.deleteMany({
+      where: { user_id: user.id },
+    });
+
+    const uuid = crypto.randomUUID();
+    const hashedUUID = this.generateHash(uuid);
+
+    const expeiresDate = new Date();
+    expeiresDate.setMinutes(expeiresDate.getMinutes() + 2);
+
+    await this.changePassRepository.create({
+      data: { token: hashedUUID, expires_at: expeiresDate, user_id: user.id },
+    });
+
+    // https://tipply.com.br/forgot-passowrd?token=${uuid}
+    return responseMsg;
+  }
+
+  async resetPassword(resetPassword: ResetPasswordDto, token: string) {
+    const { newPassword } = resetPassword;
+
+    const hashedToken = this.generateHash(token);
+
+    const updatePassword = await this.changePassRepository.getBy({
+      token: hashedToken,
+    });
+
+    if (!updatePassword) throw new BadRequestException('invalid token');
+
+    const nowDate = new Date();
+
+    if (nowDate > updatePassword.expires_at) {
+      throw new BadRequestException(
+        'time has expired, start the process again',
+      );
+    }
+
+    const hashedNewPassword = await this.generatePasswordHash(newPassword);
+
+    await this.usersRepository.update({
+      where: { id: updatePassword.user_id },
+      data: { password: hashedNewPassword },
+    });
+
+    await this.changePassRepository.delete({ where: { token: hashedToken } });
+
+    return 'password changed successfully';
   }
 
   private async generatePasswordHash(password: string) {

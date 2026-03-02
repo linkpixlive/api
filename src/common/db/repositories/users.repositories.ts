@@ -13,4 +13,8 @@ export class UsersRepository {
   async getBy(data: Prisma.UserWhereUniqueInput) {
     return await this.prismaService.user.findUnique({ where: data });
   }
+
+  async update(data: Prisma.UserUpdateArgs) {
+    return await this.prismaService.user.update(data);
+  }
 }

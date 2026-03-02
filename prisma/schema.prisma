@@ -69,6 +69,7 @@ model User {
   donations_received    Donation[]             @relation("ReceivedDonations")
   withdrawals           Withdrawal[]
   transactions          Transaction[]
+  change_password       ChangePassword[]
 
   @@index([email])
   @@index([username])
@@ -182,4 +183,15 @@ model Transaction {
   @@index([donation_id])
   @@index([withdrawal_id])
   @@map("transactions")
+}
+
+model ChangePassword {
+  id                  String                  @id @default(uuid()) @db.VarChar(36)
+  user_id             String                  @db.VarChar(36)
+  token               String                  @unique @db.VarChar(255)
+  created_at          DateTime                @default(now())
+  expires_at          DateTime
+
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  @@map("change_password")
 }
