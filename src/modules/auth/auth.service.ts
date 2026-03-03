@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { UsersRepository } from 'src/common/db/repositories/users.repositories';
 import { SecurityService } from 'src/common/security/security.service';
+import { EmailService } from 'src/infra/email/email.service';
 import { ChangePasswordRepository } from './../../common/db/repositories/change-password.repositorites';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
@@ -22,6 +23,7 @@ export class AuthService {
     private changePassRepository: ChangePasswordRepository,
     private securityService: SecurityService,
     private jwtService: JwtService,
+    private emailService: EmailService,
   ) {}
 
   async register(registerAuthDto: RegisterAuthDto) {
@@ -97,8 +99,15 @@ export class AuthService {
       data: { token: hashedUUID, expires_at: expeiresDate, user_id: user.id },
     });
 
-    // https://tipply.com.br/forgot-passowrd?token=${uuid}
-    return responseMsg;
+    const sendEmail = await this.emailService.sendEmail({
+      to: email,
+      subject: 'Forgot Password',
+      templateName: 'forgot-password',
+      context: { link: `https://tipply.com.br/forgot-passowrd?token=${uuid}` },
+      metadata: {},
+    });
+
+    return { responseMsg, sendEmail };
   }
 
   async resetPassword(resetPassword: ResetPasswordDto, token: string) {
