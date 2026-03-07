@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
-import { DonationsService } from './donations.service';
+import { GatewayModule } from 'src/infra/gateway/gateway.module';
 import { DonationsController } from './donations.controller';
+import { DonationsService } from './donations.service';
 
 @Module({
+  imports: [GatewayModule],
   controllers: [DonationsController],
   providers: [DonationsService],
 })

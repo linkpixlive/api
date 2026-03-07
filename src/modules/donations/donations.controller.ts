@@ -1,45 +1,15 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Ip, Post } from '@nestjs/common';
+import { Public } from 'src/common/decorators/isPublic';
 import { DonationsService } from './donations.service';
-import { CreateDonationDto } from './dto/create-donation.dto';
-import { UpdateDonationDto } from './dto/update-donation.dto';
+import { DonationDto } from './dto/donation.dto';
 
-@Controller('donations')
+@Public()
+@Controller()
 export class DonationsController {
   constructor(private readonly donationsService: DonationsService) {}
 
-  @Post()
-  create(@Body() createDonationDto: CreateDonationDto) {
-    return this.donationsService.create(createDonationDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.donationsService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.donationsService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateDonationDto: UpdateDonationDto,
-  ) {
-    return this.donationsService.update(+id, updateDonationDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.donationsService.remove(+id);
+  @Post('donation')
+  donation(@Body() donationDto: DonationDto, @Ip() ip: string) {
+    return this.donationsService.donation(donationDto, ip);
   }
 }
