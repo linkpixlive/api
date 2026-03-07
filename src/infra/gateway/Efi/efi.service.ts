@@ -3,14 +3,17 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as https from 'https';
 import { firstValueFrom } from 'rxjs';
-import { EfiPixResponse, EfiTokenResponse } from './interfaces/Efi.interface';
+import { GatewayContract } from '../contract/gateway.contract';
+import { EfiPixResponse, EfiTokenResponse } from './efi.interface';
 
 @Injectable()
-export class GatewayService {
+export class EfiService extends GatewayContract {
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {
+    super();
+
     this.httpsAgent = new https.Agent({
       pfx: Buffer.from(
         this.configService.get<string>('EFI_CERTIFICATE_BASE64') || '',

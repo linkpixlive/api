@@ -7,10 +7,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
-import { UsersRepository } from 'src/common/db/repositories/users.repositories';
 import { SecurityService } from 'src/common/security/security.service';
-import { EmailService } from 'src/infra/email/email.service';
-import { ChangePasswordRepository } from './../../common/db/repositories/change-password.repositorites';
+import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositorites';
+import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { EmailService } from 'src/infra/queues/email/email.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';

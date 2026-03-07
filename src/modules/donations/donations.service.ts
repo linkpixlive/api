@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { DonationsRepository } from 'src/common/db/repositories/donations.repositories';
-import { UsersRepository } from 'src/common/db/repositories/users.repositories';
-import { GatewayService } from 'src/infra/gateway/gateway.service';
+import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
+import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationDto } from './dto/donation.dto';
 
 @Injectable()
@@ -9,7 +9,8 @@ export class DonationsService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly donationsRepository: DonationsRepository,
-    private readonly gatewayService: GatewayService,
+    // private readonly EfiService: EfiService,
+    private readonly gateway: GatewayContract,
   ) {}
 
   async donation(donationDto: DonationDto, ip: string) {
@@ -18,8 +19,9 @@ export class DonationsService {
     const user = await this.usersRepository.getBy({ id: user_id });
     if (!user) throw new BadRequestException('User not found');
 
-    const { pix, transactionId, expiredAt } =
-      await this.gatewayService.generatePix({ amount });
+    const { pix, transactionId, expiredAt } = await this.gateway.generatePix({
+      amount,
+    });
 
     if (!pix) {
       throw new BadRequestException(
