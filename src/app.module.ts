@@ -10,6 +10,7 @@ import { DonationsModule } from './modules/donations/donations.module';
 import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
 import { DbModule } from './infra/db/db.module';
 import { EmailModule } from './infra/queues/email/email.module';
+import { AiModule } from './infra/ai/ai.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EmailModule } from './infra/queues/email/email.module';
     EmailModule,
     HttpModule,
     GatewayModule,
+    AiModule,
   ],
   controllers: [],
   providers: [],

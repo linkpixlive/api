@@ -1,7 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
+import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
 import { DonationDto } from './dto/donation.dto';
 
 @Injectable()
@@ -9,8 +14,8 @@ export class DonationsService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly donationsRepository: DonationsRepository,
-    // private readonly EfiService: EfiService,
     private readonly gateway: GatewayContract,
+    private readonly donationsQueue: DonationsQueueService,
   ) {}
 
   async donation(donationDto: DonationDto, ip: string) {
@@ -32,7 +37,7 @@ export class DonationsService {
     const donation = await this.donationsRepository.create({
       data: {
         name,
-        message,
+        message_raw: message,
         amount,
         voice_id,
         user_id: user.id,
@@ -47,5 +52,25 @@ export class DonationsService {
     });
 
     return donation;
+  }
+
+  async webhookPix(transactionId: string): Promise<void> {
+    const donation = await this.donationsRepository.getBy({
+      transaction_id: transactionId,
+    });
+
+    if (!donation) {
+      throw new NotFoundException(
+        `Donation not found for txid: ${transactionId}`,
+      );
+    }
+
+    try {
+      if (donation.status === 'pending') {
+        await this.donationsQueue.sendDonation({ donation_id: donation.id });
+      }
+    } catch (error) {
+      console.error(error);
+    }
   }
 }

@@ -16,6 +16,7 @@ enum DonationStatus {
   paid
   displayed
   failed
+  expired
 }
 
 enum PaymentMethod {
@@ -113,6 +114,7 @@ model Donation {
   id              String         @id @default(uuid()) @db.VarChar(36)
   user_id         String         @db.VarChar(36)
   name            String         @db.VarChar(100)
+  message_raw     String?        @db.VarChar(500)
   message         String?        @db.VarChar(500)
   message_type    MessageType?
   voice_id        String?        @db.VarChar(50)
@@ -124,7 +126,7 @@ model Donation {
   created_at      DateTime       @default(now())
   expired_at      DateTime?
   approved_at     DateTime?
-  transaction_id  String?        @db.VarChar(100)
+  transaction_id  String         @unique @db.VarChar(100)
   ip              String?        @db.VarChar(255)
 
   user            User           @relation("ReceivedDonations", fields: [user_id], references: [id], onDelete: Cascade)

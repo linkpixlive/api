@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as https from 'https';
 import { firstValueFrom } from 'rxjs';
+import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { GatewayContract } from '../contract/gateway.contract';
 import { EfiPixResponse, EfiTokenResponse } from './efi.interface';
 
@@ -68,6 +69,35 @@ export class EfiService extends GatewayContract {
       transactionId: data.txid,
       expiredAt,
     };
+  }
+
+  async getPixStatus(transactionId: string): Promise<TransactionStatus> {
+    const token = await this.getAccessToken();
+
+    const { data }: { data: { status: string } } = await firstValueFrom(
+      this.httpService.get(
+        `${this.configService.get('EFI_API_URL')}/v2/cob/${transactionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          httpsAgent: this.httpsAgent,
+        },
+      ),
+    );
+
+    switch (data.status) {
+      case 'ATIVA':
+        return TransactionStatus.PENDING;
+      case 'CONCLUIDA':
+        return TransactionStatus.PAID;
+      case 'REMOVIDA_PELO_USUARIO_RECEBEDOR':
+      case 'REMOVIDA_PELO_PSP':
+        return TransactionStatus.FAILED;
+      default:
+        return TransactionStatus.PENDING;
+    }
   }
 
   private async getAccessToken() {
