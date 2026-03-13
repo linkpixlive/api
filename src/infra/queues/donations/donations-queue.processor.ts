@@ -1,5 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Donation, User } from '@prisma/client';
 import { Job } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
@@ -9,6 +10,7 @@ import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
+import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 
 @Processor('donations-queue')
 export class DonationsQueueProcessor extends WorkerHost {
@@ -19,6 +21,8 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly aiService: AiContract,
     private readonly storage: StorageContract,
     private readonly speech: SpeechContract,
+    private readonly overlay: OverlayGateway,
+    private readonly configService: ConfigService,
   ) {
     super();
   }
@@ -42,7 +46,7 @@ export class DonationsQueueProcessor extends WorkerHost {
         message: cleanMessage,
       });
 
-      await this.donationsRepository.update({
+      const updatedDonation = await this.donationsRepository.update({
         where: { id: data.donation_id },
         data: {
           status: 'paid',
@@ -50,6 +54,17 @@ export class DonationsQueueProcessor extends WorkerHost {
           approved_at: new Date(),
           voice_url: ttsKey,
         },
+      });
+
+      const audioUrl = `${this.configService.get('BUCKET_URL')}/${ttsKey}`;
+
+      this.overlay.server.to(user.overlay_key).emit('new_donation', {
+        id: updatedDonation.id,
+        name: updatedDonation.name,
+        amount: updatedDonation.amount,
+        message: updatedDonation.message,
+        audio_url: audioUrl,
+        message_type: updatedDonation.message_type,
       });
     } catch (error) {
       console.error(error);
