@@ -1,4 +1,5 @@
-import { Inject } from '@nestjs/common';
+import { Inject, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   ConnectedSocket,
   MessageBody,
@@ -12,6 +13,7 @@ import { Server, Socket } from 'socket.io';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { DonationsRepository } from '../db/repositories/donations.repositories';
 
+@UseGuards(ThrottlerGuard)
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: 'overlay',
@@ -41,6 +43,7 @@ export class OverlayGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('displayed_donation')
+  @Throttle({ default: { limit: 4, ttl: 20000 } })
   async handleDisplayedDonation(
     client: Socket,
     @MessageBody() data: { id: string },
@@ -57,6 +60,7 @@ export class OverlayGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('heartbeat_pulse')
+  @Throttle({ default: { limit: 2, ttl: 60000 } })
   async handlePulse(@ConnectedSocket() client: Socket) {
     const key = client.handshake.query.key as string;
     await this.redis.expire(`overlay:${key}`, 60);
