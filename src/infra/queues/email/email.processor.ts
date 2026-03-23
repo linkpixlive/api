@@ -27,7 +27,7 @@ export class EmailProcessor extends WorkerHost {
 
       const filePath = path.join(
         process.cwd(),
-        'src/infra/email',
+        'src/templates/emails',
         `${templateName}.hbs`,
       );
       const source = await fs.readFile(filePath, 'utf8');

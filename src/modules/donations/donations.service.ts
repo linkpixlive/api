@@ -45,11 +45,11 @@ export class DonationsService {
     const user = await this.usersRepository.getBy({ id: user_id });
     if (!user) throw new BadRequestException('User not found');
 
-    const { pix, transactionId, expiredAt } = await this.gateway.generatePix({
+    const donationData = await this.gateway.generatePix({
       amount,
     });
 
-    if (!pix) {
+    if (!donationData) {
       throw new BadRequestException(
         'We were unable to create the donation, please try again.',
       );
@@ -62,11 +62,11 @@ export class DonationsService {
         amount,
         voice_id,
         user_id: user.id,
-        pix,
+        pix: donationData.pix,
         status: 'pending',
-        transaction_id: transactionId,
+        transaction_id: donationData.transactionId,
         payment_method: 'pix',
-        expired_at: expiredAt,
+        expired_at: donationData.expiredAt,
         message_type: 'text',
         ip,
       },

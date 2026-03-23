@@ -45,7 +45,7 @@ export class EfiService extends GatewayContract {
             expiracao: secondsToExpire,
           },
           valor: {
-            original: String(amount),
+            original: amount.toFixed(2),
           },
           chave: this.configService.get<string>('EFI_PIX_KEY'),
         },

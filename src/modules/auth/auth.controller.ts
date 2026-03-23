@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/isPublic';
 import { AuthService } from './auth.service';
@@ -13,6 +21,19 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid data (email already exists, format, etc).',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests.',
+  })
   @Throttle({
     burst: { limit: 1, ttl: 1000 },
     registration_limit: { limit: 3, ttl: 900000 },
@@ -22,6 +43,19 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiOperation({ summary: 'Login a user' })
+  @ApiResponse({
+    status: 200,
+    description: 'User logged in successfully.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials.',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests.',
+  })
   @Throttle({
     burst: { limit: 2, ttl: 1000 },
     login_limit: { limit: 10, ttl: 300000 },
@@ -31,6 +65,24 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Forgot password' })
+  @ApiResponse({
+    status: 200,
+    description: 'Email with password change link sent successfully.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid data (email format, etc).',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials (email not found, etc).',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests.',
+  })
   @Throttle({
     recovery_limit: { limit: 4, ttl: 900000 },
   })
@@ -39,6 +91,24 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change password' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid data (password format, etc).',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials (token expired, already used, etc).',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests.',
+  })
   @Throttle({
     recovery_limit: { limit: 4, ttl: 900000 },
   })
