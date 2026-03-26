@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import * as https from 'https';
 import { firstValueFrom } from 'rxjs';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
+import { GatewayResponseRepository } from 'src/infra/db/repositories/gateway-response.repositories';
 import { GatewayContract } from '../contract/gateway.contract';
 import { EfiPixResponse, EfiTokenResponse } from './efi.interface';
 
@@ -12,6 +13,7 @@ export class EfiService extends GatewayContract {
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
+    private readonly gatewayResponseRepository: GatewayResponseRepository,
   ) {
     super();
 
@@ -37,7 +39,7 @@ export class EfiService extends GatewayContract {
   }) {
     const token = await this.getAccessToken();
 
-    const { data } = await firstValueFrom(
+    const { data, status } = await firstValueFrom(
       this.httpService.post<EfiPixResponse>(
         `${this.configService.get('EFI_API_URL')}/v2/cob`,
         {
@@ -59,6 +61,16 @@ export class EfiService extends GatewayContract {
       ),
     );
 
+    await this.gatewayResponseRepository.create({
+      data: {
+        interaction_type: 'GENERATE_DONATION_QRCODE',
+        external_id: data.txid,
+        payload: JSON.stringify(data),
+        provider: 'efi',
+        status_code: status,
+      },
+    });
+
     const createdDate = new Date(data.calendario.criacao);
     const expiredAt = new Date(
       createdDate.getTime() + data.calendario.expiracao * 1000,
@@ -74,18 +86,32 @@ export class EfiService extends GatewayContract {
   async getPixStatus(transactionId: string): Promise<TransactionStatus> {
     const token = await this.getAccessToken();
 
-    const { data }: { data: { status: string } } = await firstValueFrom(
-      this.httpService.get(
-        `${this.configService.get('EFI_API_URL')}/v2/cob/${transactionId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+    const {
+      data,
+      status,
+    }: { data: { status: string; txid: string }; status: number } =
+      await firstValueFrom(
+        this.httpService.get(
+          `${this.configService.get('EFI_API_URL')}/v2/cob/${transactionId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            httpsAgent: this.httpsAgent,
           },
-          httpsAgent: this.httpsAgent,
-        },
-      ),
-    );
+        ),
+      );
+
+    await this.gatewayResponseRepository.create({
+      data: {
+        interaction_type: 'RESPONSE_WEBHOOK_PIX',
+        external_id: data.txid,
+        payload: JSON.stringify(data),
+        provider: 'efi',
+        status_code: status,
+      },
+    });
 
     switch (data.status) {
       case 'ATIVA':
