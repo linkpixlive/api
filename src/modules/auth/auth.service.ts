@@ -11,10 +11,18 @@ import { SecurityService } from 'src/common/security/security.service';
 import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositorites';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { EmailService } from 'src/infra/queues/email/email.service';
+import { RedisService } from 'src/infra/redis/redis.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+
+interface OtpData {
+  otp: string;
+  attempts: number;
+  createdAt: Date;
+}
 
 @Injectable()
 export class AuthService {
@@ -24,53 +32,77 @@ export class AuthService {
     private securityService: SecurityService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private redisService: RedisService,
   ) {}
 
   async register(registerAuthDto: RegisterAuthDto) {
     const { name, username, email, password, cpf } = registerAuthDto;
-
     const hashedCpf = this.generateHash(cpf);
 
-    const [emailExists, usernameExists, cpfExists] = await Promise.all([
+    const [emailUser, usernameUser, cpfUser] = await Promise.all([
       this.usersRepository.getBy({ email }),
       this.usersRepository.getBy({ username }),
       this.usersRepository.getBy({ cpf_hash: hashedCpf }),
     ]);
 
-    if (emailExists) throw new ConflictException('Email already exists');
-    if (usernameExists) throw new ConflictException('Username already exists');
-    if (cpfExists) throw new ConflictException('CPF already exists');
+    if (usernameUser && usernameUser.email !== email) {
+      throw new ConflictException('Username already in use');
+    }
+
+    if (cpfUser && cpfUser.email !== email) {
+      throw new ConflictException('CPF already in use');
+    }
+
+    if (emailUser && emailUser.verified_email) {
+      throw new ConflictException('Email already in use');
+    }
 
     const encryptedCpf = this.securityService.encryptData(cpf);
     const encryptedPassword = await this.generatePasswordHash(password);
 
-    const user = await this.usersRepository.create({
-      data: {
-        email,
-        name,
-        username,
-        password: encryptedPassword,
-        cpf_hash: hashedCpf,
-        cpf: encryptedCpf,
-        wallet: { create: {} },
-      },
-    });
+    const userData = {
+      name,
+      username,
+      password: encryptedPassword,
+      cpf_hash: hashedCpf,
+      cpf: encryptedCpf,
+      email,
+      verified_email: false,
+    };
 
-    const token = await this.jwtService.signAsync({ sub: user.id });
+    if (emailUser) {
+      await this.usersRepository.update({
+        where: { id: emailUser.id },
+        data: userData,
+      });
+    } else {
+      await this.usersRepository.create({
+        data: { ...userData, wallet: { create: {} } },
+      });
+    }
 
-    return token;
+    await this.sendVerificationOtp(email);
+
+    return 'Check your email and finish creating your account.';
   }
 
   async login(loginAuthDto: LoginAuthDto) {
     const { email, password } = loginAuthDto;
 
     const user = await this.usersRepository.getBy({ email });
-    if (!user) throw new UnauthorizedException('User not exists');
+
+    if (!user || !user.active)
+      throw new UnauthorizedException('User not exists.');
 
     const isPasswordValid = await this.comparePassword(password, user.password);
 
     if (!isPasswordValid)
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials.');
+
+    if (!user.verified_email) {
+      await this.sendVerificationOtp(email);
+      throw new UnauthorizedException('User not verified, check your email.');
+    }
 
     const token = await this.jwtService.signAsync({ sub: user.id });
 
@@ -141,6 +173,44 @@ export class AuthService {
     return 'password changed successfully';
   }
 
+  async verifyOtp({ otp, email }: VerifyOtpDto) {
+    const redisKey = `otp:verification:${email}`;
+    const getOtp = await this.redisService.get<OtpData>(redisKey);
+    const hashedOtp = this.generateHash(otp);
+
+    if (!getOtp) {
+      throw new BadRequestException('OTP expired or not found');
+    }
+
+    if (getOtp.attempts >= 5) {
+      await this.redisService.remove(redisKey);
+      await this.sendVerificationOtp(email);
+      throw new BadRequestException(
+        'Too many attempts. A new code has been sent to your email.',
+      );
+    }
+
+    if (getOtp.otp !== hashedOtp) {
+      await this.redisService.update(redisKey, {
+        ...getOtp,
+        attempts: getOtp.attempts + 1,
+      });
+
+      throw new BadRequestException(`Invalid OTP`);
+    }
+
+    const user = await this.usersRepository.update({
+      where: { email },
+      data: { verified_email: true },
+    });
+
+    await this.redisService.remove(redisKey);
+
+    const token = await this.jwtService.signAsync({ sub: user.id });
+
+    return token;
+  }
+
   private async generatePasswordHash(password: string) {
     return await bcrypt.hash(password, 12);
   }
@@ -154,5 +224,44 @@ export class AuthService {
       .createHash('sha256')
       .update(value + process.env.ENCRYPTION_KEY)
       .digest('hex');
+  }
+
+  private async sendVerificationOtp(email: string) {
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const redisKey = `otp:verification:${email}`;
+
+    const hashedOtp = this.generateHash(otp);
+
+    const getOtp = await this.redisService.get<OtpData>(redisKey);
+
+    const now = new Date();
+    const createdDate = new Date(getOtp.createdAt);
+
+    const secondsPassed = Math.floor(
+      (now.getTime() - createdDate.getTime()) / 1000,
+    );
+    const cooldownLimit = 60;
+
+    if (secondsPassed < cooldownLimit) {
+      const secondsLeft = cooldownLimit - secondsPassed;
+
+      throw new BadRequestException(
+        `Please wait ${secondsLeft} seconds to request a new code.`,
+      );
+    }
+
+    await this.redisService.setWithExpire(redisKey, 600, {
+      otp: hashedOtp,
+      attempts: 1,
+      createdAt: new Date(),
+    });
+
+    await this.emailService.sendEmail({
+      to: email,
+      subject: 'Verify your email',
+      templateName: 'verify-email',
+      context: { otp },
+      metadata: {},
+    });
   }
 }

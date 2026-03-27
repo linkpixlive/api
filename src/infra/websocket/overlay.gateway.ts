@@ -1,4 +1,4 @@
-import { Inject, UseGuards } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   ConnectedSocket,
@@ -8,10 +8,10 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import Redis from 'ioredis';
 import { Server, Socket } from 'socket.io';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { DonationsRepository } from '../db/repositories/donations.repositories';
+import { RedisService } from '../redis/redis.service';
 
 @UseGuards(ThrottlerGuard)
 @WebSocketGateway({
@@ -27,7 +27,7 @@ export class OverlayGateway implements OnGatewayConnection {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly donationsRepository: DonationsRepository,
-    @Inject('REDIS_CLIENT') private readonly redis: Redis,
+    private readonly redisService: RedisService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -38,7 +38,7 @@ export class OverlayGateway implements OnGatewayConnection {
     const user = await this.usersRepository.getBy({ overlay_key: key });
     if (!user) return client.disconnect();
 
-    await this.redis.set(`overlay:${key}`, 'true', 'EX', 60);
+    await this.redisService.setWithExpire(`overlay:${key}`, 60, 'true');
     await client.join(user.overlay_key);
   }
 
@@ -63,13 +63,13 @@ export class OverlayGateway implements OnGatewayConnection {
   @Throttle({ default: { limit: 2, ttl: 60000 } })
   async handlePulse(@ConnectedSocket() client: Socket) {
     const key = client.handshake.query.key as string;
-    await this.redis.expire(`overlay:${key}`, 60);
+    await this.redisService.setWithExpire(`overlay:${key}`, 60, 'true');
   }
 
   async handleDisconnect(client: Socket) {
     const key = client.handshake.query.key as string;
     if (!key) return;
 
-    await this.redis.del(`overlay:${key}`);
+    await this.redisService.remove(`overlay:${key}`);
   }
 }

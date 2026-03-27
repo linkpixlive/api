@@ -1,14 +1,13 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import Redis from 'ioredis';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
+import { RedisService } from 'src/infra/redis/redis.service';
 import { DonationDto } from './dto/donation.dto';
 
 @Injectable()
@@ -18,7 +17,7 @@ export class DonationsService {
     private readonly donationsRepository: DonationsRepository,
     private readonly gateway: GatewayContract,
     private readonly donationsQueue: DonationsQueueService,
-    @Inject('REDIS_CLIENT') private readonly redis: Redis,
+    private readonly redisService: RedisService,
   ) {}
 
   async getUser(username: string) {
@@ -28,7 +27,9 @@ export class DonationsService {
       throw new NotFoundException('User not found');
     }
 
-    const overlayStatus = await this.redis.get(`overlay:${user.overlay_key}`);
+    const overlayStatus = await this.redisService.get(
+      `overlay:${user.overlay_key}`,
+    );
 
     return {
       id: user.id,

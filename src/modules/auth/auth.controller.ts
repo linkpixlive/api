@@ -14,6 +14,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Public()
 @Controller('auth')
@@ -117,5 +118,31 @@ export class AuthController {
     @Query('token') token: string,
   ) {
     return this.authService.resetPassword(resetPasswordDto, token);
+  }
+
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP' })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified successfully.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid data (OTP format, etc).',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials (OTP expired, already used, etc).',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests.',
+  })
+  @Throttle({
+    recovery_limit: { limit: 4, ttl: 900000 },
+  })
+  verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.authService.verifyOtp(verifyOtpDto);
   }
 }

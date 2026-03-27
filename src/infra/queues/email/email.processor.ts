@@ -5,14 +5,7 @@ import Handlebars from 'handlebars';
 import fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Resend } from 'resend';
-
-interface EmailJob {
-  to: string;
-  subject: string;
-  templateName: 'test';
-  context: Record<string, unknown>;
-  metadata: Record<string, unknown>;
-}
+import { Email } from './email.type';
 
 @Processor('email-queue')
 export class EmailProcessor extends WorkerHost {
@@ -22,7 +15,7 @@ export class EmailProcessor extends WorkerHost {
 
   async process(job: Job): Promise<any> {
     try {
-      const { data } = job as Job<EmailJob>;
+      const { data } = job as Job<Email>;
       const { to, subject, templateName, context } = data;
 
       const filePath = path.join(
