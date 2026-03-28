@@ -3,6 +3,7 @@ import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { validate } from './common/config/env.validation';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SecurityModule } from './common/security/security.module';
@@ -19,6 +20,7 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate,
     }),
     BullModule.forRoot({
       connection: {
