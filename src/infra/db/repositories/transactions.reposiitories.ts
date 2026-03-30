@@ -1,17 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-
-interface DonationData {
-  donationId: string;
-  message: string;
-  voiceUri: string;
-}
+import { ProcessDonationParams } from './dto/transactions.dto';
 
 @Injectable()
 export class TransactionsRepository {
   constructor(private prismaService: PrismaService) {}
 
-  async processDonation({ donationId, message, voiceUri }: DonationData) {
+  async processDonation({
+    donationId,
+    message,
+    voiceUri,
+  }: ProcessDonationParams) {
     return await this.prismaService.$transaction(async (tx) => {
       const updatedDonation = await tx.donation.update({
         where: { id: donationId },

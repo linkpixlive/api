@@ -62,13 +62,11 @@ export class EfiService extends GatewayContract {
     );
 
     await this.gatewayResponseRepository.create({
-      data: {
-        interaction_type: 'GENERATE_DONATION_QRCODE',
-        external_id: data.txid,
-        payload: JSON.stringify(data),
-        provider: 'efi',
-        status_code: status,
-      },
+      interactionType: 'GENERATE_DONATION_QRCODE',
+      externalId: data.txid,
+      payload: JSON.stringify(data),
+      provider: 'efi',
+      statusCode: status,
     });
 
     const createdDate = new Date(data.calendario.criacao);
@@ -104,13 +102,11 @@ export class EfiService extends GatewayContract {
       );
 
     await this.gatewayResponseRepository.create({
-      data: {
-        interaction_type: 'RESPONSE_WEBHOOK_PIX',
-        external_id: data.txid,
-        payload: JSON.stringify(data),
-        provider: 'efi',
-        status_code: status,
-      },
+      interactionType: 'RESPONSE_WEBHOOK_PIX',
+      externalId: data.txid,
+      payload: JSON.stringify(data),
+      provider: 'efi',
+      statusCode: status,
     });
 
     switch (data.status) {

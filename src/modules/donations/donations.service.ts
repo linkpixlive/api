@@ -21,7 +21,7 @@ export class DonationsService {
   ) {}
 
   async getUser(username: string) {
-    const user = await this.usersRepository.getBy({ username });
+    const user = await this.usersRepository.findByUsername(username);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -43,7 +43,7 @@ export class DonationsService {
   async donation(donationDto: DonationDto, ip: string) {
     const { name, message, amount, voice_id, user_id } = donationDto;
 
-    const user = await this.usersRepository.getBy({ id: user_id });
+    const user = await this.usersRepository.findById(user_id);
     if (!user) throw new BadRequestException('User not found');
 
     const donationData = await this.gateway.generatePix({
@@ -57,29 +57,26 @@ export class DonationsService {
     }
 
     const donation = await this.donationsRepository.create({
-      data: {
-        name,
-        message_raw: message,
-        amount,
-        voice_id,
-        user_id: user.id,
-        pix: donationData.pix,
-        status: 'pending',
-        transaction_id: donationData.transactionId,
-        payment_method: 'pix',
-        expired_at: donationData.expiredAt,
-        message_type: 'text',
-        ip,
-      },
+      name,
+      messageRaw: message,
+      amount,
+      voiceId: voice_id,
+      userId: user.id,
+      pix: donationData.pix,
+      status: 'pending',
+      transactionId: donationData.transactionId,
+      paymentMethod: 'pix',
+      expiredAt: donationData.expiredAt,
+      messageType: 'text',
+      ip,
     });
 
     return donation;
   }
 
   async webhookPix(transactionId: string): Promise<void> {
-    const donation = await this.donationsRepository.getBy({
-      transaction_id: transactionId,
-    });
+    const donation =
+      await this.donationsRepository.findByTransactionId(transactionId);
 
     if (!donation) {
       throw new NotFoundException(

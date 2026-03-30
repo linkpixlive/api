@@ -100,7 +100,7 @@ export class DonationsQueueProcessor extends WorkerHost {
   }
 
   private async validateAndGetDonation(id: string) {
-    const donation = await this.donationsRepository.getBy({ id });
+    const donation = await this.donationsRepository.findById(id);
 
     if (!donation || donation.status === 'paid') {
       throw new BadRequestException('Donation not found or already processed');
@@ -110,7 +110,7 @@ export class DonationsQueueProcessor extends WorkerHost {
   }
 
   private async validateAndGetUser(id: string) {
-    const user = await this.usersRepository.getBy({ id });
+    const user = await this.usersRepository.findById(id);
 
     if (!user) {
       throw new BadRequestException('User not found');

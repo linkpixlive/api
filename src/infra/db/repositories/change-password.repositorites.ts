@@ -1,24 +1,36 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { CreateChangePasswordParams } from './dto/change-password.dto';
 
 @Injectable()
 export class ChangePasswordRepository {
   constructor(private prismaService: PrismaService) {}
 
-  async create(data: Prisma.ChangePasswordCreateArgs) {
-    return await this.prismaService.changePassword.create(data);
+  async create(data: CreateChangePasswordParams) {
+    return await this.prismaService.changePassword.create({
+      data: {
+        user_id: data.userId,
+        token: data.token,
+        expires_at: data.expiresAt,
+      },
+    });
   }
 
-  async deleteMany(data: Prisma.ChangePasswordDeleteManyArgs) {
-    return await this.prismaService.changePassword.deleteMany(data);
+  async deleteManyByUserId(userId: string) {
+    return await this.prismaService.changePassword.deleteMany({
+      where: { user_id: userId },
+    });
   }
 
-  async delete(data: Prisma.ChangePasswordDeleteArgs) {
-    return await this.prismaService.changePassword.delete(data);
+  async deleteByToken(token: string) {
+    return await this.prismaService.changePassword.delete({
+      where: { token },
+    });
   }
 
-  async getBy(data: Prisma.ChangePasswordWhereUniqueInput) {
-    return await this.prismaService.changePassword.findUnique({ where: data });
+  async findByToken(token: string) {
+    return await this.prismaService.changePassword.findUnique({
+      where: { token },
+    });
   }
 }

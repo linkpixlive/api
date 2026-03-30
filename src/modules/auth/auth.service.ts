@@ -40,9 +40,9 @@ export class AuthService {
     const hashedCpf = this.generateHash(cpf);
 
     const [emailUser, usernameUser, cpfUser] = await Promise.all([
-      this.usersRepository.getBy({ email }),
-      this.usersRepository.getBy({ username }),
-      this.usersRepository.getBy({ cpf_hash: hashedCpf }),
+      this.usersRepository.findByEmail(email),
+      this.usersRepository.findByUsername(username),
+      this.usersRepository.findByCpfHash(hashedCpf),
     ]);
 
     if (usernameUser && usernameUser.email !== email) {
@@ -71,13 +71,16 @@ export class AuthService {
     };
 
     if (emailUser) {
-      await this.usersRepository.update({
-        where: { id: emailUser.id },
-        data: userData,
+      await this.usersRepository.update(emailUser.id, {
+        ...userData,
+        cpfHash: userData.cpf_hash,
+        verifiedEmail: userData.verified_email,
       });
     } else {
       await this.usersRepository.create({
-        data: { ...userData, wallet: { create: {} } },
+        ...userData,
+        cpfHash: userData.cpf_hash,
+        verifiedEmail: userData.verified_email,
       });
     }
 
@@ -89,7 +92,7 @@ export class AuthService {
   async login(loginAuthDto: LoginAuthDto) {
     const { email, password } = loginAuthDto;
 
-    const user = await this.usersRepository.getBy({ email });
+    const user = await this.usersRepository.findByEmail(email);
 
     if (!user || !user.active)
       throw new UnauthorizedException('User not exists.');
@@ -114,12 +117,10 @@ export class AuthService {
 
     const responseMsg = `An email was sent to ${email} with a link to change your password.`;
 
-    const user = await this.usersRepository.getBy({ email });
+    const user = await this.usersRepository.findByEmail(email);
     if (!user) return responseMsg;
 
-    await this.changePassRepository.deleteMany({
-      where: { user_id: user.id },
-    });
+    await this.changePassRepository.deleteManyByUserId(user.id);
 
     const uuid = crypto.randomUUID();
     const hashedUUID = this.generateHash(uuid);
@@ -128,7 +129,9 @@ export class AuthService {
     expeiresDate.setMinutes(expeiresDate.getMinutes() + 2);
 
     await this.changePassRepository.create({
-      data: { token: hashedUUID, expires_at: expeiresDate, user_id: user.id },
+      token: hashedUUID,
+      expiresAt: expeiresDate,
+      userId: user.id,
     });
 
     const sendEmail = await this.emailService.sendEmail({
@@ -147,9 +150,9 @@ export class AuthService {
 
     const hashedToken = this.generateHash(token);
 
-    const updatePassword = await this.changePassRepository.getBy({
-      token: hashedToken,
-    });
+    const updatePassword = await this.changePassRepository.findByToken(
+      hashedToken,
+    );
 
     if (!updatePassword) throw new BadRequestException('invalid token');
 
@@ -163,12 +166,11 @@ export class AuthService {
 
     const hashedNewPassword = await this.generatePasswordHash(newPassword);
 
-    await this.usersRepository.update({
-      where: { id: updatePassword.user_id },
-      data: { password: hashedNewPassword },
+    await this.usersRepository.update(updatePassword.user_id, {
+      password: hashedNewPassword,
     });
 
-    await this.changePassRepository.delete({ where: { token: hashedToken } });
+    await this.changePassRepository.deleteByToken(hashedToken);
 
     return 'password changed successfully';
   }
@@ -199,14 +201,19 @@ export class AuthService {
       throw new BadRequestException(`Invalid OTP`);
     }
 
-    const user = await this.usersRepository.update({
-      where: { email },
-      data: { verified_email: true },
+    const user = await this.usersRepository.findByEmail(email);
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const updatedUser = await this.usersRepository.update(user.id, {
+      verifiedEmail: true,
     });
 
     await this.redisService.remove(redisKey);
 
-    const token = await this.jwtService.signAsync({ sub: user.id });
+    const token = await this.jwtService.signAsync({ sub: updatedUser.id });
 
     return token;
   }

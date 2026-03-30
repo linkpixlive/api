@@ -35,7 +35,7 @@ export class OverlayGateway implements OnGatewayConnection {
 
     if (!key) return client.disconnect();
 
-    const user = await this.usersRepository.getBy({ overlay_key: key });
+    const user = await this.usersRepository.findByOverlayKey(key);
     if (!user) return client.disconnect();
 
     await this.redisService.setWithExpire(`overlay:${key}`, 60, 'true');
@@ -50,13 +50,10 @@ export class OverlayGateway implements OnGatewayConnection {
   ) {
     const { id } = data;
 
-    const donation = await this.donationsRepository.getBy({ id });
+    const donation = await this.donationsRepository.findById(id);
     if (!donation) return;
 
-    await this.donationsRepository.update({
-      where: { id },
-      data: { status: 'displayed' },
-    });
+    await this.donationsRepository.update(id, { status: 'displayed' });
   }
 
   @SubscribeMessage('heartbeat_pulse')
