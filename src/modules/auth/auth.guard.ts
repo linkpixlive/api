@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/isPublic';
+import { UsersRepository } from '../../infra/db/repositories/users.repositories';
 
 export interface JwtPayload {
   sub: string;
@@ -18,6 +19,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
+    private usersRepository: UsersRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,7 +41,17 @@ export class AuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
-      request['user'] = payload;
+
+      const user = await this.usersRepository.findById(payload.sub);
+
+      if (!user) {
+        throw new UnauthorizedException();
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _password, cpf_hash: _cpf_hash, ...safeUser } = user;
+
+      request['user'] = safeUser;
     } catch {
       throw new UnauthorizedException();
     }

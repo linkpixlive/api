@@ -7,6 +7,8 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import type { SafeUser } from 'src/modules/auth/entities/safe-user.entity';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { UpdateWithdrawalDto } from './dto/update-withdrawal.dto';
 import { WithdrawalsService } from './withdrawals.service';
@@ -21,8 +23,10 @@ export class WithdrawalsController {
   }
 
   @Get()
-  findAll() {
-    return this.withdrawalsService.findAll();
+  findAll(@CurrentUser() user: SafeUser) {
+    console.log(user);
+    return user;
+    // return this.withdrawalsService.findAll();
   }
 
   @Get(':id')
