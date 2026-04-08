@@ -14,6 +14,8 @@ import { EmailModule } from './infra/queues/email/email.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DonationsModule } from './modules/donations/donations.module';
+import { PixKeysModule } from './modules/pix-keys/pix-keys.module';
+import { WalletsModule } from './modules/wallets/wallets.module';
 import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
 
 @Module({
@@ -50,6 +52,8 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
     AuthModule,
     DashboardModule,
     DonationsModule,
+    PixKeysModule,
+    WalletsModule,
     WithdrawalsModule,
     DbModule,
     SecurityModule,

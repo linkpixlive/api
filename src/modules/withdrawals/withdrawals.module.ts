@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { WithdrawalsService } from './withdrawals.service';
 import { WithdrawalsController } from './withdrawals.controller';
+import { WithdrawalsService } from './withdrawals.service';
 
 @Module({
   controllers: [WithdrawalsController],
