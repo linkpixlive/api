@@ -1,6 +1,6 @@
 export interface CreatePixKeyParams {
   userId: string;
   key: string;
-  keyType: 'cpf' | 'email' | 'phone' | 'random';
+  keyType: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
   alias?: string;
 }

@@ -4,7 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PixKey } from '@prisma/client';
+import { PixKey, PixKeyType } from '@prisma/client';
+import { cnpj, cpf } from 'cpf-cnpj-validator';
+import {
+  PIX_EMAIL_REGEX,
+  PIX_PHONE_REGEX,
+  PIX_RANDOM_REGEX,
+} from '../../common/decorators/is-pix-key.decorator';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreatePixKeyDto } from './dto/create-pix-key.dto';
@@ -20,6 +26,7 @@ export class PixKeysService {
     const keyType = this.detectKeyType(dto.key);
 
     const count = await this.pixKeysRepository.countByUserId(user.id);
+
     if (count >= MAX_PIX_KEYS_PER_USER) {
       throw new BadRequestException(
         `You can register up to ${MAX_PIX_KEYS_PER_USER} Pix keys.`,
@@ -30,6 +37,7 @@ export class PixKeysService {
       user.id,
       dto.key,
     );
+
     if (existing) {
       throw new ConflictException('This Pix key is already registered.');
     }
@@ -60,16 +68,15 @@ export class PixKeysService {
     return this.mapToEntity(deleted);
   }
 
-  private detectKeyType(key: string): 'cpf' | 'email' | 'phone' | 'random' {
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(key)) return 'email';
-    if (/^\d{11}$/.test(key)) return 'cpf';
-    if (/^\+?\d{10,15}$/.test(key)) return 'phone';
-    if (
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        key,
-      )
-    )
-      return 'random';
+  private detectKeyType(key: string): PixKeyType {
+    if (PIX_RANDOM_REGEX.test(key)) return 'random';
+    if (PIX_EMAIL_REGEX.test(key)) return 'email';
+    if (PIX_PHONE_REGEX.test(key)) return 'phone';
+
+    const digits = key.replace(/\D/g, '');
+
+    if (digits.length === 11 && cpf.isValid(digits)) return 'cpf';
+    if (digits.length === 14 && cnpj.isValid(digits)) return 'cnpj';
 
     throw new BadRequestException('Invalid Pix key format.');
   }

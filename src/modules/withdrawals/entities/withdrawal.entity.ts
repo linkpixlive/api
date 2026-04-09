@@ -1,6 +1,6 @@
 export class WithdrawalEntity {
   id: string;
-  pixId: string;
+  pixId: string | null;
   pixValue: string;
   amount: number;
   netAmount: number;
