@@ -6,7 +6,6 @@ import { Job } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { AiContract } from 'src/infra/ai/contract/ai.contract';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
-import { TransactionsRepository } from 'src/infra/db/repositories/transactions.reposiitories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
@@ -24,7 +23,6 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly speech: SpeechContract,
     private readonly overlay: OverlayGateway,
     private readonly configService: ConfigService,
-    private readonly transactionsRepository: TransactionsRepository,
   ) {
     super();
   }
@@ -48,13 +46,11 @@ export class DonationsQueueProcessor extends WorkerHost {
         message: cleanMessage,
       });
 
-      const updatedDonation = await this.transactionsRepository.processDonation(
-        {
-          donationId: donation.id,
-          message: cleanMessage,
-          voiceUri: ttsKey,
-        },
-      );
+      const updatedDonation = await this.donationsRepository.processDonation({
+        donationId: donation.id,
+        message: cleanMessage,
+        voiceUri: ttsKey,
+      });
 
       const audioUrl = `${this.configService.get('BUCKET_URL')}/${ttsKey}`;
 

@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
-import { ChangePasswordRepository } from './repositories/change-password.repositorites';
+import { ChangePasswordRepository } from './repositories/change-password.repositories';
 import { DonationsRepository } from './repositories/donations.repositories';
 import { PixKeysRepository } from './repositories/pix-keys.repositories';
 import { UsersRepository } from './repositories/users.repositories';

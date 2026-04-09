@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { SecurityService } from 'src/common/security/security.service';
-import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositorites';
+import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { EmailService } from 'src/infra/queues/email/email.service';
 import { RedisService } from 'src/infra/redis/redis.service';
@@ -150,9 +150,8 @@ export class AuthService {
 
     const hashedToken = this.generateHash(token);
 
-    const updatePassword = await this.changePassRepository.findByToken(
-      hashedToken,
-    );
+    const updatePassword =
+      await this.changePassRepository.findByToken(hashedToken);
 
     if (!updatePassword) throw new BadRequestException('invalid token');
 
