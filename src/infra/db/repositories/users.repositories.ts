@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { CreateUserParams, UpdateUserParams } from './dto/users.dto';
 
@@ -15,6 +16,7 @@ export class UsersRepository {
         password: data.password,
         cpf: data.cpf,
         cpf_hash: data.cpfHash,
+        roles: data.roles ?? [UserRole.streamer],
         verified_email: data.verifiedEmail ?? false,
         wallet: { create: {} },
       },
@@ -55,6 +57,7 @@ export class UsersRepository {
         password: data.password,
         cpf: data.cpf,
         cpf_hash: data.cpfHash,
+        roles: data.roles,
         verified_email: data.verifiedEmail,
       },
     });

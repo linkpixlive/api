@@ -2,7 +2,7 @@
 CREATE TYPE "UserRole" AS ENUM ('admin', 'streamer');
 
 -- CreateEnum
-CREATE TYPE "DonationStatus" AS ENUM ('pending', 'paid', 'displayed', 'failed');
+CREATE TYPE "DonationStatus" AS ENUM ('pending', 'paid', 'displayed', 'failed', 'expired');
 
 -- CreateEnum
 CREATE TYPE "PaymentMethod" AS ENUM ('pix');
@@ -14,10 +14,16 @@ CREATE TYPE "WithdrawalStatus" AS ENUM ('pending', 'processing', 'success', 'fai
 CREATE TYPE "TransactionType" AS ENUM ('donation', 'withdrawal', 'withdraw_reserve', 'withdraw_confirm', 'refund');
 
 -- CreateEnum
-CREATE TYPE "PixKeyType" AS ENUM ('cpf', 'email', 'phone', 'random');
+CREATE TYPE "PixKeyType" AS ENUM ('cpf', 'cnpj', 'email', 'phone', 'random');
 
 -- CreateEnum
 CREATE TYPE "MessageType" AS ENUM ('audio', 'text');
+
+-- CreateEnum
+CREATE TYPE "GatewayProvider" AS ENUM ('efi');
+
+-- CreateEnum
+CREATE TYPE "InteractionType" AS ENUM ('GENERATE_DONATION_QRCODE', 'RESPONSE_WEBHOOK_PIX', 'REQUEST_WITHDRAWAL', 'RESPONSE_WEBHOOK_WITHDRAWAL');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -30,10 +36,10 @@ CREATE TABLE "users" (
     "cpf" VARCHAR(255),
     "cpf_hash" VARCHAR(255),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "verified_email" BOOLEAN NOT NULL DEFAULT false,
-    "role" "UserRole" NOT NULL DEFAULT 'streamer',
+    "roles" "UserRole"[] DEFAULT ARRAY['streamer']::"UserRole"[],
+    "overlay_key" VARCHAR(36) NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -55,7 +61,9 @@ CREATE TABLE "wallets" (
 CREATE TABLE "pix_keys" (
     "id" VARCHAR(36) NOT NULL,
     "user_id" VARCHAR(36) NOT NULL,
-    "key_value" VARCHAR(255) NOT NULL,
+    "key" TEXT NOT NULL,
+    "key_hashed" VARCHAR(255) NOT NULL,
+    "key_masked" VARCHAR(255) NOT NULL,
     "key_type" "PixKeyType" NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "alias" VARCHAR(100),
@@ -69,6 +77,7 @@ CREATE TABLE "donations" (
     "id" VARCHAR(36) NOT NULL,
     "user_id" VARCHAR(36) NOT NULL,
     "name" VARCHAR(100) NOT NULL,
+    "message_raw" VARCHAR(500),
     "message" VARCHAR(500),
     "message_type" "MessageType",
     "voice_id" VARCHAR(50),
@@ -80,7 +89,7 @@ CREATE TABLE "donations" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "expired_at" TIMESTAMP(3),
     "approved_at" TIMESTAMP(3),
-    "transaction_id" VARCHAR(100),
+    "transaction_id" VARCHAR(100) NOT NULL,
     "ip" VARCHAR(255),
 
     CONSTRAINT "donations_pkey" PRIMARY KEY ("id")
@@ -90,9 +99,10 @@ CREATE TABLE "donations" (
 CREATE TABLE "withdrawals" (
     "id" VARCHAR(36) NOT NULL,
     "user_id" VARCHAR(36) NOT NULL,
-    "pix_key_id" VARCHAR(36) NOT NULL,
-    "pix_key_value" VARCHAR(255) NOT NULL,
+    "pix_id" VARCHAR(36),
+    "pix_value" VARCHAR(255) NOT NULL,
     "status" "WithdrawalStatus" NOT NULL DEFAULT 'pending',
+    "gross_amount" DECIMAL(12,2) NOT NULL,
     "net_amount" DECIMAL(12,2) NOT NULL,
     "fee_amount" DECIMAL(12,2) NOT NULL DEFAULT 0,
     "transaction_id" VARCHAR(100),
@@ -112,11 +122,34 @@ CREATE TABLE "transactions" (
     "balance_after" DECIMAL(12,2) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "ip" VARCHAR(255),
-    "metadata" TEXT,
     "donation_id" VARCHAR(36),
     "withdrawal_id" VARCHAR(36),
 
     CONSTRAINT "transactions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "change_password" (
+    "id" VARCHAR(36) NOT NULL,
+    "user_id" VARCHAR(36) NOT NULL,
+    "token" VARCHAR(255) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "change_password_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "gateway_responses" (
+    "id" VARCHAR(36) NOT NULL,
+    "external_id" VARCHAR(100),
+    "interaction_type" "InteractionType" NOT NULL,
+    "status_code" INTEGER,
+    "payload" JSONB NOT NULL,
+    "provider" "GatewayProvider" NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "gateway_responses_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -130,6 +163,9 @@ CREATE UNIQUE INDEX "users_cpf_key" ON "users"("cpf");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_cpf_hash_key" ON "users"("cpf_hash");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_overlay_key_key" ON "users"("overlay_key");
 
 -- CreateIndex
 CREATE INDEX "users_email_idx" ON "users"("email");
@@ -150,7 +186,10 @@ CREATE INDEX "wallets_user_id_idx" ON "wallets"("user_id");
 CREATE INDEX "pix_keys_user_id_idx" ON "pix_keys"("user_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "pix_keys_user_id_key_value_key" ON "pix_keys"("user_id", "key_value");
+CREATE UNIQUE INDEX "pix_keys_user_id_key_hashed_key" ON "pix_keys"("user_id", "key_hashed");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "donations_transaction_id_key" ON "donations"("transaction_id");
 
 -- CreateIndex
 CREATE INDEX "donations_user_id_idx" ON "donations"("user_id");
@@ -194,6 +233,12 @@ CREATE INDEX "transactions_donation_id_idx" ON "transactions"("donation_id");
 -- CreateIndex
 CREATE INDEX "transactions_withdrawal_id_idx" ON "transactions"("withdrawal_id");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "change_password_token_key" ON "change_password"("token");
+
+-- CreateIndex
+CREATE INDEX "gateway_responses_external_id_idx" ON "gateway_responses"("external_id");
+
 -- AddForeignKey
 ALTER TABLE "wallets" ADD CONSTRAINT "wallets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -207,7 +252,7 @@ ALTER TABLE "donations" ADD CONSTRAINT "donations_user_id_fkey" FOREIGN KEY ("us
 ALTER TABLE "withdrawals" ADD CONSTRAINT "withdrawals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "withdrawals" ADD CONSTRAINT "withdrawals_pix_key_id_fkey" FOREIGN KEY ("pix_key_id") REFERENCES "pix_keys"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "withdrawals" ADD CONSTRAINT "withdrawals_pix_id_fkey" FOREIGN KEY ("pix_id") REFERENCES "pix_keys"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "transactions" ADD CONSTRAINT "transactions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -217,3 +262,6 @@ ALTER TABLE "transactions" ADD CONSTRAINT "transactions_donation_id_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "transactions" ADD CONSTRAINT "transactions_withdrawal_id_fkey" FOREIGN KEY ("withdrawal_id") REFERENCES "withdrawals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "change_password" ADD CONSTRAINT "change_password_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -74,7 +74,7 @@ model User {
   created_at        DateTime @default(now())
   active            Boolean  @default(true)
   verified_email    Boolean  @default(false)
-  role              UserRole @default(streamer)
+  roles             UserRole[] @default([streamer])
   overlay_key       String   @unique @default(uuid()) @db.VarChar(36)
   
   wallet                Wallet?

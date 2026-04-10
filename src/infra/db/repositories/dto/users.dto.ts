@@ -1,3 +1,5 @@
+import { UserRole } from '@prisma/client';
+
 export interface CreateUserParams {
   name: string;
   username: string;
@@ -6,6 +8,7 @@ export interface CreateUserParams {
   cpf: string;
   cpfHash: string;
   verifiedEmail?: boolean;
+  roles?: UserRole[];
 }
 
 export interface UpdateUserParams {
@@ -16,4 +19,5 @@ export interface UpdateUserParams {
   cpf?: string;
   cpfHash?: string;
   verifiedEmail?: boolean;
+  roles?: UserRole[];
 }

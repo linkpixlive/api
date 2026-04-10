@@ -64,24 +64,16 @@ export class AuthService {
       name,
       username,
       password: encryptedPassword,
-      cpf_hash: hashedCpf,
+      cpfHash: hashedCpf,
       cpf: encryptedCpf,
       email,
-      verified_email: false,
+      verifiedEmail: false,
     };
 
     if (emailUser) {
-      await this.usersRepository.update(emailUser.id, {
-        ...userData,
-        cpfHash: userData.cpf_hash,
-        verifiedEmail: userData.verified_email,
-      });
+      await this.usersRepository.update(emailUser.id, userData);
     } else {
-      await this.usersRepository.create({
-        ...userData,
-        cpfHash: userData.cpf_hash,
-        verifiedEmail: userData.verified_email,
-      });
+      await this.usersRepository.create(userData);
     }
 
     await this.sendVerificationOtp(email);
@@ -107,7 +99,10 @@ export class AuthService {
       throw new UnauthorizedException('User not verified, check your email.');
     }
 
-    const token = await this.jwtService.signAsync({ sub: user.id });
+    const token = await this.jwtService.signAsync({
+      sub: user.id,
+      roles: user.roles,
+    });
 
     return token;
   }
@@ -212,7 +207,10 @@ export class AuthService {
 
     await this.redisService.remove(redisKey);
 
-    const token = await this.jwtService.signAsync({ sub: updatedUser.id });
+    const token = await this.jwtService.signAsync({
+      sub: updatedUser.id,
+      roles: updatedUser.roles,
+    });
 
     return token;
   }

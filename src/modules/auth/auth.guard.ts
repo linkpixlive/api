@@ -12,6 +12,7 @@ import { UsersRepository } from '../../infra/db/repositories/users.repositories'
 
 export interface JwtPayload {
   sub: string;
+  roles: string[];
 }
 
 @Injectable()
