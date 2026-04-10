@@ -1,6 +1,7 @@
 export class PixKeyEntity {
   id: string;
-  key: string;
+  key?: string;
+  keyMasked: string;
   keyType: string;
   alias?: string;
   createdAt: Date;

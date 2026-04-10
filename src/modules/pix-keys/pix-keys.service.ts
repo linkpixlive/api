@@ -11,6 +11,8 @@ import {
   PIX_PHONE_REGEX,
   PIX_RANDOM_REGEX,
 } from '../../common/decorators/is-pix-key.decorator';
+import { SecurityService } from '../../common/security/security.service';
+import { maskPixKey } from '../../common/utils/mask.util';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreatePixKeyDto } from './dto/create-pix-key.dto';
@@ -20,7 +22,10 @@ const MAX_PIX_KEYS_PER_USER = 5;
 
 @Injectable()
 export class PixKeysService {
-  constructor(private pixKeysRepository: PixKeysRepository) {}
+  constructor(
+    private pixKeysRepository: PixKeysRepository,
+    private securityService: SecurityService,
+  ) {}
 
   async create(user: SafeUser, dto: CreatePixKeyDto): Promise<PixKeyEntity> {
     const keyType = this.detectKeyType(dto.key);
@@ -33,18 +38,24 @@ export class PixKeysService {
       );
     }
 
-    const existing = await this.pixKeysRepository.findByUserIdAndKeyValue(
+    const keyHash = this.securityService.hashData(dto.key);
+    const existing = await this.pixKeysRepository.findByUserIdAndKeyHash(
       user.id,
-      dto.key,
+      keyHash,
     );
 
     if (existing) {
       throw new ConflictException('This Pix key is already registered.');
     }
 
+    const encryptedKey = this.securityService.encryptData(dto.key);
+    const maskedKey = maskPixKey(keyType, dto.key);
+
     const pixKey = await this.pixKeysRepository.create({
       userId: user.id,
-      key: dto.key,
+      key: encryptedKey,
+      keyHashed: keyHash,
+      keyMasked: maskedKey,
       keyType,
       alias: dto.alias,
     });
@@ -55,6 +66,11 @@ export class PixKeysService {
   async findAll(user: SafeUser): Promise<PixKeyEntity[]> {
     const pixKeys = await this.pixKeysRepository.findByUserId(user.id);
     return pixKeys.map((pk) => this.mapToEntity(pk));
+  }
+
+  async findAllMasked(user: SafeUser): Promise<PixKeyEntity[]> {
+    const pixKeys = await this.pixKeysRepository.findByUserId(user.id);
+    return pixKeys.map((pk) => this.mapToEntityMasked(pk));
   }
 
   async remove(user: SafeUser, id: string): Promise<PixKeyEntity> {
@@ -82,9 +98,22 @@ export class PixKeysService {
   }
 
   private mapToEntity(pixKey: PixKey): PixKeyEntity {
+    const decryptedKey = this.securityService.decryptData(pixKey.key);
+
     return new PixKeyEntity({
       id: pixKey.id,
-      key: pixKey.key_value,
+      key: decryptedKey,
+      keyMasked: pixKey.key_masked,
+      keyType: pixKey.key_type,
+      alias: pixKey.alias || undefined,
+      createdAt: pixKey.created_at,
+    });
+  }
+
+  private mapToEntityMasked(pixKey: PixKey): PixKeyEntity {
+    return new PixKeyEntity({
+      id: pixKey.id,
+      keyMasked: pixKey.key_masked,
       keyType: pixKey.key_type,
       alias: pixKey.alias || undefined,
       createdAt: pixKey.created_at,

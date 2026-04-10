@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from 'node:crypto';
 
 @Injectable()
 export class SecurityService {
@@ -33,5 +38,11 @@ export class SecurityService {
     return Buffer.concat([decipher.update(text), decipher.final()]).toString(
       'utf8',
     );
+  }
+
+  hashData(value: string): string {
+    return createHash('sha256')
+      .update(value + process.env.ENCRYPTION_KEY)
+      .digest('hex');
   }
 }

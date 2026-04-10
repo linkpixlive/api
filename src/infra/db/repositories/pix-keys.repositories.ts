@@ -10,7 +10,9 @@ export class PixKeysRepository {
     return await this.prismaService.pixKey.create({
       data: {
         user_id: data.userId,
-        key_value: data.key,
+        key: data.key,
+        key_hashed: data.keyHashed,
+        key_masked: data.keyMasked,
         key_type: data.keyType,
         alias: data.alias,
       },
@@ -21,9 +23,9 @@ export class PixKeysRepository {
     return await this.prismaService.pixKey.findUnique({ where: { id } });
   }
 
-  async findByUserIdAndKeyValue(userId: string, key: string) {
+  async findByUserIdAndKeyHash(userId: string, keyHash: string) {
     return await this.prismaService.pixKey.findUnique({
-      where: { user_id_key_value: { user_id: userId, key_value: key } },
+      where: { user_id_key_hashed: { user_id: userId, key_hashed: keyHash } },
     });
   }
 

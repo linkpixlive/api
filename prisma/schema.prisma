@@ -108,7 +108,9 @@ model Wallet {
 model PixKey {
   id         String   @id @default(uuid()) @db.VarChar(36)
   user_id    String   @db.VarChar(36)
-  key_value  String   @db.VarChar(255)
+  key        String   @db.Text
+  key_hashed String   @db.VarChar(255)
+  key_masked String   @db.VarChar(255)
   key_type   PixKeyType
   created_at DateTime @default(now())
   alias      String?  @db.VarChar(100)
@@ -117,7 +119,7 @@ model PixKey {
   user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   withdrawals Withdrawal[]
 
-  @@unique([user_id, key_value])
+  @@unique([user_id, key_hashed])
   @@index([user_id])
   @@map("pix_keys")
 }

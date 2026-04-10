@@ -32,6 +32,16 @@ export class PixKeysController {
     return this.pixKeysService.create(user, createPixKeyDto);
   }
 
+  @Get('masked')
+  @ApiOperation({ summary: 'List all Pix keys masked for the current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Pix keys masked returned successfully.',
+  })
+  findAllMasked(@CurrentUser() user: SafeUser) {
+    return this.pixKeysService.findAllMasked(user);
+  }
+
   @Get()
   @ApiOperation({ summary: 'List all Pix keys for the current user' })
   @ApiResponse({

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Withdrawal } from '@prisma/client';
+import { SecurityService } from '../../common/security/security.service';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { WalletsRepository } from '../../infra/db/repositories/wallets.repositories';
 import { WithdrawalsRepository } from '../../infra/db/repositories/withdrawals.repositories';
@@ -20,6 +21,7 @@ export class WithdrawalsService {
     private withdrawalsRepository: WithdrawalsRepository,
     private walletsRepository: WalletsRepository,
     private pixKeysRepository: PixKeysRepository,
+    private securityService: SecurityService,
   ) {}
 
   async create(
@@ -40,9 +42,9 @@ export class WithdrawalsService {
       throw new BadRequestException('Insufficient available balance.');
     }
 
-    const pixKey = await this.pixKeysRepository.findById(dto.pixId);
+    const pix = await this.pixKeysRepository.findById(dto.pixId);
 
-    if (!pixKey || pixKey.user_id !== user.id) {
+    if (!pix || pix.user_id !== user.id) {
       throw new NotFoundException('Pix key not found.');
     }
 
@@ -51,8 +53,8 @@ export class WithdrawalsService {
 
     const withdrawal = await this.withdrawalsRepository.processWithdrawal({
       userId: user.id,
-      pixId: pixKey.id,
-      pixKey: pixKey.key_value,
+      pixId: pix.id,
+      pixKey: pix.key,
       grossAmount: dto.amount,
       netAmount,
       feeAmount,
@@ -78,10 +80,12 @@ export class WithdrawalsService {
   }
 
   private mapToEntity(withdrawal: Withdrawal): WithdrawalEntity {
+    const decryptedPix = this.securityService.decryptData(withdrawal.pix_value);
+
     return new WithdrawalEntity({
       id: withdrawal.id,
       pixId: withdrawal.pix_id,
-      pixValue: withdrawal.pix_value,
+      pixValue: decryptedPix,
       amount: Number(withdrawal.gross_amount),
       netAmount: Number(withdrawal.net_amount),
       feeAmount: Number(withdrawal.fee_amount),

@@ -37,7 +37,7 @@ export class AuthService {
 
   async register(registerAuthDto: RegisterAuthDto) {
     const { name, username, email, password, cpf } = registerAuthDto;
-    const hashedCpf = this.generateHash(cpf);
+    const hashedCpf = this.securityService.hashData(cpf);
 
     const [emailUser, usernameUser, cpfUser] = await Promise.all([
       this.usersRepository.findByEmail(email),
@@ -123,7 +123,7 @@ export class AuthService {
     await this.changePassRepository.deleteManyByUserId(user.id);
 
     const uuid = crypto.randomUUID();
-    const hashedUUID = this.generateHash(uuid);
+    const hashedUUID = this.securityService.hashData(uuid);
 
     const expeiresDate = new Date();
     expeiresDate.setMinutes(expeiresDate.getMinutes() + 2);
@@ -148,7 +148,7 @@ export class AuthService {
   async resetPassword(resetPassword: ResetPasswordDto, token: string) {
     const { newPassword } = resetPassword;
 
-    const hashedToken = this.generateHash(token);
+    const hashedToken = this.securityService.hashData(token);
 
     const updatePassword =
       await this.changePassRepository.findByToken(hashedToken);
@@ -177,7 +177,7 @@ export class AuthService {
   async verifyOtp({ otp, email }: VerifyOtpDto) {
     const redisKey = `otp:verification:${email}`;
     const getOtp = await this.redisService.get<OtpData>(redisKey);
-    const hashedOtp = this.generateHash(otp);
+    const hashedOtp = this.securityService.hashData(otp);
 
     if (!getOtp) {
       throw new BadRequestException('OTP expired or not found');
@@ -225,18 +225,11 @@ export class AuthService {
     return await bcrypt.compare(password, hash);
   }
 
-  private generateHash(value: string) {
-    return crypto
-      .createHash('sha256')
-      .update(value + process.env.ENCRYPTION_KEY)
-      .digest('hex');
-  }
-
   private async sendVerificationOtp(email: string) {
     const otp = crypto.randomInt(100000, 999999).toString();
     const redisKey = `otp:verification:${email}`;
 
-    const hashedOtp = this.generateHash(otp);
+    const hashedOtp = this.securityService.hashData(otp);
 
     const getOtp = await this.redisService.get<OtpData>(redisKey);
 
