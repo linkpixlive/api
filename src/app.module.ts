@@ -17,6 +17,7 @@ import { DonationsModule } from './modules/donations/donations.module';
 import { PixKeysModule } from './modules/pix-keys/pix-keys.module';
 import { WalletsModule } from './modules/wallets/wallets.module';
 import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
     HttpModule,
     GatewayModule,
     AiModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [

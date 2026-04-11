@@ -79,6 +79,16 @@ export class WithdrawalsService {
     };
   }
 
+  async approve(id: string): Promise<WithdrawalEntity> {
+    const withdrawal = await this.withdrawalsRepository.approveWithdrawal(id);
+    return this.mapToEntity(withdrawal);
+  }
+
+  async reject(id: string): Promise<WithdrawalEntity> {
+    const withdrawal = await this.withdrawalsRepository.rejectWithdrawal(id);
+    return this.mapToEntity(withdrawal);
+  }
+
   private mapToEntity(withdrawal: Withdrawal): WithdrawalEntity {
     const decryptedPix = this.securityService.decryptData(withdrawal.pix_value);
 
