@@ -7,6 +7,7 @@ import { EmailModule } from 'src/infra/queues/email/email.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
+import { AuthCleanupService } from './auth-cleanup.service';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @Module({
@@ -25,6 +26,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
   controllers: [AuthController],
   providers: [
     AuthService,
+    AuthCleanupService,
     SecurityService,
     {
       provide: APP_GUARD,

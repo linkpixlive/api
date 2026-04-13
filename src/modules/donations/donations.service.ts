@@ -32,7 +32,6 @@ export class DonationsService {
     );
 
     return {
-      id: user.id,
       name: user.name,
       username: user.username,
       avatar: user.profile_image_url,
@@ -41,9 +40,9 @@ export class DonationsService {
   }
 
   async donation(donationDto: DonationDto, ip: string) {
-    const { name, message, amount, voice_id, user_id } = donationDto;
+    const { name, message, amount, voice_id, username } = donationDto;
 
-    const user = await this.usersRepository.findById(user_id);
+    const user = await this.usersRepository.findByUsername(username);
     if (!user) throw new BadRequestException('User not found');
 
     const donationData = await this.gateway.generatePix({
@@ -84,12 +83,8 @@ export class DonationsService {
       );
     }
 
-    try {
-      if (donation.status === 'pending') {
-        await this.donationsQueue.sendDonation({ donation_id: donation.id });
-      }
-    } catch (error) {
-      console.error(error);
+    if (donation.status === 'pending') {
+      await this.donationsQueue.sendDonation({ donation_id: donation.id });
     }
   }
 }

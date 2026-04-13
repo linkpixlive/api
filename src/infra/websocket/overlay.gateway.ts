@@ -48,10 +48,15 @@ export class OverlayGateway implements OnGatewayConnection {
     client: Socket,
     @MessageBody() data: { id: string },
   ) {
+    const key = client.handshake.query.key as string;
     const { id } = data;
 
-    const donation = await this.donationsRepository.findById(id);
-    if (!donation) return;
+    const [donation, user] = await Promise.all([
+      this.donationsRepository.findById(id),
+      this.usersRepository.findByOverlayKey(key),
+    ]);
+
+    if (!donation || !user || donation.user_id !== user.id) return;
 
     await this.donationsRepository.update(id, { status: 'displayed' });
   }

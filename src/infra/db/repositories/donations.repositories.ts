@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import {
   CreateDonationParams,
@@ -16,14 +16,32 @@ export class DonationsRepository {
     voiceUri,
   }: ProcessDonationParams) {
     return await this.prismaService.$transaction(async (tx) => {
-      const updatedDonation = await tx.donation.update({
+      const donation = await tx.donation.findUnique({
         where: { id: donationId },
+      });
+
+      if (!donation || donation.status !== 'pending') {
+        throw new BadRequestException(
+          'Donation already processed or not found',
+        );
+      }
+
+      const updateResult = await tx.donation.updateMany({
+        where: { id: donationId, status: 'pending' },
         data: {
           status: 'paid',
           message: message,
           approved_at: new Date(),
           voice_url: voiceUri,
         },
+      });
+
+      if (updateResult.count === 0) {
+        throw new BadRequestException('Donation already processed');
+      }
+
+      const updatedDonation = await tx.donation.findUniqueOrThrow({
+        where: { id: donationId },
       });
 
       const wallet = await tx.wallet.update({

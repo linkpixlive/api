@@ -62,4 +62,15 @@ export class UsersRepository {
       },
     });
   }
+
+  async deleteManyUnverified(olderThan: Date) {
+    return await this.prismaService.user.deleteMany({
+      where: {
+        verified_email: false,
+        created_at: {
+          lt: olderThan,
+        },
+      },
+    });
+  }
 }

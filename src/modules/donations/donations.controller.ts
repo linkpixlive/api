@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Ip, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Ip,
+  Param,
+  Post,
+  Query,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from 'src/common/decorators/isPublic';
@@ -9,7 +21,10 @@ import { WebhookPixResponseDto } from './dto/webhook-pix-response.dto';
 @Public()
 @Controller()
 export class DonationsController {
-  constructor(private readonly donationsService: DonationsService) {}
+  constructor(
+    private readonly donationsService: DonationsService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Get('/user/:username')
   @ApiOperation({ summary: 'Get public user information' })
@@ -49,19 +64,29 @@ export class DonationsController {
   }
 
   @Post('webhook/pix')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
       'Pix webhook is activated when a payment update is identified in the gateway.',
   })
   @ApiResponse({
-    status: 201,
+    status: 200,
     description: 'Webhook received successfully.',
   })
   @ApiResponse({
-    status: 400,
-    description: 'Invalid data',
+    status: 401,
+    description: 'Unauthorized (invalid HMAC)',
   })
-  async webhookPix(@Body() body: { pix: WebhookPixResponseDto[] }) {
+  async webhookPix(
+    @Query('hmac') hmac: string,
+    @Body() body: { pix: WebhookPixResponseDto[] },
+  ) {
+    const secret = this.configService.get<string>('EFI_WEBHOOK_SECRET');
+
+    if (hmac !== secret) {
+      throw new UnauthorizedException('Invalid HMAC secret');
+    }
+
     const transactions = body.pix || [];
 
     for (const transaction of transactions) {

@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from 'src/common/decorators/isPublic';
@@ -113,11 +106,8 @@ export class AuthController {
   @Throttle({
     recovery_limit: { limit: 4, ttl: 900000 },
   })
-  resetPassword(
-    @Body() resetPasswordDto: ResetPasswordDto,
-    @Query('token') token: string,
-  ) {
-    return this.authService.resetPassword(resetPasswordDto, token);
+  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 
   @Post('verify-otp')

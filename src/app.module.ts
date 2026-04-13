@@ -3,9 +3,10 @@ import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { validate } from './common/config/env.validation';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { validate } from './common/config/env.validation';
 import { SecurityModule } from './common/security/security.module';
 import { AiModule } from './infra/ai/ai.module';
 import { DbModule } from './infra/db/db.module';
@@ -21,6 +22,7 @@ import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       validate,

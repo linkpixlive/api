@@ -88,6 +88,10 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   @IsBase64()
   EFI_CERTIFICATE_BASE64: string;
+
+  @IsString()
+  @IsNotEmpty()
+  EFI_WEBHOOK_SECRET: string;
 }
 
 export function validate(config: Record<string, unknown>) {

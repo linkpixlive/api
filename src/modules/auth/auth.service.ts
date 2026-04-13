@@ -53,10 +53,6 @@ export class AuthService {
       throw new ConflictException('CPF already in use');
     }
 
-    if (emailUser && emailUser.verified_email) {
-      throw new ConflictException('Email already in use');
-    }
-
     const encryptedCpf = this.securityService.encryptData(cpf);
     const encryptedPassword = await this.generatePasswordHash(password);
 
@@ -71,10 +67,16 @@ export class AuthService {
     };
 
     if (emailUser) {
+      if (emailUser.verified_email) {
+        throw new ConflictException('Email already in use');
+      }
+
       await this.usersRepository.update(emailUser.id, userData);
-    } else {
-      await this.usersRepository.create(userData);
+      await this.sendVerificationOtp(email);
+      return 'This email is already pending verification. A new code has been sent to your email.';
     }
+
+    await this.usersRepository.create(userData);
 
     await this.sendVerificationOtp(email);
 
@@ -140,8 +142,8 @@ export class AuthService {
     return { responseMsg, sendEmail };
   }
 
-  async resetPassword(resetPassword: ResetPasswordDto, token: string) {
-    const { newPassword } = resetPassword;
+  async resetPassword(resetPassword: ResetPasswordDto) {
+    const { newPassword, token } = resetPassword;
 
     const hashedToken = this.securityService.hashData(token);
 
@@ -171,14 +173,14 @@ export class AuthService {
 
   async verifyOtp({ otp, email }: VerifyOtpDto) {
     const redisKey = `otp:verification:${email}`;
-    const getOtp = await this.redisService.get<OtpData>(redisKey);
+    const otpData = await this.redisService.get<OtpData>(redisKey);
     const hashedOtp = this.securityService.hashData(otp);
 
-    if (!getOtp) {
+    if (!otpData) {
       throw new BadRequestException('OTP expired or not found');
     }
 
-    if (getOtp.attempts >= 5) {
+    if (otpData.attempts >= 5) {
       await this.redisService.remove(redisKey);
       await this.sendVerificationOtp(email);
       throw new BadRequestException(
@@ -186,11 +188,15 @@ export class AuthService {
       );
     }
 
-    if (getOtp.otp !== hashedOtp) {
-      await this.redisService.update(redisKey, {
-        ...getOtp,
-        attempts: getOtp.attempts + 1,
+    if (otpData.otp !== hashedOtp) {
+      const updated = await this.redisService.update(redisKey, {
+        ...otpData,
+        attempts: otpData.attempts + 1,
       });
+
+      if (!updated) {
+        throw new BadRequestException('OTP expired or not found');
+      }
 
       throw new BadRequestException(`Invalid OTP`);
     }
@@ -229,27 +235,29 @@ export class AuthService {
 
     const hashedOtp = this.securityService.hashData(otp);
 
-    const getOtp = await this.redisService.get<OtpData>(redisKey);
+    const otpData = await this.redisService.get<OtpData>(redisKey);
 
-    const now = new Date();
-    const createdDate = new Date(getOtp.createdAt);
+    if (otpData) {
+      const now = new Date();
+      const createdDate = new Date(otpData.createdAt);
 
-    const secondsPassed = Math.floor(
-      (now.getTime() - createdDate.getTime()) / 1000,
-    );
-    const cooldownLimit = 60;
-
-    if (secondsPassed < cooldownLimit) {
-      const secondsLeft = cooldownLimit - secondsPassed;
-
-      throw new BadRequestException(
-        `Please wait ${secondsLeft} seconds to request a new code.`,
+      const secondsPassed = Math.floor(
+        (now.getTime() - createdDate.getTime()) / 1000,
       );
+      const cooldownLimit = 60;
+
+      if (secondsPassed < cooldownLimit) {
+        const secondsLeft = cooldownLimit - secondsPassed;
+
+        throw new BadRequestException(
+          `Please wait ${secondsLeft} seconds to request a new code.`,
+        );
+      }
     }
 
     await this.redisService.setWithExpire(redisKey, 600, {
       otp: hashedOtp,
-      attempts: 1,
+      attempts: 0,
       createdAt: new Date(),
     });
 

@@ -14,6 +14,7 @@ import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
 import { WithdrawalEntity } from './entities/withdrawal.entity';
 
 const FEE_PERCENTAGE = 4;
+const MIN_WITHDRAWAL_AMOUNT = 1;
 
 @Injectable()
 export class WithdrawalsService {
@@ -28,18 +29,18 @@ export class WithdrawalsService {
     user: SafeUser,
     dto: CreateWithdrawalDto,
   ): Promise<WithdrawalEntity> {
+    if (dto.amount < MIN_WITHDRAWAL_AMOUNT) {
+      throw new BadRequestException(
+        `Minimum withdrawal amount is R$ ${MIN_WITHDRAWAL_AMOUNT}`,
+      );
+    }
+
     const wallet = await this.walletsRepository.findByUserId({
       userId: user.id,
     });
 
     if (!wallet) {
       throw new NotFoundException('Wallet not found.');
-    }
-
-    const availableBalance = wallet.current_balance.toNumber();
-
-    if (dto.amount > availableBalance) {
-      throw new BadRequestException('Insufficient available balance.');
     }
 
     const pix = await this.pixKeysRepository.findById(dto.pixId);

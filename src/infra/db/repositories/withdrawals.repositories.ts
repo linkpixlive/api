@@ -15,40 +15,42 @@ export class WithdrawalsRepository {
   constructor(private prismaService: PrismaService) {}
 
   async processWithdrawal(params: CreateWithdrawalParams) {
-    return await this.prismaService.$transaction(async (tx) => {
-      const withdrawal = await tx.withdrawal.create({
-        data: {
-          user_id: params.userId,
-          pix_id: params.pixId,
-          pix_value: params.pixKey,
-          gross_amount: params.grossAmount,
-          net_amount: params.netAmount,
-          fee_amount: params.feeAmount,
-          status: WithdrawalStatus.pending,
-        },
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const withdrawal = await tx.withdrawal.create({
+          data: {
+            user_id: params.userId,
+            pix_id: params.pixId,
+            pix_value: params.pixKey,
+            gross_amount: params.grossAmount,
+            net_amount: params.netAmount,
+            fee_amount: params.feeAmount,
+            status: WithdrawalStatus.pending,
+          },
+        });
+
+        await tx.wallet.update({
+          where: {
+            user_id: params.userId,
+            current_balance: { gte: params.grossAmount },
+          },
+          data: {
+            current_balance: { decrement: params.grossAmount },
+            pending_balance: { increment: params.grossAmount },
+          },
+        });
+
+        return withdrawal;
       });
-
-      await tx.wallet.update({
-        where: { user_id: params.userId },
-        data: {
-          current_balance: { decrement: params.grossAmount },
-          pending_balance: { increment: params.grossAmount },
-        },
-      });
-
-      // await tx.transaction.create({
-      //   data: {
-      //     user_id: params.userId,
-      //     withdrawal_id: withdrawal.id,
-      //     amount: params.amount,
-      //     type: 'withdraw_reserve',
-      //     transaction_id: `withdraw-${withdrawal.id}`,
-      //     balance_after: updatedWallet.current_balance,
-      //   },
-      // });
-
-      return withdrawal;
-    });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new BadRequestException('Insufficient available balance.');
+      }
+      throw error;
+    }
   }
 
   async findByUserId(params: FindWithdrawalsParams) {
@@ -97,16 +99,22 @@ export class WithdrawalsRepository {
         throw new NotFoundException('Withdrawal not found.');
       }
 
-      if (withdrawal.status !== WithdrawalStatus.pending) {
-        throw new BadRequestException('Withdrawal is not pending.');
-      }
-
-      const updatedWithdrawal = await tx.withdrawal.update({
-        where: { id },
+      const updateResult = await tx.withdrawal.updateMany({
+        where: { id, status: WithdrawalStatus.pending },
         data: {
           status: WithdrawalStatus.success,
           updated_at: new Date(),
         },
+      });
+
+      if (updateResult.count === 0) {
+        throw new BadRequestException(
+          'Withdrawal is not pending or already processed.',
+        );
+      }
+
+      const updatedWithdrawal = await tx.withdrawal.findUniqueOrThrow({
+        where: { id },
       });
 
       const wallet = await tx.wallet.update({
@@ -141,16 +149,22 @@ export class WithdrawalsRepository {
         throw new NotFoundException('Withdrawal not found.');
       }
 
-      if (withdrawal.status !== WithdrawalStatus.pending) {
-        throw new BadRequestException('Withdrawal is not pending.');
-      }
-
-      const updatedWithdrawal = await tx.withdrawal.update({
-        where: { id },
+      const updateResult = await tx.withdrawal.updateMany({
+        where: { id, status: WithdrawalStatus.pending },
         data: {
           status: WithdrawalStatus.failed,
           updated_at: new Date(),
         },
+      });
+
+      if (updateResult.count === 0) {
+        throw new BadRequestException(
+          'Withdrawal is not pending or already processed.',
+        );
+      }
+
+      const updatedWithdrawal = await tx.withdrawal.findUniqueOrThrow({
+        where: { id },
       });
 
       const wallet = await tx.wallet.update({
