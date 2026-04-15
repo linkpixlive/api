@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Withdrawal } from '@prisma/client';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { SecurityService } from '../../common/security/security.service';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { WalletsRepository } from '../../infra/db/repositories/wallets.repositories';
@@ -64,7 +65,10 @@ export class WithdrawalsService {
     return this.mapToEntity(withdrawal);
   }
 
-  async findAll(user: SafeUser, query: ListWithdrawalsQueryDto) {
+  async findAll(
+    user: SafeUser,
+    query: ListWithdrawalsQueryDto,
+  ): Promise<PaginatedResponseDto<WithdrawalEntity>> {
     const result = await this.withdrawalsRepository.findByUserId({
       userId: user.id,
       startDate: query.startDate,
@@ -74,10 +78,14 @@ export class WithdrawalsService {
       limit: query.limit ?? 10,
     });
 
-    return {
-      ...result,
-      data: result.data.map((w: Withdrawal) => this.mapToEntity(w)),
-    };
+    return new PaginatedResponseDto(
+      result.data.map((w) => this.mapToEntity(w)),
+      {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+      },
+    );
   }
 
   async approve(id: string): Promise<WithdrawalEntity> {

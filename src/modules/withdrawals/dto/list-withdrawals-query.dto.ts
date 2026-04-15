@@ -1,8 +1,9 @@
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import { WithdrawalStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsDate, IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsDate, IsEnum, IsOptional } from 'class-validator';
 
-export class ListWithdrawalsQueryDto {
+export class ListWithdrawalsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @Type(() => Date)
   @IsDate()
@@ -16,17 +17,4 @@ export class ListWithdrawalsQueryDto {
   @IsOptional()
   @IsEnum(WithdrawalStatus)
   status?: WithdrawalStatus;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 10;
 }

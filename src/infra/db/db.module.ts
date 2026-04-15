@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { ChangePasswordRepository } from './repositories/change-password.repositories';
+import { DashboardRepository } from './repositories/dashboard.repositories';
 import { DonationsRepository } from './repositories/donations.repositories';
 import { PixKeysRepository } from './repositories/pix-keys.repositories';
 import { UsersRepository } from './repositories/users.repositories';
@@ -13,6 +14,7 @@ import { WithdrawalsRepository } from './repositories/withdrawals.repositories';
     PrismaService,
     UsersRepository,
     ChangePasswordRepository,
+    DashboardRepository,
     DonationsRepository,
     PixKeysRepository,
     WalletsRepository,
@@ -22,6 +24,7 @@ import { WithdrawalsRepository } from './repositories/withdrawals.repositories';
     PrismaService,
     UsersRepository,
     ChangePasswordRepository,
+    DashboardRepository,
     DonationsRepository,
     PixKeysRepository,
     WalletsRepository,

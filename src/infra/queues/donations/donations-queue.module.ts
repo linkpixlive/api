@@ -7,7 +7,7 @@ import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayModule } from 'src/infra/gateway/gateway.module';
 import { SpeechModule } from 'src/infra/speech/speech.module';
 import { StorageModule } from 'src/infra/storage/storage.module';
-import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
+import { WebsocketModule } from 'src/infra/websocket/websocket.module';
 import { DonationsQueueProcessor } from './donations-queue.processor';
 import { DonationsQueueService } from './donations-queue.service';
 
@@ -18,6 +18,7 @@ import { DonationsQueueService } from './donations-queue.service';
     StorageModule,
     SpeechModule,
     ConfigModule,
+    WebsocketModule,
     BullModule.registerQueue({
       name: 'donations-queue',
       defaultJobOptions: {
@@ -36,7 +37,6 @@ import { DonationsQueueService } from './donations-queue.service';
     DonationsQueueProcessor,
     DonationsRepository,
     UsersRepository,
-    OverlayGateway,
   ],
   exports: [DonationsQueueService],
 })

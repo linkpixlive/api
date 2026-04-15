@@ -74,4 +74,34 @@ export class OverlayGateway implements OnGatewayConnection {
 
     await this.redisService.remove(`overlay:${key}`);
   }
+
+  emitSkipAlert(overlayKey: string) {
+    this.server.to(overlayKey).emit('skip_alert');
+  }
+
+  emitPauseAlerts(overlayKey: string) {
+    this.server.to(overlayKey).emit('pause_alerts');
+  }
+
+  emitResumeAlerts(overlayKey: string) {
+    this.server.to(overlayKey).emit('resume_alerts');
+  }
+
+  emitClearAlerts(overlayKey: string) {
+    this.server.to(overlayKey).emit('clear_alerts');
+  }
+
+  emitReplayDonation(
+    overlayKey: string,
+    donation: {
+      id: string;
+      name: string;
+      amount: number;
+      message: string | null;
+      voice_url: string | null;
+      message_type: string | null;
+    },
+  ) {
+    this.server.to(overlayKey).emit('new_donation', donation);
+  }
 }
