@@ -12,6 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { DonationsRepository } from '../db/repositories/donations.repositories';
 import { RedisService } from '../redis/redis.service';
+import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 
 @UseGuards(ThrottlerGuard)
 @WebSocketGateway({
@@ -75,6 +76,10 @@ export class OverlayGateway implements OnGatewayConnection {
     await this.redisService.remove(`overlay:${key}`);
   }
 
+  emitNewDonation(overlayKey: string, donation: OverlayDonationEntity) {
+    this.server.to(overlayKey).emit('new_donation', donation);
+  }
+
   emitSkipAlert(overlayKey: string) {
     this.server.to(overlayKey).emit('skip_alert');
   }
@@ -89,19 +94,5 @@ export class OverlayGateway implements OnGatewayConnection {
 
   emitClearAlerts(overlayKey: string) {
     this.server.to(overlayKey).emit('clear_alerts');
-  }
-
-  emitReplayDonation(
-    overlayKey: string,
-    donation: {
-      id: string;
-      name: string;
-      amount: number;
-      message: string | null;
-      voice_url: string | null;
-      message_type: string | null;
-    },
-  ) {
-    this.server.to(overlayKey).emit('new_donation', donation);
   }
 }

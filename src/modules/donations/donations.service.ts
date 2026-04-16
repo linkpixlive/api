@@ -9,6 +9,7 @@ import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { DonationDto } from './dto/donation.dto';
+import { DonationResponseEntity } from './entities/donation-response.entity';
 
 @Injectable()
 export class DonationsService {
@@ -39,8 +40,11 @@ export class DonationsService {
     };
   }
 
-  async donation(donationDto: DonationDto, ip: string) {
-    const { name, message, amount, voice_id, username } = donationDto;
+  async donation(
+    donationDto: DonationDto,
+    ip: string,
+  ): Promise<DonationResponseEntity> {
+    const { name, message, amount, voiceId, username } = donationDto;
 
     const user = await this.usersRepository.findByUsername(username);
     if (!user) throw new BadRequestException('User not found');
@@ -59,7 +63,7 @@ export class DonationsService {
       name,
       messageRaw: message,
       amount,
-      voiceId: voice_id,
+      voiceId,
       userId: user.id,
       pix: donationData.pix,
       status: 'pending',
@@ -70,7 +74,7 @@ export class DonationsService {
       ip,
     });
 
-    return donation;
+    return DonationResponseEntity.toResponse(donation);
   }
 
   async webhookPix(transactionId: string): Promise<void> {

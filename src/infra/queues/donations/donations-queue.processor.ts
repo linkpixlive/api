@@ -11,6 +11,7 @@ import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
+import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 
 @Processor('donations-queue')
 export class DonationsQueueProcessor extends WorkerHost {
@@ -54,14 +55,10 @@ export class DonationsQueueProcessor extends WorkerHost {
 
       const audioUrl = `${this.configService.get('BUCKET_URL')}/${ttsKey}`;
 
-      this.overlay.server.to(user.overlay_key).emit('new_donation', {
-        id: updatedDonation.id,
-        name: updatedDonation.name,
-        amount: updatedDonation.amount,
-        message: updatedDonation.message,
-        audio_url: audioUrl,
-        message_type: updatedDonation.message_type,
-      });
+      this.overlay.emitNewDonation(
+        user.overlay_key,
+        OverlayDonationEntity.toResponse(updatedDonation, audioUrl),
+      );
     } catch (error) {
       console.error(error);
       throw error;

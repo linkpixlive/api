@@ -25,7 +25,7 @@ export class DonationDto {
 
   @IsString()
   @IsNotEmpty()
-  voice_id: string;
+  voiceId: string;
 
   @IsString()
   @IsNotEmpty()

@@ -96,17 +96,6 @@ export class DashboardRepository {
         orderBy: { created_at: 'desc' },
         skip,
         take: limit,
-        select: {
-          id: true,
-          name: true,
-          amount: true,
-          message: true,
-          voice_url: true,
-          message_type: true,
-          status: true,
-          created_at: true,
-          approved_at: true,
-        },
       }),
       this.prismaService.donation.count({
         where: {

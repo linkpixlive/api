@@ -1,8 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { DashboardRepository } from 'src/infra/db/repositories/dashboard.repositories';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
+import { OverlayDonationEntity } from '../donations/entities/overlay-donation.entity';
+import { DashboardStatsEntity } from './entities/dashboard-stats.entity';
+import { DonationHistoryEntity } from './entities/donation-history.entity';
 
 @Injectable()
 export class DashboardService {
@@ -10,17 +14,25 @@ export class DashboardService {
     private readonly dashboardRepository: DashboardRepository,
     private readonly donationsRepository: DonationsRepository,
     private readonly overlayGateway: OverlayGateway,
+    private readonly configService: ConfigService,
   ) {}
 
-  async getStats(userId: string) {
-    return this.dashboardRepository.getDashboardStats(userId);
+  async getStats(userId: string): Promise<DashboardStatsEntity> {
+    const stats = await this.dashboardRepository.getDashboardStats(userId);
+    return new DashboardStatsEntity(stats);
   }
 
-  async getHistory(userId: string, page: number, limit: number) {
+  async getHistory(
+    userId: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResponseDto<DonationHistoryEntity>> {
     const { donations, total } =
       await this.dashboardRepository.getDonationHistory(userId, page, limit);
 
-    return new PaginatedResponseDto(donations, {
+    const history = donations.map((d) => DonationHistoryEntity.toResponse(d));
+
+    return new PaginatedResponseDto(history, {
       total,
       page,
       limit,
@@ -50,13 +62,13 @@ export class DashboardService {
       throw new NotFoundException('Donation not found');
     }
 
-    return this.overlayGateway.emitReplayDonation(overlayKey, {
-      id: donation.id,
-      name: donation.name,
-      amount: Number(donation.amount),
-      message: donation.message,
-      voice_url: donation.voice_url,
-      message_type: donation.message_type,
-    });
+    const audioUrl = donation.voice_url
+      ? `${this.configService.get('BUCKET_URL')}/${donation.voice_url}`
+      : null;
+
+    return this.overlayGateway.emitNewDonation(
+      overlayKey,
+      OverlayDonationEntity.toResponse(donation, audioUrl),
+    );
   }
 }
