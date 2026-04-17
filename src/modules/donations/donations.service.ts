@@ -10,6 +10,7 @@ import { DonationsQueueService } from 'src/infra/queues/donations/donations-queu
 import { RedisService } from 'src/infra/redis/redis.service';
 import { DonationDto } from './dto/donation.dto';
 import { DonationResponseEntity } from './entities/donation-response.entity';
+import { PublicUserEntity } from './entities/public-user.entity';
 
 @Injectable()
 export class DonationsService {
@@ -32,12 +33,12 @@ export class DonationsService {
       `overlay:${user.overlay_key}`,
     );
 
-    return {
+    return new PublicUserEntity({
       name: user.name,
       username: user.username,
-      avatar: user.profile_image_url,
+      profileImageUrl: user.profile_image_url,
       overlayActive: !!overlayStatus,
-    };
+    });
   }
 
   async donation(

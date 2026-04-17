@@ -1,13 +1,19 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import * as SafeUserEntity from '../auth/entities/safe-user.entity';
+import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
+import { WithdrawalEntity } from './entities/withdrawal.entity';
 import { WithdrawalsService } from './withdrawals.service';
 
-type SafeUser = SafeUserEntity.SafeUser;
-
+@ApiTags('Withdrawals')
+@ApiBearerAuth()
 @Controller('withdrawals')
 export class WithdrawalsController {
   constructor(private readonly withdrawalsService: WithdrawalsService) {}
@@ -16,6 +22,7 @@ export class WithdrawalsController {
   @ApiOperation({ summary: 'Request a new withdrawal' })
   @ApiResponse({
     status: 201,
+    type: WithdrawalEntity,
     description: 'Withdrawal request submitted successfully.',
   })
   @ApiResponse({
@@ -37,7 +44,8 @@ export class WithdrawalsController {
   @ApiOperation({ summary: 'List withdrawal history with filters' })
   @ApiResponse({
     status: 200,
-    description: 'Withdrawal history returned successfully.',
+    type: WithdrawalEntity,
+    description: 'List of withdrawals returned successfully.',
   })
   findAll(
     @CurrentUser() user: SafeUser,

@@ -3,6 +3,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { WithdrawalsService } from '../withdrawals/withdrawals.service';
+import { WithdrawalEntity } from '../withdrawals/entities/withdrawal.entity';
 
 @ApiTags('Admin')
 @Controller('admin/withdrawals')
@@ -14,6 +15,7 @@ export class WithdrawalsAdminController {
   @ApiOperation({ summary: 'Approve a pending withdrawal' })
   @ApiResponse({
     status: 200,
+    type: WithdrawalEntity,
     description: 'Withdrawal approved successfully.',
   })
   @ApiResponse({
@@ -32,6 +34,7 @@ export class WithdrawalsAdminController {
   @ApiOperation({ summary: 'Reject a pending withdrawal' })
   @ApiResponse({
     status: 200,
+    type: WithdrawalEntity,
     description: 'Withdrawal rejected successfully.',
   })
   @ApiResponse({

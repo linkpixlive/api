@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/isPublic';
 import { UsersRepository } from '../../infra/db/repositories/users.repositories';
+import { SafeUser } from './entities/safe-user.entity';
 
 export interface JwtPayload {
   sub: string;
@@ -49,8 +50,7 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException();
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _password, cpf_hash: _cpf_hash, ...safeUser } = user;
+      const safeUser = SafeUser.fromPrisma(user);
 
       request['user'] = safeUser;
     } catch {

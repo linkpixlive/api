@@ -1,12 +1,18 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import * as SafeUserEntity from '../auth/entities/safe-user.entity';
+import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreatePixKeyDto } from './dto/create-pix-key.dto';
+import { PixKeyEntity } from './entities/pix-key.entity';
 import { PixKeysService } from './pix-keys.service';
 
-type SafeUser = SafeUserEntity.SafeUser;
-
+@ApiTags('Pix Keys')
+@ApiBearerAuth()
 @Controller('pix-keys')
 export class PixKeysController {
   constructor(private readonly pixKeysService: PixKeysService) {}
@@ -15,6 +21,7 @@ export class PixKeysController {
   @ApiOperation({ summary: 'Register a new Pix key' })
   @ApiResponse({
     status: 201,
+    type: PixKeyEntity,
     description: 'Pix key registered successfully.',
   })
   @ApiResponse({
@@ -36,7 +43,8 @@ export class PixKeysController {
   @ApiOperation({ summary: 'List all Pix keys masked for the current user' })
   @ApiResponse({
     status: 200,
-    description: 'Pix keys masked returned successfully.',
+    type: PixKeyEntity,
+    description: 'List of masked pix keys.',
   })
   findAllMasked(@CurrentUser() user: SafeUser) {
     return this.pixKeysService.findAllMasked(user);
@@ -46,6 +54,7 @@ export class PixKeysController {
   @ApiOperation({ summary: 'List all Pix keys for the current user' })
   @ApiResponse({
     status: 200,
+    type: PixKeyEntity,
     description: 'Pix keys returned successfully.',
   })
   findAll(@CurrentUser() user: SafeUser) {

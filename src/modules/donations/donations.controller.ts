@@ -11,13 +11,16 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from 'src/common/decorators/isPublic';
 import { DonationsService } from './donations.service';
 import { DonationDto } from './dto/donation.dto';
 import { WebhookPixResponseDto } from './dto/webhook-pix-response.dto';
+import { DonationResponseEntity } from './entities/donation-response.entity';
+import { PublicUserEntity } from './entities/public-user.entity';
 
+@ApiTags('Donations')
 @Public()
 @Controller()
 export class DonationsController {
@@ -30,6 +33,7 @@ export class DonationsController {
   @ApiOperation({ summary: 'Get public user information' })
   @ApiResponse({
     status: 200,
+    type: PublicUserEntity,
     description: 'User information received successfully.',
   })
   @ApiResponse({
@@ -44,12 +48,13 @@ export class DonationsController {
   @ApiOperation({ summary: 'Create a new donation' })
   @ApiResponse({
     status: 201,
+    type: DonationResponseEntity,
     description:
       'Donation created, returns Pix code and donation informations.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid data (amount, user_id, voice_id...)',
+    description: 'Invalid data (amount, userId, voiceId...)',
   })
   @ApiResponse({
     status: 429,

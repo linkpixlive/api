@@ -23,7 +23,7 @@ export class DonationHistoryEntity {
     description: 'Voice audio key',
     nullable: true,
   })
-  voiceUrl: string | null;
+  audioUrl: string | null;
 
   @ApiProperty({
     example: 'text',
@@ -52,7 +52,7 @@ export class DonationHistoryEntity {
       name: donation.name,
       amount: Number(donation.amount),
       message: donation.message,
-      voiceUrl: donation.voice_url,
+      audioUrl: donation.voice_url,
       messageType: donation.message_type,
       status: donation.status,
       createdAt: donation.created_at,

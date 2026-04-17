@@ -11,11 +11,15 @@ export class DonationResponseEntity {
   @ApiProperty({ example: 10 })
   amount: number;
 
-  @ApiProperty({ example: 'Keep up the good work!', nullable: true })
+  @ApiProperty({
+    example: 'Keep up the good work!',
+    description: 'Donation message',
+    nullable: true,
+  })
   message: string | null;
 
   @ApiProperty({ example: 'voice-id-456', nullable: true })
-  voiceId: string | null;
+  audioId: string | null;
 
   @ApiProperty({ enum: DonationStatus, example: 'pending' })
   status: DonationStatus;
@@ -41,8 +45,8 @@ export class DonationResponseEntity {
       id: donation.id,
       name: donation.name,
       amount: Number(donation.amount),
-      message: donation.message_raw,
-      voiceId: donation.voice_id,
+      message: donation.message,
+      audioId: donation.voice_id,
       status: donation.status,
       pix: donation.pix,
       createdAt: donation.created_at,

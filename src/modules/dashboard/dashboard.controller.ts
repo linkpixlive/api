@@ -14,8 +14,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import type { SafeUser } from '../auth/entities/safe-user.entity';
+import { SafeUser } from '../auth/entities/safe-user.entity';
 import { DashboardService } from './dashboard.service';
+import { DashboardStatsEntity } from './entities/dashboard-stats.entity';
+import { DonationHistoryEntity } from './entities/donation-history.entity';
 
 @ApiBearerAuth()
 @ApiTags('Dashboard')
@@ -25,7 +27,11 @@ export class DashboardController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Get 30-day donation statistics' })
-  @ApiResponse({ status: 200, description: 'Stats returned successfully.' })
+  @ApiResponse({
+    status: 200,
+    type: DashboardStatsEntity,
+    description: 'Stats returned successfully.',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   getStats(@CurrentUser() user: SafeUser) {
     return this.dashboardService.getStats(user.id);
@@ -35,7 +41,11 @@ export class DashboardController {
   @ApiOperation({ summary: 'Get paginated donation history' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiResponse({ status: 200, description: 'History returned successfully.' })
+  @ApiResponse({
+    status: 200,
+    type: DonationHistoryEntity,
+    description: 'History returned successfully.',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   getHistory(
     @CurrentUser() user: SafeUser,
@@ -53,7 +63,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   skip(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.skip(user.overlay_key);
+    return this.dashboardService.skip(user.overlayKey);
   }
 
   @Post('alerts/pause')
@@ -62,7 +72,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   pause(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.pause(user.overlay_key);
+    return this.dashboardService.pause(user.overlayKey);
   }
 
   @Post('alerts/resume')
@@ -71,7 +81,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   resume(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.resume(user.overlay_key);
+    return this.dashboardService.resume(user.overlayKey);
   }
 
   @Post('alerts/clear')
@@ -80,7 +90,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   clear(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.clear(user.overlay_key);
+    return this.dashboardService.clear(user.overlayKey);
   }
 
   @Post('alerts/replay/:id')
@@ -89,6 +99,6 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'Donation or user not found.' })
   replay(@CurrentUser() user: SafeUser, @Param('id') donationId: string) {
-    return this.dashboardService.replay(user.id, user.overlay_key, donationId);
+    return this.dashboardService.replay(user.id, user.overlayKey, donationId);
   }
 }
