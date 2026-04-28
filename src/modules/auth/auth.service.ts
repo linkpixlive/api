@@ -67,7 +67,7 @@ export class AuthService {
     };
 
     if (emailUser) {
-      if (emailUser.verified_email) {
+      if (emailUser.verifiedEmail) {
         throw new ConflictException('Email already in use');
       }
 
@@ -96,7 +96,7 @@ export class AuthService {
     if (!isPasswordValid)
       throw new UnauthorizedException('Invalid credentials.');
 
-    if (!user.verified_email) {
+    if (!user.verifiedEmail) {
       await this.sendVerificationOtp(email);
       throw new UnauthorizedException('User not verified, check your email.');
     }

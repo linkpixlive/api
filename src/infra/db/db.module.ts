@@ -7,6 +7,8 @@ import { PixKeysRepository } from './repositories/pix-keys.repositories';
 import { UsersRepository } from './repositories/users.repositories';
 import { WalletsRepository } from './repositories/wallets.repositories';
 import { WithdrawalsRepository } from './repositories/withdrawals.repositories';
+import { DonationSettingsRepository } from './repositories/donation-settings.repositories';
+import { WidgetRepository } from './repositories/widget.repositories';
 
 @Global()
 @Module({
@@ -19,6 +21,8 @@ import { WithdrawalsRepository } from './repositories/withdrawals.repositories';
     PixKeysRepository,
     WalletsRepository,
     WithdrawalsRepository,
+    DonationSettingsRepository,
+    WidgetRepository,
   ],
   exports: [
     PrismaService,
@@ -29,6 +33,8 @@ import { WithdrawalsRepository } from './repositories/withdrawals.repositories';
     PixKeysRepository,
     WalletsRepository,
     WithdrawalsRepository,
+    DonationSettingsRepository,
+    WidgetRepository,
   ],
 })
 export class DbModule {}

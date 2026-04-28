@@ -62,31 +62,40 @@ enum InteractionType {
   RESPONSE_WEBHOOK_WITHDRAWAL
 }
 
+enum WidgetType {
+  overlay
+  qrcode
+}
+
 model User {
-  id                String   @id @default(uuid()) @db.VarChar(36)
-  name              String   @db.VarChar(100)
-  email             String   @unique @db.VarChar(255)
-  username          String   @unique @db.VarChar(50)
-  password          String   @db.VarChar(255)
-  profile_image_url String?  @db.VarChar(500)
-  cpf               String?  @unique @db.VarChar(255)
-  cpf_hash          String?  @unique @db.VarChar(255)
-  created_at        DateTime @default(now())
-  active            Boolean  @default(true)
-  verified_email    Boolean  @default(false)
-  roles             UserRole[] @default([streamer])
-  overlay_key       String   @unique @default(uuid()) @db.VarChar(36)
+  id               String   @id @default(uuid()) @db.VarChar(36)
+  name             String   @db.VarChar(100)
+  email            String   @unique @db.VarChar(255)
+  username         String   @unique @db.VarChar(50)
+  password         String   @db.VarChar(255)
   
-  wallet                Wallet?
-  pix_keys              PixKey[]
-  donations_received    Donation[]             @relation("ReceivedDonations")
-  withdrawals           Withdrawal[]
-  transactions          Transaction[]
-  change_password       ChangePassword[]
+  profileImageUrl  String?  @map("profile_image_url") @db.VarChar(500)
+  cpf              String?  @unique @db.VarChar(255)
+  cpfHash          String?  @unique @map("cpf_hash") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  active           Boolean  @default(true)
+  verifiedEmail    Boolean  @default(false) @map("verified_email")
+  roles            UserRole[] @default([streamer])
+  overlayKey       String   @unique @default(uuid()) @map("overlay_key") @db.VarChar(36)
+
+  wallet           Wallet?
+  pixKeys          PixKey[]           
+  donationsReceived Donation[]        @relation("ReceivedDonations")
+  withdrawals      Withdrawal[]
+  transactions     Transaction[]
+  changePassword   ChangePassword[]   
+  donationSettings DonationSettings?  
+  widgets          Widget[]
 
   @@index([email])
   @@index([username])
-  @@index([cpf_hash])
+  @@index([cpfHash])
   @@map("users")
 }
 
@@ -223,4 +232,35 @@ model GatewayResponse {
 
   @@index([external_id])
   @@map("gateway_responses")
+}
+
+model DonationSettings {
+  id             String   @id @default(uuid()) @db.VarChar(36)
+  userId         String   @unique @map("user_id") @db.VarChar(36)
+  maxLength      Int      @default(250) @map("max_length")
+  minAudioAmount Decimal  @default(1.00) @map("min_audio_amount") @db.Decimal(12, 2)
+  minTextAmount  Decimal  @default(1.00) @map("min_text_amount") @db.Decimal(12, 2)
+  filterProfanity Boolean  @default(false) @map("filter_profanity")
+  filterSpam      Boolean  @default(false) @map("filter_spam")
+  blockedWords    String[] @default([]) @map("blocked_words")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("donation_settings")
+}
+
+model Widget {
+  id        String     @id @default(uuid()) @db.VarChar(36)
+  userId    String     @map("user_id") @db.VarChar(36)
+  type      WidgetType
+  settings  Json       @default("{}")
+  active    Boolean    @default(true)
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@map("widgets")
 }

@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AiContract } from '../contract/ai.contract';
+import { AiContract, AiModOptions } from '../contract/ai.contract';
 
 @Injectable()
 export class GeminiService implements AiContract {
@@ -13,25 +13,47 @@ export class GeminiService implements AiContract {
     });
   }
 
-  async cleanMessage(userMessage: string): Promise<string> {
+  async cleanMessage(
+    userMessage: string,
+    options?: AiModOptions,
+  ): Promise<string> {
     try {
+      const filterProfanity = options?.filterProfanity ?? true;
+      const filterSpam = options?.filterSpam ?? true;
+      const blockedWords = options?.blockedWords || [];
+
+      let instruction = `Você é um assistente de moderação para streamers. 
+Sua missão é processar mensagens de doações, tornando-as seguras para leitura em voz alta (TTS), mas mantendo a zoeira e o espírito da comunidade.
+
+DIRETRIZES DE TRATAMENTO:`;
+
+      if (filterProfanity) {
+        instruction += `
+1. IDENTIFICAÇÃO DE VARIANTES: Detecte palavrões mesmo que usem números ou letras repetidas (ex: "buucet4", "fdp", "cuz4o", "p0rr4"). 
+2. SUBSTITUIÇÃO CRIATIVA: Não apague a frase. Troque a palavra ofensiva por termos engraçados, leves ou "nerds" que mantenham o sentido da piada. 
+  - Ex: "VAI TOMAR NO CU" -> "VAI TOMAR UM SUCO"
+  - Ex: "ESSA BUUCET4" -> "ESSA BENZINA" ou "ESSA REBIMBOCA"`;
+      }
+
+      if (filterSpam) {
+        instruction += `
+3. REMOÇÃO DE SPAM: Se identificar repetições sem sentido (ex: "lolololo", "aaaaa", "testando 123 123"), remova o excesso e deixe apenas uma ocorrência ou limpe o lixo.`;
+      }
+
+      if (blockedWords.length > 0) {
+        instruction += `
+4. PALAVRAS PROIBIDAS ESPECÍFICAS (Obrigatório bloquear/substituir): ${blockedWords.join(', ')}.`;
+      }
+
+      instruction += `
+5. MANTENHA O HUMOR: O objetivo é que o streamer e o chat riam da substituição, não que a mensagem perca a graça.
+6. REGRA DE OURO: Retorne APENAS o texto final tratado. Não explique o que mudou, não peça desculpas e não adicione comentários.`;
+
       const response = await this.gemini.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: {
-          systemInstruction: `
-              Você é o "Filtro de Elite" do Tipply, um assistente de moderação para streamers. 
-              Sua missão é processar mensagens de doações, tornando-as seguras para leitura em voz alta (TTS), mas mantendo a zoeira e o espírito da comunidade.
-
-              DIRETRIZES DE TRATAMENTO:
-              1. IDENTIFICAÇÃO DE VARIANTES: Detecte palavrões mesmo que usem números ou letras repetidas (ex: "buucet4", "fdp", "cuz4o", "p0rr4"). 
-              2. SUBSTITUIÇÃO CRIATIVA: Não apague a frase. Troque a palavra ofensiva por termos engraçados, leves ou "nerds" que mantenham o sentido da piada. 
-                - Ex: "VAI TOMAR NO CU" -> "VAI TOMAR UM SUCO"
-                - Ex: "ESSA BUUCET4" -> "ESSA BENZINA" ou "ESSA REBIMBOCA"
-              3. REMOÇÃO DE SPAM: Se identificar repetições sem sentido (ex: "lolololo", "aaaaa", "testando 123 123"), remova o excesso e deixe apenas uma ocorrência ou limpe o lixo.
-              4. MANTENHA O HUMOR: O objetivo é que o streamer e o chat riam da substituição, não que a mensagem perca a graça.
-              5. REGRA DE OURO: Retorne APENAS o texto final tratado. Não explique o que mudou, não peça desculpas e não adicione comentários.
-            `,
+          systemInstruction: instruction,
           temperature: 0.2,
         },
       });

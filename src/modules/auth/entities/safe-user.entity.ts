@@ -45,13 +45,13 @@ export class SafeUser {
       name: user.name,
       email: user.email,
       username: user.username,
-      profileImageUrl: user.profile_image_url,
+      profileImageUrl: user.profileImageUrl,
       cpf: user.cpf,
-      createdAt: user.created_at,
+      createdAt: user.createdAt,
       active: user.active,
-      verifiedEmail: user.verified_email,
+      verifiedEmail: user.verifiedEmail,
       roles: user.roles,
-      overlayKey: user.overlay_key,
+      overlayKey: user.overlayKey,
     });
   }
 }

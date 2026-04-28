@@ -15,9 +15,9 @@ export class UsersRepository {
         email: data.email,
         password: data.password,
         cpf: data.cpf,
-        cpf_hash: data.cpfHash,
+        cpfHash: data.cpfHash,
         roles: data.roles ?? [UserRole.streamer],
-        verified_email: data.verifiedEmail ?? false,
+        verifiedEmail: data.verifiedEmail,
         wallet: { create: {} },
       },
     });
@@ -37,13 +37,13 @@ export class UsersRepository {
 
   async findByCpfHash(cpfHash: string) {
     return await this.prismaService.user.findUnique({
-      where: { cpf_hash: cpfHash },
+      where: { cpfHash },
     });
   }
 
   async findByOverlayKey(overlayKey: string) {
     return await this.prismaService.user.findUnique({
-      where: { overlay_key: overlayKey },
+      where: { overlayKey },
     });
   }
 
@@ -56,9 +56,9 @@ export class UsersRepository {
         email: data.email,
         password: data.password,
         cpf: data.cpf,
-        cpf_hash: data.cpfHash,
+        cpfHash: data.cpfHash,
         roles: data.roles,
-        verified_email: data.verifiedEmail,
+        verifiedEmail: data.verifiedEmail,
       },
     });
   }
@@ -66,8 +66,8 @@ export class UsersRepository {
   async deleteManyUnverified(olderThan: Date) {
     return await this.prismaService.user.deleteMany({
       where: {
-        verified_email: false,
-        created_at: {
+        verifiedEmail: false,
+        createdAt: {
           lt: olderThan,
         },
       },

@@ -10,9 +10,9 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 import { DonationsRepository } from '../db/repositories/donations.repositories';
 import { RedisService } from '../redis/redis.service';
-import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 
 @UseGuards(ThrottlerGuard)
 @WebSocketGateway({
@@ -40,7 +40,7 @@ export class OverlayGateway implements OnGatewayConnection {
     if (!user) return client.disconnect();
 
     await this.redisService.setWithExpire(`overlay:${key}`, 60, 'true');
-    await client.join(user.overlay_key);
+    await client.join(user.overlayKey);
   }
 
   @SubscribeMessage('displayed_donation')
@@ -94,5 +94,18 @@ export class OverlayGateway implements OnGatewayConnection {
 
   emitClearAlerts(overlayKey: string) {
     this.server.to(overlayKey).emit('clear_alerts');
+  }
+
+  emitSettingsUpdated(overlayKey: string, settings: any) {
+    this.server.to(overlayKey).emit('settings_updated', settings);
+  }
+
+  emitTestNotification(overlayKey: string) {
+    this.server.to(overlayKey).emit('test_notification', {
+      name: 'LinkPix',
+      message: 'Esta é uma notificação de teste!',
+      amount: 8.43,
+      id: 'test-id',
+    });
   }
 }

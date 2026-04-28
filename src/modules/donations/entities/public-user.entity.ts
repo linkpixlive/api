@@ -16,6 +16,15 @@ export class PublicUserEntity {
   })
   overlayActive: boolean;
 
+  @ApiProperty({ example: 5.0 })
+  minAudioAmount?: number;
+
+  @ApiProperty({ example: 1.0 })
+  minTextAmount?: number;
+
+  @ApiProperty({ example: 250 })
+  maxLength?: number;
+
   constructor(partial: Partial<PublicUserEntity>) {
     Object.assign(this, partial);
   }

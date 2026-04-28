@@ -1,17 +1,20 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Donation, User } from '@prisma/client';
+import { Donation, User, WidgetType } from '@prisma/client';
 import { Job } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { AiContract } from 'src/infra/ai/contract/ai.contract';
+import { DonationSettingsRepository } from 'src/infra/db/repositories/donation-settings.repositories';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
+import { OverlayWidgetSettings } from 'src/modules/widgets/widgets.service';
 
 @Processor('donations-queue')
 export class DonationsQueueProcessor extends WorkerHost {
@@ -23,6 +26,8 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly storage: StorageContract,
     private readonly speech: SpeechContract,
     private readonly overlay: OverlayGateway,
+    private readonly donationSettingsRepository: DonationSettingsRepository,
+    private readonly widgetRepository: WidgetRepository,
     private readonly configService: ConfigService,
   ) {
     super();
@@ -37,14 +42,35 @@ export class DonationsQueueProcessor extends WorkerHost {
 
       await this.verifyPaymentStatus(donation.transaction_id);
 
+      const donationSettings =
+        await this.donationSettingsRepository.findByUserId(user.id);
+
+      if (!donationSettings)
+        throw new BadRequestException('Donation settings not found');
+
+      const overlaySettings = await this.getOverlaySettings(user.id);
+
+      if (!overlaySettings)
+        throw new BadRequestException('Overlay settings not found');
+
+      const ttsPreferences = {
+        filterProfanity: donationSettings.filterProfanity,
+        filterSpam: donationSettings.filterSpam,
+        blockedWords: donationSettings.blockedWords,
+      };
+
       const cleanMessage = donation.message_raw
-        ? await this.aiService.cleanMessage(donation.message_raw)
+        ? await this.aiService.cleanMessage(
+            donation.message_raw,
+            ttsPreferences,
+          )
         : '';
 
       const ttsKey = await this.processAudio({
         donation,
         user,
         message: cleanMessage,
+        speakNameAmount: overlaySettings.speakNameAmount,
       });
 
       const updatedDonation = await this.donationsRepository.processDonation({
@@ -53,10 +79,12 @@ export class DonationsQueueProcessor extends WorkerHost {
         voiceUri: ttsKey,
       });
 
-      const audioUrl = `${this.configService.get('BUCKET_URL')}/${ttsKey}`;
+      const audioUrl = ttsKey
+        ? `${this.configService.get('BUCKET_URL')}/${ttsKey}`
+        : null;
 
       this.overlay.emitNewDonation(
-        user.overlay_key,
+        user.overlayKey,
         OverlayDonationEntity.toResponse(updatedDonation, audioUrl),
       );
     } catch (error) {
@@ -77,12 +105,18 @@ export class DonationsQueueProcessor extends WorkerHost {
     donation,
     user,
     message,
+    speakNameAmount,
   }: {
     donation: Donation;
     user: User;
     message: string;
+    speakNameAmount: boolean;
   }) {
-    const fullMessage = `${donation.name} mandou R$${String(donation.amount)}: ${message}`;
+    let fullMessage = '';
+    if (speakNameAmount) {
+      fullMessage = `${donation.name} mandou R$${String(donation.amount)}: `;
+    }
+    fullMessage += message;
 
     const tts = await this.speech.generateTTS({ message: fullMessage });
     const ttsBuffer = Buffer.from(tts, 'base64');
@@ -100,6 +134,26 @@ export class DonationsQueueProcessor extends WorkerHost {
     }
 
     return donation;
+  }
+
+  private async getOverlaySettings(userId: string) {
+    let overlayWidget = await this.widgetRepository.findByUserAndType(
+      userId,
+      WidgetType.overlay,
+    );
+
+    if (!overlayWidget) {
+      overlayWidget = await this.widgetRepository.upsert(userId, {
+        type: WidgetType.overlay,
+        settings: {
+          volume: 100,
+          speakNameAmount: true,
+          defaultNarrator: 'Ricardo',
+        },
+      });
+    }
+
+    return overlayWidget.settings as unknown as OverlayWidgetSettings;
   }
 
   private async validateAndGetUser(id: string) {

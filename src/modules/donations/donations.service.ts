@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { DonationSettings } from '@prisma/client';
+import { DonationSettingsRepository } from 'src/infra/db/repositories/donation-settings.repositories';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
@@ -17,6 +19,7 @@ export class DonationsService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly donationsRepository: DonationsRepository,
+    private readonly donationSettingsRepository: DonationSettingsRepository,
     private readonly gateway: GatewayContract,
     private readonly donationsQueue: DonationsQueueService,
     private readonly redisService: RedisService,
@@ -30,14 +33,23 @@ export class DonationsService {
     }
 
     const overlayStatus = await this.redisService.get(
-      `overlay:${user.overlay_key}`,
+      `overlay:${user.overlayKey}`,
     );
+
+    let settings = await this.donationSettingsRepository.findByUserId(user.id);
+
+    if (!settings) {
+      settings = await this.donationSettingsRepository.upsert(user.id, {});
+    }
 
     return new PublicUserEntity({
       name: user.name,
       username: user.username,
-      profileImageUrl: user.profile_image_url,
+      profileImageUrl: user.profileImageUrl,
       overlayActive: !!overlayStatus,
+      minAudioAmount: Number(settings.minAudioAmount),
+      minTextAmount: Number(settings.minTextAmount),
+      maxLength: settings.maxLength,
     });
   }
 
@@ -49,6 +61,33 @@ export class DonationsService {
 
     const user = await this.usersRepository.findByUsername(username);
     if (!user) throw new BadRequestException('User not found');
+
+    let settings = (await this.donationSettingsRepository.findByUserId(
+      user.id,
+    )) as DonationSettings;
+    if (!settings) {
+      settings = await this.donationSettingsRepository.upsert(user.id, {});
+    }
+
+    if (message && message.length > settings.maxLength) {
+      throw new BadRequestException(
+        `Message exceeds maximum length of ${settings.maxLength} characters`,
+      );
+    }
+
+    const amountNum = Number(amount);
+
+    if (amountNum < Number(settings.minTextAmount)) {
+      throw new BadRequestException(
+        `Minimum donation amount is R$${Number(settings.minTextAmount).toFixed(2)}`,
+      );
+    }
+
+    if (voiceId && amountNum < Number(settings.minAudioAmount)) {
+      throw new BadRequestException(
+        `Minimum donation amount for audio/TTS is R$${Number(settings.minAudioAmount).toFixed(2)}`,
+      );
+    }
 
     const donationData = await this.gateway.generatePix({
       amount,
