@@ -96,8 +96,8 @@ export class OverlayGateway implements OnGatewayConnection {
     this.server.to(overlayKey).emit('clear_alerts');
   }
 
-  emitSettingsUpdated(overlayKey: string, settings: any) {
-    this.server.to(overlayKey).emit('settings_updated', settings);
+  emitSettingsUpdated(overlayKey: string) {
+    this.server.to(overlayKey).emit('settings_updated');
   }
 
   emitTestNotification(overlayKey: string) {

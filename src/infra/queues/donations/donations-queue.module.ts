@@ -8,6 +8,7 @@ import { GatewayModule } from 'src/infra/gateway/gateway.module';
 import { SpeechModule } from 'src/infra/speech/speech.module';
 import { StorageModule } from 'src/infra/storage/storage.module';
 import { WebsocketModule } from 'src/infra/websocket/websocket.module';
+import { WidgetsModule } from 'src/modules/widgets/widgets.module';
 import { DonationsQueueProcessor } from './donations-queue.processor';
 import { DonationsQueueService } from './donations-queue.service';
 
@@ -19,6 +20,7 @@ import { DonationsQueueService } from './donations-queue.service';
     SpeechModule,
     ConfigModule,
     WebsocketModule,
+    WidgetsModule,
     BullModule.registerQueue({
       name: 'donations-queue',
       defaultJobOptions: {

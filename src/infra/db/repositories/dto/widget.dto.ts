@@ -1,7 +1,11 @@
 import { WidgetType } from '@prisma/client';
 
-export interface UpsertWidgetParams {
+export interface CreateWidgetParams {
   type: WidgetType;
   settings: Record<string, any>;
-  active?: boolean;
+}
+
+export interface UpdateWidgetParams {
+  type: WidgetType;
+  settings: Record<string, any>;
 }

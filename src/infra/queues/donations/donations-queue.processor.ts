@@ -1,20 +1,19 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Donation, User, WidgetType } from '@prisma/client';
+import { Donation, User } from '@prisma/client';
 import { Job } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { AiContract } from 'src/infra/ai/contract/ai.contract';
 import { DonationSettingsRepository } from 'src/infra/db/repositories/donation-settings.repositories';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
-import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
-import { OverlayWidgetSettings } from 'src/modules/widgets/widgets.service';
+import { WidgetsService } from 'src/modules/widgets/widgets.service';
 
 @Processor('donations-queue')
 export class DonationsQueueProcessor extends WorkerHost {
@@ -27,8 +26,8 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly speech: SpeechContract,
     private readonly overlay: OverlayGateway,
     private readonly donationSettingsRepository: DonationSettingsRepository,
-    private readonly widgetRepository: WidgetRepository,
     private readonly configService: ConfigService,
+    private readonly widgetService: WidgetsService,
   ) {
     super();
   }
@@ -48,10 +47,10 @@ export class DonationsQueueProcessor extends WorkerHost {
       if (!donationSettings)
         throw new BadRequestException('Donation settings not found');
 
-      const overlaySettings = await this.getOverlaySettings(user.id);
-
-      if (!overlaySettings)
-        throw new BadRequestException('Overlay settings not found');
+      const overlaySettings = await this.widgetService.getPublicWidgetSettings(
+        user.overlayKey,
+        'overlay',
+      );
 
       const ttsPreferences = {
         filterProfanity: donationSettings.filterProfanity,
@@ -134,26 +133,6 @@ export class DonationsQueueProcessor extends WorkerHost {
     }
 
     return donation;
-  }
-
-  private async getOverlaySettings(userId: string) {
-    let overlayWidget = await this.widgetRepository.findByUserAndType(
-      userId,
-      WidgetType.overlay,
-    );
-
-    if (!overlayWidget) {
-      overlayWidget = await this.widgetRepository.upsert(userId, {
-        type: WidgetType.overlay,
-        settings: {
-          volume: 100,
-          speakNameAmount: true,
-          defaultNarrator: 'Ricardo',
-        },
-      });
-    }
-
-    return overlayWidget.settings as unknown as OverlayWidgetSettings;
   }
 
   private async validateAndGetUser(id: string) {

@@ -1,16 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { WidgetType } from '@prisma/client';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
-import { UpdateWidgetDto } from './dto/update-widget.dto';
-import { WidgetEntity } from './entities/widget.entity';
+import { SafeUser } from '../auth/entities/safe-user.entity';
 
-export interface OverlayWidgetSettings {
-  volume: number;
-  speakNameAmount: boolean;
-  defaultNarrator: string;
-}
+import { WidgetSettingsMap } from './dto/widget-settings.map';
 
 @Injectable()
 export class WidgetsService {
@@ -20,68 +19,73 @@ export class WidgetsService {
     private readonly overlayGateway: OverlayGateway,
   ) {}
 
-  async getWidgetSettings(
-    userId: string,
-    type: WidgetType,
-  ): Promise<WidgetEntity> {
+  async getWidgetSettings<T extends WidgetType>(userId: string, type: T) {
     const widget = await this.widgetRepository.findByUserAndType(userId, type);
 
-    if (!widget) {
-      const newWidget = await this.widgetRepository.upsert(userId, {
-        type,
-        settings: this.getDefaultSettings(type),
-      });
+    if (!widget) throw new NotFoundException('Widget settings not found');
 
-      return new WidgetEntity({
-        ...newWidget,
-        settings: newWidget.settings as Record<string, any>,
-      });
-    }
-
-    return new WidgetEntity({
-      ...widget,
-      settings: widget.settings as Record<string, any>,
-    });
+    return widget.settings as WidgetSettingsMap[T];
   }
 
-  async updateWidgetSettings(
+  async createWidgetSettings<T extends WidgetType>(
     userId: string,
-    type: WidgetType,
-    data: UpdateWidgetDto,
-  ): Promise<WidgetEntity> {
-    const user = await this.usersRepository.findById(userId);
-    if (!user) throw new NotFoundException('User not found');
-
-    const widget = await this.widgetRepository.upsert(userId, {
+    type: T,
+    settings?: WidgetSettingsMap[T],
+  ) {
+    const existingWidget = await this.widgetRepository.findByUserAndType(
+      userId,
       type,
-      settings: data.settings || {},
-      active: data.active,
+    );
+
+    if (existingWidget) {
+      throw new ConflictException('Widget settings already exist');
+    }
+
+    const widget = await this.widgetRepository.create(userId, {
+      type,
+      settings:
+        type === WidgetType.overlay
+          ? settings || this.getDefaultSettings(type)
+          : this.getDefaultSettings(type),
+    });
+
+    return widget.settings as WidgetSettingsMap[T];
+  }
+
+  async updateWidgetSettings<T extends WidgetType>(
+    user: SafeUser,
+    type: T,
+    settings: WidgetSettingsMap[T],
+  ) {
+    const existingWidget = await this.widgetRepository.findByUserAndType(
+      user.id,
+      type,
+    );
+
+    if (!existingWidget) {
+      throw new NotFoundException('Widget settings not found');
+    }
+
+    const widget = await this.widgetRepository.update(user.id, {
+      type,
+      settings,
     });
 
     if (type === WidgetType.overlay) {
-      this.overlayGateway.emitSettingsUpdated(user.overlayKey, widget.settings);
+      this.overlayGateway.emitSettingsUpdated(user.overlayKey);
     }
 
-    return new WidgetEntity({
-      ...widget,
-      settings: widget.settings as Record<string, any>,
-    });
+    return widget.settings as WidgetSettingsMap[T];
   }
 
-  async getPublicWidgetSettings(
-    key: string,
-    type: WidgetType,
-  ): Promise<WidgetEntity> {
+  async getPublicWidgetSettings<T extends WidgetType>(key: string, type: T) {
     const user = await this.usersRepository.findByOverlayKey(key);
     if (!user) throw new NotFoundException('Widget not found');
 
     const widget = await this.widgetRepository.findByUserAndType(user.id, type);
     if (!widget) throw new NotFoundException('Settings not found');
 
-    return new WidgetEntity({
-      ...widget,
-      settings: widget.settings as Record<string, any>,
-    });
+    return widget.settings as WidgetSettingsMap[T];
   }
 
   async testOverlay(userId: string) {
