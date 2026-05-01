@@ -70,13 +70,13 @@ export class PixKeysService {
 
   async findAllMasked(user: SafeUser): Promise<PixKeyEntity[]> {
     const pixKeys = await this.pixKeysRepository.findByUserId(user.id);
-    return pixKeys.map((pk) => this.mapToEntityMasked(pk));
+    return pixKeys.map((pk) => new PixKeyEntity(pk));
   }
 
   async remove(user: SafeUser, id: string): Promise<PixKeyEntity> {
     const pixKey = await this.pixKeysRepository.findById(id);
 
-    if (!pixKey || pixKey.user_id !== user.id) {
+    if (!pixKey || pixKey.userId !== user.id) {
       throw new NotFoundException('Pix key not found.');
     }
 
@@ -100,23 +100,6 @@ export class PixKeysService {
   private mapToEntity(pixKey: PixKey): PixKeyEntity {
     const decryptedKey = this.securityService.decryptData(pixKey.key);
 
-    return new PixKeyEntity({
-      id: pixKey.id,
-      key: decryptedKey,
-      keyMasked: pixKey.key_masked,
-      keyType: pixKey.key_type,
-      alias: pixKey.alias || undefined,
-      createdAt: pixKey.created_at,
-    });
-  }
-
-  private mapToEntityMasked(pixKey: PixKey): PixKeyEntity {
-    return new PixKeyEntity({
-      id: pixKey.id,
-      keyMasked: pixKey.key_masked,
-      keyType: pixKey.key_type,
-      alias: pixKey.alias || undefined,
-      createdAt: pixKey.created_at,
-    });
+    return new PixKeyEntity({ ...pixKey, key: decryptedKey });
   }
 }

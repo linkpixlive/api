@@ -1,38 +1,51 @@
 import { ApiHideProperty } from '@nestjs/swagger';
 import { User, UserRole } from '@prisma/client';
+import { Exclude, Expose } from 'class-transformer';
 
+@Exclude()
 export class SafeUser {
   @ApiHideProperty()
+  @Expose()
   id: string;
 
   @ApiHideProperty()
+  @Expose()
   name: string;
 
   @ApiHideProperty()
+  @Expose()
   email: string;
 
   @ApiHideProperty()
+  @Expose()
   username: string;
 
   @ApiHideProperty()
+  @Expose()
   profileImageUrl: string | null;
 
   @ApiHideProperty()
+  @Expose()
   cpf: string | null;
 
   @ApiHideProperty()
+  @Expose()
   createdAt: Date;
 
   @ApiHideProperty()
+  @Expose()
   active: boolean;
 
   @ApiHideProperty()
+  @Expose()
   verifiedEmail: boolean;
 
   @ApiHideProperty()
+  @Expose()
   roles: UserRole[];
 
   @ApiHideProperty()
+  @Expose()
   overlayKey: string;
 
   constructor(partial: Partial<SafeUser>) {

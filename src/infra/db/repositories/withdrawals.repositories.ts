@@ -19,24 +19,24 @@ export class WithdrawalsRepository {
       return await this.prismaService.$transaction(async (tx) => {
         const withdrawal = await tx.withdrawal.create({
           data: {
-            user_id: params.userId,
-            pix_id: params.pixId,
-            pix_value: params.pixKey,
-            gross_amount: params.grossAmount,
-            net_amount: params.netAmount,
-            fee_amount: params.feeAmount,
+            userId: params.userId,
+            pixId: params.pixId,
+            pixValue: params.pixKey,
+            grossAmount: params.grossAmount,
+            netAmount: params.netAmount,
+            feeAmount: params.feeAmount,
             status: WithdrawalStatus.pending,
           },
         });
 
         await tx.wallet.update({
           where: {
-            user_id: params.userId,
-            current_balance: { gte: params.grossAmount },
+            userId: params.userId,
+            currentBalance: { gte: params.grossAmount },
           },
           data: {
-            current_balance: { decrement: params.grossAmount },
-            pending_balance: { increment: params.grossAmount },
+            currentBalance: { decrement: params.grossAmount },
+            pendingBalance: { increment: params.grossAmount },
           },
         });
 
@@ -57,13 +57,13 @@ export class WithdrawalsRepository {
     const skip = (params.page - 1) * params.limit;
 
     const where: Partial<Prisma.WithdrawalWhereInput> = {
-      user_id: params.userId,
+      userId: params.userId,
     };
 
     if (params.startDate || params.endDate) {
-      where.created_at = {};
-      if (params.startDate) where.created_at.gte = params.startDate;
-      if (params.endDate) where.created_at.lte = params.endDate;
+      where.createdAt = {};
+      if (params.startDate) where.createdAt.gte = params.startDate;
+      if (params.endDate) where.createdAt.lte = params.endDate;
     }
 
     if (params.status) {
@@ -76,7 +76,7 @@ export class WithdrawalsRepository {
         where,
         skip,
         take: params.limit,
-        orderBy: { created_at: 'desc' },
+        orderBy: { createdAt: 'desc' },
       }),
     ]);
 
@@ -103,7 +103,7 @@ export class WithdrawalsRepository {
         where: { id, status: WithdrawalStatus.pending },
         data: {
           status: WithdrawalStatus.success,
-          updated_at: new Date(),
+          updatedAt: new Date(),
         },
       });
 
@@ -118,20 +118,20 @@ export class WithdrawalsRepository {
       });
 
       const wallet = await tx.wallet.update({
-        where: { user_id: withdrawal.user_id },
+        where: { userId: withdrawal.userId },
         data: {
-          pending_balance: { decrement: withdrawal.gross_amount },
+          pendingBalance: { decrement: withdrawal.grossAmount },
         },
       });
 
       await tx.transaction.create({
         data: {
-          user_id: withdrawal.user_id,
-          withdrawal_id: withdrawal.id,
-          amount: withdrawal.gross_amount,
+          userId: withdrawal.userId,
+          withdrawalId: withdrawal.id,
+          amount: withdrawal.grossAmount,
           type: 'withdraw_confirm',
-          transaction_id: `withdraw-confirm-${withdrawal.id}`,
-          balance_after: wallet.current_balance,
+          transactionId: `withdraw-confirm-${withdrawal.id}`,
+          balanceAfter: wallet.currentBalance,
         },
       });
 
@@ -153,7 +153,7 @@ export class WithdrawalsRepository {
         where: { id, status: WithdrawalStatus.pending },
         data: {
           status: WithdrawalStatus.failed,
-          updated_at: new Date(),
+          updatedAt: new Date(),
         },
       });
 
@@ -168,21 +168,21 @@ export class WithdrawalsRepository {
       });
 
       const wallet = await tx.wallet.update({
-        where: { user_id: withdrawal.user_id },
+        where: { userId: withdrawal.userId },
         data: {
-          pending_balance: { decrement: withdrawal.gross_amount },
-          current_balance: { increment: withdrawal.gross_amount },
+          pendingBalance: { decrement: withdrawal.grossAmount },
+          currentBalance: { increment: withdrawal.grossAmount },
         },
       });
 
       await tx.transaction.create({
         data: {
-          user_id: withdrawal.user_id,
-          withdrawal_id: withdrawal.id,
-          amount: withdrawal.gross_amount,
+          userId: withdrawal.userId,
+          withdrawalId: withdrawal.id,
+          amount: withdrawal.grossAmount,
           type: 'refund',
-          transaction_id: `withdraw-reject-${withdrawal.id}`,
-          balance_after: wallet.current_balance,
+          transactionId: `withdraw-reject-${withdrawal.id}`,
+          balanceAfter: wallet.currentBalance,
         },
       });
 

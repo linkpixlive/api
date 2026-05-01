@@ -30,7 +30,7 @@ export class DashboardService {
     const { donations, total } =
       await this.dashboardRepository.getDonationHistory(userId, page, limit);
 
-    const history = donations.map((d) => DonationHistoryEntity.toResponse(d));
+    const history = donations.map((d) => new DonationHistoryEntity(d));
 
     return new PaginatedResponseDto(history, {
       total,
@@ -58,12 +58,12 @@ export class DashboardService {
   async replay(userId: string, overlayKey: string, donationId: string) {
     const donation = await this.donationsRepository.findById(donationId);
 
-    if (!donation || donation.user_id !== userId) {
+    if (!donation || donation.userId !== userId) {
       throw new NotFoundException('Donation not found');
     }
 
-    const audioUrl = donation.voice_url
-      ? `${this.configService.get('BUCKET_URL')}/${donation.voice_url}`
+    const audioUrl = donation.voiceUrl
+      ? `${this.configService.get('BUCKET_URL')}/${donation.voiceUrl}`
       : null;
 
     return this.overlayGateway.emitNewDonation(

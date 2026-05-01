@@ -3,15 +3,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DonationSettings } from '@prisma/client';
-import { DonationSettingsRepository } from 'src/infra/db/repositories/donation-settings.repositories';
+import { Decimal } from '@prisma/client/runtime/client';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
 import { RedisService } from 'src/infra/redis/redis.service';
+import { DonationSettingsService } from '../donation-settings/donation-settings.service';
 import { DonationDto } from './dto/donation.dto';
-import { DonationResponseEntity } from './entities/donation-response.entity';
+import { DonationEntity } from './entities/donation.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
 
 @Injectable()
@@ -19,10 +19,10 @@ export class DonationsService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly donationsRepository: DonationsRepository,
-    private readonly donationSettingsRepository: DonationSettingsRepository,
     private readonly gateway: GatewayContract,
     private readonly donationsQueue: DonationsQueueService,
     private readonly redisService: RedisService,
+    private readonly donationSettingsService: DonationSettingsService,
   ) {}
 
   async getUser(username: string) {
@@ -36,13 +36,9 @@ export class DonationsService {
       `overlay:${user.overlayKey}`,
     );
 
-    let settings = await this.donationSettingsRepository.findByUserId(user.id);
+    const settings = await this.donationSettingsService.getSettings(user.id);
 
-    if (!settings) {
-      settings = await this.donationSettingsRepository.upsert(user.id, {});
-    }
-
-    return new PublicUserEntity({
+    const data = {
       name: user.name,
       username: user.username,
       profileImageUrl: user.profileImageUrl,
@@ -50,24 +46,21 @@ export class DonationsService {
       minAudioAmount: Number(settings.minAudioAmount),
       minTextAmount: Number(settings.minTextAmount),
       maxLength: settings.maxLength,
-    });
+    };
+
+    return new PublicUserEntity(data);
   }
 
   async donation(
     donationDto: DonationDto,
     ip: string,
-  ): Promise<DonationResponseEntity> {
+  ): Promise<DonationEntity> {
     const { name, message, amount, voiceId, username } = donationDto;
 
     const user = await this.usersRepository.findByUsername(username);
     if (!user) throw new BadRequestException('User not found');
 
-    let settings = (await this.donationSettingsRepository.findByUserId(
-      user.id,
-    )) as DonationSettings;
-    if (!settings) {
-      settings = await this.donationSettingsRepository.upsert(user.id, {});
-    }
+    const settings = await this.donationSettingsService.getSettings(user.id);
 
     if (message && message.length > settings.maxLength) {
       throw new BadRequestException(
@@ -75,17 +68,17 @@ export class DonationsService {
       );
     }
 
-    const amountNum = Number(amount);
+    const amountNum = Decimal(amount);
 
-    if (amountNum < Number(settings.minTextAmount)) {
+    if (amountNum < Decimal(settings.minTextAmount)) {
       throw new BadRequestException(
-        `Minimum donation amount is R$${Number(settings.minTextAmount).toFixed(2)}`,
+        `Minimum donation amount for TTS is R$${Number(settings.minTextAmount)}`,
       );
     }
 
-    if (voiceId && amountNum < Number(settings.minAudioAmount)) {
+    if (voiceId && amountNum < Decimal(settings.minAudioAmount)) {
       throw new BadRequestException(
-        `Minimum donation amount for audio/TTS is R$${Number(settings.minAudioAmount).toFixed(2)}`,
+        `Minimum donation amount for audio is R$${Number(settings.minAudioAmount)}`,
       );
     }
 
@@ -114,7 +107,7 @@ export class DonationsService {
       ip,
     });
 
-    return DonationResponseEntity.toResponse(donation);
+    return new DonationEntity(donation);
   }
 
   async webhookPix(transactionId: string): Promise<void> {

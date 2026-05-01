@@ -31,8 +31,8 @@ export class DonationsRepository {
         data: {
           status: 'paid',
           message: message,
-          approved_at: new Date(),
-          voice_url: voiceUri,
+          approvedAt: new Date(),
+          voiceUrl: voiceUri,
         },
       });
 
@@ -45,25 +45,25 @@ export class DonationsRepository {
       });
 
       const wallet = await tx.wallet.update({
-        where: { user_id: updatedDonation.user_id },
+        where: { userId: updatedDonation.userId },
         data: {
-          current_balance: {
+          currentBalance: {
             increment: updatedDonation.amount,
           },
-          last_transaction_id: updatedDonation.transaction_id,
-          updated_at: new Date(),
+          lastTransactionId: updatedDonation.transactionId,
+          updatedAt: new Date(),
         },
       });
 
       await tx.transaction.create({
         data: {
-          donation_id: updatedDonation.id,
+          donationId: updatedDonation.id,
           amount: updatedDonation.amount,
-          balance_after: wallet.current_balance,
+          balanceAfter: wallet.currentBalance,
           type: 'donation',
           ip: updatedDonation.ip,
-          transaction_id: updatedDonation.transaction_id,
-          user_id: updatedDonation.user_id,
+          transactionId: updatedDonation.transactionId,
+          userId: updatedDonation.userId,
         },
       });
 
@@ -74,21 +74,21 @@ export class DonationsRepository {
   async create(data: CreateDonationParams) {
     return await this.prismaService.donation.create({
       data: {
-        user_id: data.userId,
+        userId: data.userId,
         name: data.name,
         amount: data.amount,
-        transaction_id: data.transactionId,
-        payment_method: data.paymentMethod,
+        transactionId: data.transactionId,
+        paymentMethod: data.paymentMethod,
         ip: data.ip,
-        message_raw: data.messageRaw,
-        voice_id: data.voiceId,
+        messageRaw: data.messageRaw,
+        voiceId: data.voiceId,
         pix: data.pix,
         status: data.status,
-        expired_at: data.expiredAt,
-        approved_at: data.approvedAt,
-        message_type: data.messageType,
+        expiredAt: data.expiredAt,
+        approvedAt: data.approvedAt,
+        messageType: data.messageType,
         message: data.message,
-        voice_url: data.voiceUrl,
+        voiceUrl: data.voiceUrl,
       },
     });
   }
@@ -99,7 +99,7 @@ export class DonationsRepository {
 
   async findByTransactionId(transactionId: string) {
     return await this.prismaService.donation.findUnique({
-      where: { transaction_id: transactionId },
+      where: { transactionId: transactionId },
     });
   }
 
@@ -110,17 +110,17 @@ export class DonationsRepository {
         name: data.name,
         amount: data.amount,
         ip: data.ip,
-        message_raw: data.messageRaw,
-        voice_id: data.voiceId,
+        messageRaw: data.messageRaw,
+        voiceId: data.voiceId,
         pix: data.pix,
         status: data.status,
-        expired_at: data.expiredAt,
-        approved_at: data.approvedAt,
-        payment_method: data.paymentMethod,
-        transaction_id: data.transactionId,
-        message_type: data.messageType,
+        expiredAt: data.expiredAt,
+        approvedAt: data.approvedAt,
+        paymentMethod: data.paymentMethod,
+        transactionId: data.transactionId,
+        messageType: data.messageType,
         message: data.message,
-        voice_url: data.voiceUrl,
+        voiceUrl: data.voiceUrl,
       },
     });
   }

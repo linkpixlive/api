@@ -17,7 +17,7 @@ import { Public } from 'src/common/decorators/isPublic';
 import { DonationsService } from './donations.service';
 import { DonationDto } from './dto/donation.dto';
 import { WebhookPixResponseDto } from './dto/webhook-pix-response.dto';
-import { DonationResponseEntity } from './entities/donation-response.entity';
+import { DonationEntity } from './entities/donation.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
 
 @ApiTags('Donations')
@@ -48,7 +48,7 @@ export class DonationsController {
   @ApiOperation({ summary: 'Create a new donation' })
   @ApiResponse({
     status: 201,
-    type: DonationResponseEntity,
+    type: DonationEntity,
     description:
       'Donation created, returns Pix code and donation informations.',
   })

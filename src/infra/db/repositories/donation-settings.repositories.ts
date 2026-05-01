@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DonationSettings } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
-import { UpsertDonationSettingsParams } from './dto/donation-settings.dto';
+import { UpdateDonationSettingsParams } from './dto/donation-settings.dto';
 
 @Injectable()
 export class DonationSettingsRepository {
@@ -13,17 +13,13 @@ export class DonationSettingsRepository {
     });
   }
 
-  async upsert(
+  async update(
     userId: string,
-    data: UpsertDonationSettingsParams,
+    data: UpdateDonationSettingsParams,
   ): Promise<DonationSettings> {
-    return await this.prisma.donationSettings.upsert({
+    return await this.prisma.donationSettings.update({
       where: { userId: userId },
-      update: data,
-      create: {
-        userId: userId,
-        ...data,
-      },
+      data,
     });
   }
 }

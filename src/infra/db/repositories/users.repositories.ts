@@ -19,6 +19,7 @@ export class UsersRepository {
         roles: data.roles ?? [UserRole.streamer],
         verifiedEmail: data.verifiedEmail,
         wallet: { create: {} },
+        donationSettings: { create: {} },
       },
     });
   }

@@ -9,16 +9,16 @@ export class ChangePasswordRepository {
   async create(data: CreateChangePasswordParams) {
     return await this.prismaService.changePassword.create({
       data: {
-        user_id: data.userId,
+        userId: data.userId,
         token: data.token,
-        expires_at: data.expiresAt,
+        expiresAt: data.expiresAt,
       },
     });
   }
 
   async deleteManyByUserId(userId: string) {
     return await this.prismaService.changePassword.deleteMany({
-      where: { user_id: userId },
+      where: { userId: userId },
     });
   }
 

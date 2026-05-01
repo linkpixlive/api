@@ -22,7 +22,7 @@ export class OverlayDonationEntity {
       amount: Number(donation.amount),
       message: donation.message,
       audioUrl,
-      messageType: donation.message_type,
+      messageType: donation.messageType as string,
     });
   }
 }

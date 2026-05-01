@@ -1,4 +1,4 @@
-export interface UpsertDonationSettingsParams {
+export interface UpdateDonationSettingsParams {
   maxLength?: number;
   minAudioAmount?: number;
   minTextAmount?: number;

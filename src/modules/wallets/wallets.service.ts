@@ -16,9 +16,9 @@ export class WalletsService {
       throw new NotFoundException('Wallet not found.');
     }
 
-    const currentBalance = Number(wallet.current_balance);
-    const blockedBalance = Number(wallet.blocked_balance);
-    const pendingBalance = Number(wallet.pending_balance);
+    const currentBalance = Number(wallet.currentBalance);
+    const blockedBalance = Number(wallet.blockedBalance);
+    const pendingBalance = Number(wallet.pendingBalance);
 
     return new WalletBalancesEntity({
       available: currentBalance,

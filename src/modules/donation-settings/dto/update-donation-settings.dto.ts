@@ -2,30 +2,30 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class UpdateDonationSettingsDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 250 })
   @IsOptional()
   @IsNumber()
   @Min(0)
   maxLength?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 5.0 })
   @IsOptional()
   @IsNumber()
   @Min(1)
   minAudioAmount?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 1.0 })
   @IsOptional()
   @IsNumber()
   @Min(1)
   minTextAmount?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
   filterProfanity?: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
   aiModeration?: boolean;

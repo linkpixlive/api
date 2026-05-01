@@ -8,7 +8,7 @@ export class WalletsRepository {
 
   async findByUserId(params: FindWalletParams) {
     return await this.prismaService.wallet.findUnique({
-      where: { user_id: params.userId },
+      where: { userId: params.userId },
     });
   }
 }

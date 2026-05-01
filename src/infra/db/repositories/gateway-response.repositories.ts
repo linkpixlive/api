@@ -10,11 +10,11 @@ export class GatewayResponseRepository {
   async create(data: CreateGatewayResponseParams) {
     return await this.prismaService.gatewayResponse.create({
       data: {
-        interaction_type: data.interactionType,
+        interactionType: data.interactionType,
         provider: data.provider,
         payload: data.payload as Prisma.InputJsonValue,
-        external_id: data.externalId,
-        status_code: data.statusCode,
+        externalId: data.externalId,
+        statusCode: data.statusCode,
       },
     });
   }

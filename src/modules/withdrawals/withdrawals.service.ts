@@ -46,7 +46,7 @@ export class WithdrawalsService {
 
     const pix = await this.pixKeysRepository.findById(dto.pixId);
 
-    if (!pix || pix.user_id !== user.id) {
+    if (!pix || pix.userId !== user.id) {
       throw new NotFoundException('Pix key not found.');
     }
 
@@ -99,17 +99,19 @@ export class WithdrawalsService {
   }
 
   private mapToEntity(withdrawal: Withdrawal): WithdrawalEntity {
-    const decryptedPix = this.securityService.decryptData(withdrawal.pix_value);
+    const decryptedPix = this.securityService.decryptData(
+      withdrawal.pixValue as string,
+    );
 
     return new WithdrawalEntity({
       id: withdrawal.id,
-      pixId: withdrawal.pix_id,
+      pixId: withdrawal.pixId as string,
       pixValue: decryptedPix,
-      amount: Number(withdrawal.gross_amount),
-      netAmount: Number(withdrawal.net_amount),
-      feeAmount: Number(withdrawal.fee_amount),
+      amount: Number(withdrawal.grossAmount),
+      netAmount: Number(withdrawal.netAmount),
+      feeAmount: Number(withdrawal.feeAmount),
       status: withdrawal.status,
-      createdAt: withdrawal.created_at,
+      // createdAt: withdrawal.createdAt,
     });
   }
 }

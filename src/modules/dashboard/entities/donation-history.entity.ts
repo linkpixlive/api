@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Donation, DonationStatus, MessageType } from '@prisma/client';
+import { DonationStatus, MessageType } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/client';
 
 export class DonationHistoryEntity {
   @ApiProperty({ example: 'uuid-123', description: 'Transaction ID' })
@@ -9,7 +10,7 @@ export class DonationHistoryEntity {
   name: string;
 
   @ApiProperty({ example: 10, description: 'Donation amount' })
-  amount: number;
+  amount: Decimal;
 
   @ApiProperty({
     example: 'Keep up the good work!',
@@ -46,17 +47,17 @@ export class DonationHistoryEntity {
     Object.assign(this, partial);
   }
 
-  static toResponse(donation: Donation): DonationHistoryEntity {
-    return new DonationHistoryEntity({
-      id: donation.id,
-      name: donation.name,
-      amount: Number(donation.amount),
-      message: donation.message,
-      audioUrl: donation.voice_url,
-      messageType: donation.message_type,
-      status: donation.status,
-      createdAt: donation.created_at,
-      approvedAt: donation.approved_at,
-    });
-  }
+  // static toResponse(donation: Donation): DonationHistoryEntity {
+  //   return new DonationHistoryEntity({
+  //     id: donation.id,
+  //     name: donation.name,
+  //     amount: Number(donation.amount),
+  //     message: donation.message,
+  //     audioUrl: donation.voice_url,
+  //     messageType: donation.message_type,
+  //     status: donation.status,
+  //     createdAt: donation.created_at,
+  //     approvedAt: donation.approved_at,
+  //   });
+  // }
 }

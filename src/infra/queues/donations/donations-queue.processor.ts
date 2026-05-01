@@ -37,9 +37,9 @@ export class DonationsQueueProcessor extends WorkerHost {
       const { data } = job as Job<{ donation_id: string }>;
 
       const donation = await this.validateAndGetDonation(data.donation_id);
-      const user = await this.validateAndGetUser(donation.user_id);
+      const user = await this.validateAndGetUser(donation.userId);
 
-      await this.verifyPaymentStatus(donation.transaction_id);
+      await this.verifyPaymentStatus(donation.transactionId);
 
       const donationSettings =
         await this.donationSettingsRepository.findByUserId(user.id);
@@ -58,11 +58,8 @@ export class DonationsQueueProcessor extends WorkerHost {
         blockedWords: donationSettings.blockedWords,
       };
 
-      const cleanMessage = donation.message_raw
-        ? await this.aiService.cleanMessage(
-            donation.message_raw,
-            ttsPreferences,
-          )
+      const cleanMessage = donation.messageRaw
+        ? await this.aiService.cleanMessage(donation.messageRaw, ttsPreferences)
         : '';
 
       const ttsKey = await this.processAudio({

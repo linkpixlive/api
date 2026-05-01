@@ -90,16 +90,16 @@ export class DashboardRepository {
     const [donations, total] = await Promise.all([
       this.prismaService.donation.findMany({
         where: {
-          user_id: userId,
+          userId: userId,
           status: { in: ['paid', 'displayed'] },
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       }),
       this.prismaService.donation.count({
         where: {
-          user_id: userId,
+          userId: userId,
           status: { in: ['paid', 'displayed'] },
         },
       }),

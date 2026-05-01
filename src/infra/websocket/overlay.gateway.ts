@@ -57,7 +57,7 @@ export class OverlayGateway implements OnGatewayConnection {
       this.usersRepository.findByOverlayKey(key),
     ]);
 
-    if (!donation || !user || donation.user_id !== user.id) return;
+    if (!donation || !user || donation.userId !== user.id) return;
 
     await this.donationsRepository.update(id, { status: 'displayed' });
   }

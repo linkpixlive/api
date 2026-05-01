@@ -154,7 +154,7 @@ export class AuthService {
 
     const nowDate = new Date();
 
-    if (nowDate > updatePassword.expires_at) {
+    if (nowDate > updatePassword.expiresAt) {
       throw new BadRequestException(
         'time has expired, start the process again',
       );
@@ -162,7 +162,7 @@ export class AuthService {
 
     const hashedNewPassword = await this.generatePasswordHash(newPassword);
 
-    await this.usersRepository.update(updatePassword.user_id, {
+    await this.usersRepository.update(updatePassword.userId, {
       password: hashedNewPassword,
     });
 
