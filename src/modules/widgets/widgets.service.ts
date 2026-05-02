@@ -5,19 +5,16 @@ import {
 } from '@nestjs/common';
 import { WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { SafeUser } from '../auth/entities/safe-user.entity';
-import { WidgetEntity } from './entities/widget.entity';
-
 import { WidgetSettingsMap } from './dto/widget-settings.map';
+import { WidgetEntity } from './entities/widget.entity';
 
 @Injectable()
 export class WidgetsService {
   constructor(
     private readonly widgetRepository: WidgetRepository,
-    private readonly usersRepository: UsersRepository,
     private readonly overlayGateway: OverlayGateway,
   ) {}
 
@@ -48,10 +45,7 @@ export class WidgetsService {
 
     const widget = await this.widgetRepository.create(userId, {
       type,
-      settings:
-        type === WidgetType.overlay
-          ? settings || this.getDefaultSettings(type)
-          : this.getDefaultSettings(type),
+      settings: settings ?? this.getDefaultSettings(type),
     });
 
     return WidgetEntity.fromPrisma<T>(widget);
@@ -83,16 +77,11 @@ export class WidgetsService {
     return WidgetEntity.fromPrisma<T>(widget);
   }
 
-  async getPublicWidgetSettings<T extends WidgetType>(
-    token: string,
-    type: T,
-  ): Promise<WidgetSettingsMap[T]> {
+  async getPublicWidgetSettings<T extends WidgetType>(token: string) {
     const widget = await this.widgetRepository.findByToken(token);
     if (!widget) throw new NotFoundException('Widget not found');
 
-    if (widget.type !== type) throw new NotFoundException('Settings not found');
-
-    return widget.settings as WidgetSettingsMap[T];
+    return WidgetEntity.fromPrisma<T>(widget);
   }
 
   async resetToken(

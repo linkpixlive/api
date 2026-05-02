@@ -8,7 +8,7 @@ export class WidgetTypeParams {
   type: WidgetType;
 }
 
-export class PublicWidgetParams extends WidgetTypeParams {
+export class PublicWidgetParams {
   @IsString()
   token: string;
 }
