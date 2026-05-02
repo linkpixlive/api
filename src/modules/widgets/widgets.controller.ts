@@ -11,6 +11,7 @@ import { WidgetSettingsPipe } from 'src/common/pipes/widget-settings.pipe';
 import { SafeUser } from 'src/modules/auth/entities/safe-user.entity';
 import { PublicWidgetParams, WidgetTypeParams } from './dto/widget-params.dto';
 import type { AnyWidgetSettings } from './dto/widget-settings.map';
+import { WidgetEntity } from './entities/widget.entity';
 import { WidgetsService } from './widgets.service';
 
 @ApiTags('Widgets')
@@ -21,7 +22,11 @@ export class WidgetsController {
   @Get(':type')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get settings for a specific widget type' })
-  @ApiResponse({ status: 200, description: 'Widget settings retrieved' })
+  @ApiResponse({
+    status: 200,
+    type: WidgetEntity,
+    description: 'Widget settings retrieved',
+  })
   async getSettings(
     @CurrentUser() user: SafeUser,
     @Param() { type }: WidgetTypeParams,
@@ -32,7 +37,11 @@ export class WidgetsController {
   @Post(':type')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create settings for a specific widget type' })
-  @ApiResponse({ status: 201, description: 'Widget settings created' })
+  @ApiResponse({
+    status: 201,
+    type: WidgetEntity,
+    description: 'Widget settings created',
+  })
   async createSettings(
     @CurrentUser() user: SafeUser,
     @Param() { type }: WidgetTypeParams,
@@ -44,7 +53,11 @@ export class WidgetsController {
   @Put(':type')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update settings for a specific widget type' })
-  @ApiResponse({ status: 200, description: 'Widget settings updated' })
+  @ApiResponse({
+    status: 200,
+    type: WidgetEntity,
+    description: 'Widget settings updated',
+  })
   async updateSettings(
     @CurrentUser() user: SafeUser,
     @Param() { type }: WidgetTypeParams,
@@ -54,10 +67,28 @@ export class WidgetsController {
   }
 
   @Public()
-  @Get('public/:type/:key')
+  @Get('public/:type/:token')
   @ApiOperation({ summary: 'Get public widget settings for OBS/External use' })
-  async getPublicSettings(@Param() { type, key }: PublicWidgetParams) {
-    return this.widgetsService.getPublicWidgetSettings(key, type);
+  @ApiResponse({ status: 200, description: 'Public settings retrieved' })
+  async getPublicSettings(@Param() { type, token }: PublicWidgetParams) {
+    return this.widgetsService.getPublicWidgetSettings(token, type);
+  }
+
+  @Post(':type/reset-token')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reset/Rotate the token for a specific widget type',
+  })
+  @ApiResponse({
+    status: 200,
+    type: WidgetEntity,
+    description: 'Token reset successfully',
+  })
+  async resetToken(
+    @CurrentUser() user: SafeUser,
+    @Param() { type }: WidgetTypeParams,
+  ) {
+    return this.widgetsService.resetToken(user.id, type);
   }
 
   @Post('overlay/test')

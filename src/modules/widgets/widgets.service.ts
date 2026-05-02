@@ -4,10 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { WidgetType } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { SafeUser } from '../auth/entities/safe-user.entity';
+import { WidgetEntity } from './entities/widget.entity';
 
 import { WidgetSettingsMap } from './dto/widget-settings.map';
 
@@ -19,19 +21,22 @@ export class WidgetsService {
     private readonly overlayGateway: OverlayGateway,
   ) {}
 
-  async getWidgetSettings<T extends WidgetType>(userId: string, type: T) {
+  async getWidgetSettings<T extends WidgetType>(
+    userId: string,
+    type: T,
+  ): Promise<WidgetEntity<T>> {
     const widget = await this.widgetRepository.findByUserAndType(userId, type);
 
     if (!widget) throw new NotFoundException('Widget settings not found');
 
-    return widget.settings as WidgetSettingsMap[T];
+    return WidgetEntity.fromPrisma<T>(widget);
   }
 
   async createWidgetSettings<T extends WidgetType>(
     userId: string,
     type: T,
     settings?: WidgetSettingsMap[T],
-  ) {
+  ): Promise<WidgetEntity<T>> {
     const existingWidget = await this.widgetRepository.findByUserAndType(
       userId,
       type,
@@ -49,14 +54,14 @@ export class WidgetsService {
           : this.getDefaultSettings(type),
     });
 
-    return widget.settings as WidgetSettingsMap[T];
+    return WidgetEntity.fromPrisma<T>(widget);
   }
 
   async updateWidgetSettings<T extends WidgetType>(
     user: SafeUser,
     type: T,
     settings: WidgetSettingsMap[T],
-  ) {
+  ): Promise<WidgetEntity<T>> {
     const existingWidget = await this.widgetRepository.findByUserAndType(
       user.id,
       type,
@@ -72,27 +77,55 @@ export class WidgetsService {
     });
 
     if (type === WidgetType.overlay) {
-      this.overlayGateway.emitSettingsUpdated(user.overlayKey);
+      this.overlayGateway.emitSettingsUpdated(widget.token);
     }
+
+    return WidgetEntity.fromPrisma<T>(widget);
+  }
+
+  async getPublicWidgetSettings<T extends WidgetType>(
+    token: string,
+    type: T,
+  ): Promise<WidgetSettingsMap[T]> {
+    const widget = await this.widgetRepository.findByToken(token);
+    if (!widget) throw new NotFoundException('Widget not found');
+
+    if (widget.type !== type) throw new NotFoundException('Settings not found');
 
     return widget.settings as WidgetSettingsMap[T];
   }
 
-  async getPublicWidgetSettings<T extends WidgetType>(key: string, type: T) {
-    const user = await this.usersRepository.findByOverlayKey(key);
-    if (!user) throw new NotFoundException('Widget not found');
+  async resetToken(
+    userId: string,
+    type: WidgetType,
+  ): Promise<WidgetEntity<any>> {
+    const existingWidget = await this.widgetRepository.findByUserAndType(
+      userId,
+      type,
+    );
 
-    const widget = await this.widgetRepository.findByUserAndType(user.id, type);
-    if (!widget) throw new NotFoundException('Settings not found');
+    if (!existingWidget) {
+      throw new NotFoundException('Widget not found');
+    }
 
-    return widget.settings as WidgetSettingsMap[T];
+    const widget = await this.widgetRepository.updateToken(
+      userId,
+      type,
+      randomUUID(),
+    );
+
+    return WidgetEntity.fromPrisma(widget);
   }
 
   async testOverlay(userId: string) {
-    const user = await this.usersRepository.findById(userId);
-    if (!user) throw new NotFoundException('User not found');
+    const overlay = await this.widgetRepository.findByUserAndType(
+      userId,
+      WidgetType.overlay,
+    );
+    if (!overlay || !overlay.active)
+      throw new NotFoundException('Active overlay not found');
 
-    this.overlayGateway.emitTestNotification(user.overlayKey);
+    this.overlayGateway.emitTestNotification(overlay.token);
     return;
   }
 

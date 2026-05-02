@@ -7,6 +7,19 @@ import { CreateWidgetParams, UpdateWidgetParams } from './dto/widget.dto';
 export class WidgetRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findByToken(token: string) {
+    return await this.prisma.widget.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+  }
+
+  async findActiveByUserIdAndType(userId: string, type: WidgetType) {
+    return await this.prisma.widget.findMany({
+      where: { userId, type, active: true },
+    });
+  }
+
   async findByUserAndType(userId: string, type: WidgetType) {
     return await this.prisma.widget.findUnique({
       where: {
@@ -38,6 +51,20 @@ export class WidgetRepository {
       },
       data: {
         settings: data.settings,
+      },
+    });
+  }
+
+  async updateToken(userId: string, type: WidgetType, token: string) {
+    return await this.prisma.widget.update({
+      where: {
+        userId_type: {
+          userId,
+          type,
+        },
+      },
+      data: {
+        token,
       },
     });
   }

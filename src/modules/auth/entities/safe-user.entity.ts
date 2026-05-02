@@ -44,10 +44,6 @@ export class SafeUser {
   @Expose()
   roles: UserRole[];
 
-  @ApiHideProperty()
-  @Expose()
-  overlayKey: string;
-
   constructor(partial: Partial<SafeUser>) {
     Object.assign(this, partial);
   }
@@ -64,7 +60,6 @@ export class SafeUser {
       active: user.active,
       verifiedEmail: user.verifiedEmail,
       roles: user.roles,
-      overlayKey: user.overlayKey,
     });
   }
 }

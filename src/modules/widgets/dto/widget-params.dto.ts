@@ -10,5 +10,5 @@ export class WidgetTypeParams {
 
 export class PublicWidgetParams extends WidgetTypeParams {
   @IsString()
-  key: string;
+  token: string;
 }

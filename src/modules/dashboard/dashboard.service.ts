@@ -5,6 +5,7 @@ import { DashboardRepository } from 'src/infra/db/repositories/dashboard.reposit
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { OverlayDonationEntity } from '../donations/entities/overlay-donation.entity';
+import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { DashboardStatsEntity } from './entities/dashboard-stats.entity';
 import { DonationHistoryEntity } from './entities/donation-history.entity';
 
@@ -15,6 +16,7 @@ export class DashboardService {
     private readonly donationsRepository: DonationsRepository,
     private readonly overlayGateway: OverlayGateway,
     private readonly configService: ConfigService,
+    private readonly widgetRepository: WidgetRepository,
   ) {}
 
   async getStats(userId: string): Promise<DashboardStatsEntity> {
@@ -39,36 +41,55 @@ export class DashboardService {
     });
   }
 
-  skip(overlayKey: string) {
-    return this.overlayGateway.emitSkipAlert(overlayKey);
+  async skip(userId: string) {
+    const overlay = await this.getOverlayOrThrow(userId);
+    return this.overlayGateway.emitSkipAlert(overlay.token);
   }
 
-  pause(overlayKey: string) {
-    return this.overlayGateway.emitPauseAlerts(overlayKey);
+  async pause(userId: string) {
+    const overlay = await this.getOverlayOrThrow(userId);
+    return this.overlayGateway.emitPauseAlerts(overlay.token);
   }
 
-  resume(overlayKey: string) {
-    return this.overlayGateway.emitResumeAlerts(overlayKey);
+  async resume(userId: string) {
+    const overlay = await this.getOverlayOrThrow(userId);
+    return this.overlayGateway.emitResumeAlerts(overlay.token);
   }
 
-  clear(overlayKey: string) {
-    return this.overlayGateway.emitClearAlerts(overlayKey);
+  async clear(userId: string) {
+    const overlay = await this.getOverlayOrThrow(userId);
+    return this.overlayGateway.emitClearAlerts(overlay.token);
   }
 
-  async replay(userId: string, overlayKey: string, donationId: string) {
+  async replay(userId: string, donationId: string) {
     const donation = await this.donationsRepository.findById(donationId);
 
     if (!donation || donation.userId !== userId) {
       throw new NotFoundException('Donation not found');
     }
 
+    const overlay = await this.getOverlayOrThrow(userId);
+
     const audioUrl = donation.voiceUrl
       ? `${this.configService.get('BUCKET_URL')}/${donation.voiceUrl}`
       : null;
 
     return this.overlayGateway.emitNewDonation(
-      overlayKey,
+      overlay.token,
       OverlayDonationEntity.toResponse(donation, audioUrl),
     );
+  }
+
+  private async getOverlayOrThrow(userId: string) {
+    const overlay = await this.widgetRepository.findByUserAndType(
+      userId,
+      'overlay',
+    );
+
+    if (!overlay || !overlay.active) {
+      throw new NotFoundException('Active overlay not found');
+    }
+
+    return overlay;
   }
 }

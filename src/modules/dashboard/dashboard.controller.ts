@@ -63,7 +63,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   skip(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.skip(user.overlayKey);
+    return this.dashboardService.skip(user.id);
   }
 
   @Post('alerts/pause')
@@ -72,7 +72,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   pause(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.pause(user.overlayKey);
+    return this.dashboardService.pause(user.id);
   }
 
   @Post('alerts/resume')
@@ -81,7 +81,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   resume(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.resume(user.overlayKey);
+    return this.dashboardService.resume(user.id);
   }
 
   @Post('alerts/clear')
@@ -90,7 +90,7 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   clear(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.clear(user.overlayKey);
+    return this.dashboardService.clear(user.id);
   }
 
   @Post('alerts/replay/:id')
@@ -99,6 +99,6 @@ export class DashboardController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'Donation or user not found.' })
   replay(@CurrentUser() user: SafeUser, @Param('id') donationId: string) {
-    return this.dashboardService.replay(user.id, user.overlayKey, donationId);
+    return this.dashboardService.replay(user.id, donationId);
   }
 }

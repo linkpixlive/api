@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { UserRole, WidgetType } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { CreateUserParams, UpdateUserParams } from './dto/users.dto';
 
@@ -28,6 +28,22 @@ export class UsersRepository {
     return await this.prismaService.user.findUnique({ where: { id } });
   }
 
+  async findByIdWithConfig(id: string) {
+    return await this.prismaService.user.findUnique({
+      where: { id },
+      include: {
+        donationSettings: true,
+        widgets: {
+          where: {
+            type: WidgetType.overlay,
+            active: true,
+          },
+          take: 1,
+        },
+      },
+    });
+  }
+
   async findByEmail(email: string) {
     return await this.prismaService.user.findUnique({ where: { email } });
   }
@@ -39,12 +55,6 @@ export class UsersRepository {
   async findByCpfHash(cpfHash: string) {
     return await this.prismaService.user.findUnique({
       where: { cpfHash },
-    });
-  }
-
-  async findByOverlayKey(overlayKey: string) {
-    return await this.prismaService.user.findUnique({
-      where: { overlayKey },
     });
   }
 

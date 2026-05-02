@@ -9,6 +9,7 @@ import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
 import { RedisService } from 'src/infra/redis/redis.service';
+import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { DonationSettingsService } from '../donation-settings/donation-settings.service';
 import { DonationDto } from './dto/donation.dto';
 import { DonationEntity } from './entities/donation.entity';
@@ -23,6 +24,7 @@ export class DonationsService {
     private readonly donationsQueue: DonationsQueueService,
     private readonly redisService: RedisService,
     private readonly donationSettingsService: DonationSettingsService,
+    private readonly widgetRepository: WidgetRepository,
   ) {}
 
   async getUser(username: string) {
@@ -32,9 +34,14 @@ export class DonationsService {
       throw new NotFoundException('User not found');
     }
 
-    const overlayStatus = await this.redisService.get(
-      `overlay:${user.overlayKey}`,
+    const overlay = await this.widgetRepository.findByUserAndType(
+      user.id,
+      'overlay',
     );
+
+    const overlayStatus = overlay
+      ? await this.redisService.get(`overlay:${overlay.token}`)
+      : null;
 
     const settings = await this.donationSettingsService.getSettings(user.id);
 

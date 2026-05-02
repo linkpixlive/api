@@ -9,9 +9,9 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 import { DonationsRepository } from '../db/repositories/donations.repositories';
+import { WidgetRepository } from '../db/repositories/widget.repositories';
 import { RedisService } from '../redis/redis.service';
 
 @UseGuards(ThrottlerGuard)
@@ -26,21 +26,21 @@ export class OverlayGateway implements OnGatewayConnection {
   server: Server;
 
   constructor(
-    private readonly usersRepository: UsersRepository,
+    private readonly widgetRepository: WidgetRepository,
     private readonly donationsRepository: DonationsRepository,
     private readonly redisService: RedisService,
   ) {}
 
   async handleConnection(client: Socket) {
-    const key = client.handshake.query.key as string;
+    const token = client.handshake.query.token as string;
 
-    if (!key) return client.disconnect();
+    if (!token) return client.disconnect();
 
-    const user = await this.usersRepository.findByOverlayKey(key);
-    if (!user) return client.disconnect();
+    const widget = await this.widgetRepository.findByToken(token);
+    if (!widget || !widget.active) return client.disconnect();
 
-    await this.redisService.setWithExpire(`overlay:${key}`, 60, 'true');
-    await client.join(user.overlayKey);
+    await this.redisService.setWithExpire(`overlay:${token}`, 60, 'true');
+    await client.join(token);
   }
 
   @SubscribeMessage('displayed_donation')
@@ -49,15 +49,15 @@ export class OverlayGateway implements OnGatewayConnection {
     client: Socket,
     @MessageBody() data: { id: string },
   ) {
-    const key = client.handshake.query.key as string;
+    const token = client.handshake.query.token as string;
     const { id } = data;
 
-    const [donation, user] = await Promise.all([
+    const [donation, widget] = await Promise.all([
       this.donationsRepository.findById(id),
-      this.usersRepository.findByOverlayKey(key),
+      this.widgetRepository.findByToken(token),
     ]);
 
-    if (!donation || !user || donation.userId !== user.id) return;
+    if (!donation || !widget || donation.userId !== widget.userId) return;
 
     await this.donationsRepository.update(id, { status: 'displayed' });
   }
@@ -65,43 +65,43 @@ export class OverlayGateway implements OnGatewayConnection {
   @SubscribeMessage('heartbeat_pulse')
   @Throttle({ default: { limit: 2, ttl: 60000 } })
   async handlePulse(@ConnectedSocket() client: Socket) {
-    const key = client.handshake.query.key as string;
-    await this.redisService.setWithExpire(`overlay:${key}`, 60, 'true');
+    const token = client.handshake.query.token as string;
+    await this.redisService.setWithExpire(`overlay:${token}`, 60, 'true');
   }
 
   async handleDisconnect(client: Socket) {
-    const key = client.handshake.query.key as string;
-    if (!key) return;
+    const token = client.handshake.query.token as string;
+    if (!token) return;
 
-    await this.redisService.remove(`overlay:${key}`);
+    await this.redisService.remove(`overlay:${token}`);
   }
 
-  emitNewDonation(overlayKey: string, donation: OverlayDonationEntity) {
-    this.server.to(overlayKey).emit('new_donation', donation);
+  emitNewDonation(token: string, donation: OverlayDonationEntity) {
+    this.server.to(token).emit('new_donation', donation);
   }
 
-  emitSkipAlert(overlayKey: string) {
-    this.server.to(overlayKey).emit('skip_alert');
+  emitSkipAlert(token: string) {
+    this.server.to(token).emit('skip_alert');
   }
 
-  emitPauseAlerts(overlayKey: string) {
-    this.server.to(overlayKey).emit('pause_alerts');
+  emitPauseAlerts(token: string) {
+    this.server.to(token).emit('pause_alerts');
   }
 
-  emitResumeAlerts(overlayKey: string) {
-    this.server.to(overlayKey).emit('resume_alerts');
+  emitResumeAlerts(token: string) {
+    this.server.to(token).emit('resume_alerts');
   }
 
-  emitClearAlerts(overlayKey: string) {
-    this.server.to(overlayKey).emit('clear_alerts');
+  emitClearAlerts(token: string) {
+    this.server.to(token).emit('clear_alerts');
   }
 
-  emitSettingsUpdated(overlayKey: string) {
-    this.server.to(overlayKey).emit('settings_updated');
+  emitSettingsUpdated(token: string) {
+    this.server.to(token).emit('settings_updated');
   }
 
-  emitTestNotification(overlayKey: string) {
-    this.server.to(overlayKey).emit('test_notification', {
+  emitTestNotification(token: string) {
+    this.server.to(token).emit('test_notification', {
       name: 'LinkPix',
       message: 'Esta é uma notificação de teste!',
       amount: 8.43,
