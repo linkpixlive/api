@@ -3,14 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { DonationStatus, PaymentMethod } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
 import { RedisService } from 'src/infra/redis/redis.service';
-import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
-import { DonationSettingsService } from '../donation-settings/donation-settings.service';
 import { DonationDto } from './dto/donation.dto';
 import { DonationEntity } from './entities/donation.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
@@ -23,27 +22,20 @@ export class DonationsService {
     private readonly gateway: GatewayContract,
     private readonly donationsQueue: DonationsQueueService,
     private readonly redisService: RedisService,
-    private readonly donationSettingsService: DonationSettingsService,
-    private readonly widgetRepository: WidgetRepository,
   ) {}
 
   async getUser(username: string) {
-    const user = await this.usersRepository.findByUsername(username);
+    const user = await this.usersRepository.findByUsernameWithConfig(username);
+    const overlay = user?.widgets[0];
+    const settings = user?.donationSettings;
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (!user || !settings) {
+      throw new NotFoundException('User or settings not found');
     }
-
-    const overlay = await this.widgetRepository.findByUserAndType(
-      user.id,
-      'overlay',
-    );
 
     const overlayStatus = overlay
       ? await this.redisService.get(`overlay:${overlay.token}`)
       : null;
-
-    const settings = await this.donationSettingsService.getSettings(user.id);
 
     const data = {
       name: user.name,
@@ -64,10 +56,17 @@ export class DonationsService {
   ): Promise<DonationEntity> {
     const { name, message, amount, voiceId, username } = donationDto;
 
-    const user = await this.usersRepository.findByUsername(username);
-    if (!user) throw new BadRequestException('User not found');
+    const user = await this.usersRepository.findByUsernameWithConfig(username);
 
-    const settings = await this.donationSettingsService.getSettings(user.id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const settings = user.donationSettings;
+
+    if (!settings) {
+      throw new BadRequestException('Donation settings not found');
+    }
 
     if (message && message.length > settings.maxLength) {
       throw new BadRequestException(
@@ -75,25 +74,25 @@ export class DonationsService {
       );
     }
 
-    const amountNum = Decimal(amount);
+    const amountNum = new Decimal(amount);
 
-    if (amountNum < Decimal(settings.minTextAmount)) {
+    if (amountNum.lt(settings.minTextAmount)) {
       throw new BadRequestException(
-        `Minimum donation amount for TTS is R$${Number(settings.minTextAmount)}`,
+        `Minimum donation amount for message is R$${Number(settings.minTextAmount)}`,
       );
     }
 
-    if (voiceId && amountNum < Decimal(settings.minAudioAmount)) {
+    if (amountNum.lt(settings.minAudioAmount)) {
       throw new BadRequestException(
         `Minimum donation amount for audio is R$${Number(settings.minAudioAmount)}`,
       );
     }
 
-    const donationData = await this.gateway.generatePix({
+    const transaction = await this.gateway.generatePix({
       amount,
     });
 
-    if (!donationData) {
+    if (!transaction) {
       throw new BadRequestException(
         'We were unable to create the donation, please try again.',
       );
@@ -105,11 +104,11 @@ export class DonationsService {
       amount,
       voiceId,
       userId: user.id,
-      pix: donationData.pix,
-      status: 'pending',
-      transactionId: donationData.transactionId,
-      paymentMethod: 'pix',
-      expiredAt: donationData.expiredAt,
+      pix: transaction.pix,
+      status: DonationStatus.pending,
+      transactionId: transaction.transactionId,
+      paymentMethod: PaymentMethod.pix,
+      expiredAt: transaction.expiredAt,
       messageType: 'text',
       ip,
     });
@@ -127,7 +126,7 @@ export class DonationsService {
       );
     }
 
-    if (donation.status === 'pending') {
+    if (donation.status === DonationStatus.pending) {
       await this.donationsQueue.sendDonation({ donation_id: donation.id });
     }
   }

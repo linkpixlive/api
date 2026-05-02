@@ -44,6 +44,22 @@ export class UsersRepository {
     });
   }
 
+  async findByUsernameWithConfig(username: string) {
+    return await this.prismaService.user.findUnique({
+      where: { username },
+      include: {
+        donationSettings: true,
+        widgets: {
+          where: {
+            type: WidgetType.overlay,
+            active: true,
+          },
+          take: 1,
+        },
+      },
+    });
+  }
+
   async findByEmail(email: string) {
     return await this.prismaService.user.findUnique({ where: { email } });
   }
