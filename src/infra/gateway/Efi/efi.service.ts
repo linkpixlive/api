@@ -32,11 +32,14 @@ export class EfiService extends GatewayContract {
 
   async generatePix({
     amount,
-    secondsToExpire = 900,
+    secondsToExpire,
   }: {
     amount: number;
     secondsToExpire?: number;
   }) {
+    const expiration =
+      secondsToExpire ??
+      this.configService.getOrThrow<number>('PIX_EXPIRATION_SECONDS');
     const token = await this.getAccessToken();
 
     const { data, status } = await firstValueFrom(
@@ -44,7 +47,7 @@ export class EfiService extends GatewayContract {
         `${this.configService.get('EFI_API_URL')}/v2/cob`,
         {
           calendario: {
-            expiracao: secondsToExpire,
+            expiracao: expiration,
           },
           valor: {
             original: amount.toFixed(2),

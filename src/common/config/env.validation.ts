@@ -4,12 +4,17 @@ import {
   IsBase64,
   IsEnum,
   IsHexadecimal,
+  IsInt,
+  IsNumber,
   IsNotEmpty,
   IsString,
   IsUrl,
   Length,
+  Max,
+  Min,
   validateSync,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum Environment {
   Development = 'development',
@@ -92,6 +97,36 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   EFI_WEBHOOK_SECRET: string;
+
+  // BUSINESS RULES
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  @Type(() => Number)
+  WITHDRAWAL_FEE_PERCENTAGE: number;
+
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  MIN_WITHDRAWAL_AMOUNT: number;
+
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  MAX_PIX_KEYS_PER_USER: number;
+
+  @IsInt()
+  @Min(60)
+  @Type(() => Number)
+  PIX_EXPIRATION_SECONDS: number;
+
+  @IsString()
+  @IsNotEmpty()
+  JWT_EXPIRES_IN: string;
+
+  @IsString()
+  @IsNotEmpty()
+  EMAIL_FROM_ADDRESS: string;
 }
 
 export function validate(config: Record<string, unknown>) {

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PixKey, PixKeyType } from '@prisma/client';
 import { cnpj, cpf } from 'cpf-cnpj-validator';
 import {
@@ -18,13 +19,12 @@ import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreatePixKeyDto } from './dto/create-pix-key.dto';
 import { PixKeyEntity } from './entities/pix-key.entity';
 
-const MAX_PIX_KEYS_PER_USER = 5;
-
 @Injectable()
 export class PixKeysService {
   constructor(
     private pixKeysRepository: PixKeysRepository,
     private securityService: SecurityService,
+    private configService: ConfigService,
   ) {}
 
   async create(user: SafeUser, dto: CreatePixKeyDto): Promise<PixKeyEntity> {
@@ -32,9 +32,12 @@ export class PixKeysService {
 
     const count = await this.pixKeysRepository.countByUserId(user.id);
 
-    if (count >= MAX_PIX_KEYS_PER_USER) {
+    const maxKeys = this.configService.getOrThrow<number>(
+      'MAX_PIX_KEYS_PER_USER',
+    );
+    if (count >= maxKeys) {
       throw new BadRequestException(
-        `You can register up to ${MAX_PIX_KEYS_PER_USER} Pix keys.`,
+        `You can register up to ${maxKeys} Pix keys.`,
       );
     }
 

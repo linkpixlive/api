@@ -1,6 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
+import { ConfigService } from '@nestjs/config';
 import Handlebars from 'handlebars';
 import fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -9,7 +10,10 @@ import { Email } from './email.type';
 
 @Processor('email-queue')
 export class EmailProcessor extends WorkerHost {
-  constructor(@Inject('RESEND_CLIENT') private resend: Resend) {
+  constructor(
+    @Inject('RESEND_CLIENT') private resend: Resend,
+    private configService: ConfigService,
+  ) {
     super();
   }
 
@@ -30,7 +34,7 @@ export class EmailProcessor extends WorkerHost {
 
       await this.resend.emails.send({
         to,
-        from: 'no-reply@hxmoura.com.br',
+        from: this.configService.getOrThrow<string>('EMAIL_FROM_ADDRESS'),
         subject,
         html,
       });

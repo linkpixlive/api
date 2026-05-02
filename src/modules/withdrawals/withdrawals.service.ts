@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Withdrawal } from '@prisma/client';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { SecurityService } from '../../common/security/security.service';
@@ -14,9 +15,6 @@ import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
 import { WithdrawalEntity } from './entities/withdrawal.entity';
 
-const FEE_PERCENTAGE = 4;
-const MIN_WITHDRAWAL_AMOUNT = 1;
-
 @Injectable()
 export class WithdrawalsService {
   constructor(
@@ -24,15 +22,19 @@ export class WithdrawalsService {
     private walletsRepository: WalletsRepository,
     private pixKeysRepository: PixKeysRepository,
     private securityService: SecurityService,
+    private configService: ConfigService,
   ) {}
 
   async create(
     user: SafeUser,
     dto: CreateWithdrawalDto,
   ): Promise<WithdrawalEntity> {
-    if (dto.amount < MIN_WITHDRAWAL_AMOUNT) {
+    const minAmount = this.configService.getOrThrow<number>(
+      'MIN_WITHDRAWAL_AMOUNT',
+    );
+    if (dto.amount < minAmount) {
       throw new BadRequestException(
-        `Minimum withdrawal amount is R$ ${MIN_WITHDRAWAL_AMOUNT}`,
+        `Minimum withdrawal amount is R$ ${minAmount}`,
       );
     }
 
@@ -50,7 +52,10 @@ export class WithdrawalsService {
       throw new NotFoundException('Pix key not found.');
     }
 
-    const feeAmount = +(dto.amount * (FEE_PERCENTAGE / 100)).toFixed(2);
+    const feePercentage = this.configService.getOrThrow<number>(
+      'WITHDRAWAL_FEE_PERCENTAGE',
+    );
+    const feeAmount = +(dto.amount * (feePercentage / 100)).toFixed(2);
     const netAmount = +(dto.amount - feeAmount).toFixed(2);
 
     const withdrawal = await this.withdrawalsRepository.processWithdrawal({
@@ -99,19 +104,16 @@ export class WithdrawalsService {
   }
 
   private mapToEntity(withdrawal: Withdrawal): WithdrawalEntity {
-    const decryptedPix = this.securityService.decryptData(
-      withdrawal.pixValue as string,
-    );
+    const decryptedPix = this.securityService.decryptData(withdrawal.pixValue);
 
     return new WithdrawalEntity({
       id: withdrawal.id,
-      pixId: withdrawal.pixId as string,
+      pixId: withdrawal.pixId,
       pixValue: decryptedPix,
       amount: Number(withdrawal.grossAmount),
       netAmount: Number(withdrawal.netAmount),
       feeAmount: Number(withdrawal.feeAmount),
       status: withdrawal.status,
-      // createdAt: withdrawal.createdAt,
     });
   }
 }

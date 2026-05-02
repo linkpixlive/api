@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 import { SecurityService } from 'src/common/security/security.service';
 import { EmailModule } from 'src/infra/queues/email/email.module';
+import { AuthCleanupService } from './auth-cleanup.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import { AuthCleanupService } from './auth-cleanup.service';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -17,8 +17,10 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         global: true,
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '7d' },
+        secret: configService.getOrThrow<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.getOrThrow<string>('JWT_EXPIRES_IN') as '7d',
+        },
       }),
     }),
     EmailModule,
