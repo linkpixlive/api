@@ -1,12 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 import {
   IsBase64,
   IsEnum,
   IsHexadecimal,
   IsInt,
-  IsNumber,
   IsNotEmpty,
+  IsNumber,
   IsString,
   IsUrl,
   Length,
@@ -14,7 +14,6 @@ import {
   Min,
   validateSync,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export enum Environment {
   Development = 'development',
@@ -122,7 +121,7 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
-  JWT_EXPIRES_IN: string;
+  JWT_EXPIRES_IN_DAYS: string;
 
   @IsString()
   @IsNotEmpty()

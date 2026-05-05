@@ -4,7 +4,9 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { SecurityService } from 'src/common/security/security.service';
@@ -33,6 +35,7 @@ export class AuthService {
     private jwtService: JwtService,
     private emailService: EmailService,
     private redisService: RedisService,
+    private configService: ConfigService,
   ) {}
 
   async register(registerAuthDto: RegisterAuthDto) {
@@ -101,12 +104,7 @@ export class AuthService {
       throw new UnauthorizedException('User not verified, check your email.');
     }
 
-    const token = await this.jwtService.signAsync({
-      sub: user.id,
-      roles: user.roles,
-    });
-
-    return token;
+    return await this.createSession(user.id, user.roles);
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
@@ -213,12 +211,49 @@ export class AuthService {
 
     await this.redisService.remove(redisKey);
 
-    const token = await this.jwtService.signAsync({
-      sub: updatedUser.id,
-      roles: updatedUser.roles,
-    });
+    return await this.createSession(updatedUser.id, updatedUser.roles);
+  }
 
-    return token;
+  async logout(sid: string, userId: string) {
+    await Promise.all([
+      this.redisService.remove(`auth:session:${sid}`),
+      this.redisService.removeFromList(`auth:user_sessions:${userId}`, sid),
+    ]);
+  }
+
+  async logoutAll(userId: string, currentSid: string) {
+    const sessions = await this.redisService.getList(
+      `auth:user_sessions:${userId}`,
+    );
+
+    const sessionsToLogout = sessions.filter((sid) => sid !== currentSid);
+
+    await Promise.all([
+      ...sessionsToLogout.map((sid) =>
+        this.redisService.remove(`auth:session:${sid}`),
+      ),
+      ...sessionsToLogout.map((sid) =>
+        this.redisService.removeFromList(`auth:user_sessions:${userId}`, sid),
+      ),
+    ]);
+  }
+
+  private async createSession(userId: string, roles: UserRole[]) {
+    const sid = crypto.randomUUID();
+    const days = Number(this.configService.get('JWT_EXPIRES_IN_DAYS'));
+    const expiresIn = days * 24 * 60 * 60;
+
+    await Promise.all([
+      this.redisService.setWithExpire(`auth:session:${sid}`, expiresIn, userId),
+      this.redisService.addToList(`auth:user_sessions:${userId}`, sid),
+      this.redisService.setExpire(`auth:user_sessions:${userId}`, expiresIn),
+    ]);
+
+    return await this.jwtService.signAsync({
+      sub: userId,
+      sid,
+      roles,
+    });
   }
 
   private async generatePasswordHash(password: string) {

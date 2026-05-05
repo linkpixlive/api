@@ -28,4 +28,20 @@ export class RedisService {
     await this.redis.set(key, JSON.stringify(data), 'EX', remainingTtl);
     return true;
   }
+
+  async setExpire(key: string, seconds: number) {
+    await this.redis.expire(key, seconds);
+  }
+
+  async addToList(key: string, value: string) {
+    await this.redis.sadd(key, value);
+  }
+
+  async getList(key: string): Promise<string[]> {
+    return await this.redis.smembers(key);
+  }
+
+  async removeFromList(key: string, value: string) {
+    await this.redis.srem(key, value);
+  }
 }

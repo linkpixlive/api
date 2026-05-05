@@ -9,10 +9,12 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/isPublic';
 import { UsersRepository } from '../../infra/db/repositories/users.repositories';
+import { RedisService } from '../../infra/redis/redis.service';
 import { SafeUser } from './entities/safe-user.entity';
 
 export interface JwtPayload {
   sub: string;
+  sid: string;
   roles: string[];
 }
 
@@ -22,6 +24,7 @@ export class AuthGuard implements CanActivate {
     private jwtService: JwtService,
     private reflector: Reflector,
     private usersRepository: UsersRepository,
+    private redisService: RedisService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -44,6 +47,14 @@ export class AuthGuard implements CanActivate {
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
 
+      const session = await this.redisService.get(
+        `auth:session:${payload.sid}`,
+      );
+
+      if (!session) {
+        throw new UnauthorizedException();
+      }
+
       const user = await this.usersRepository.findById(payload.sub);
 
       if (!user) {
@@ -53,6 +64,7 @@ export class AuthGuard implements CanActivate {
       const safeUser = SafeUser.fromPrisma(user);
 
       request['user'] = safeUser;
+      request['sid'] = payload.sid;
     } catch {
       throw new UnauthorizedException();
     }

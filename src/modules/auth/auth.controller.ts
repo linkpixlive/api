@@ -1,6 +1,8 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { CurrentSid } from 'src/common/decorators/current-sid.decorator';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/isPublic';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -8,13 +10,14 @@ import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { SafeUser } from './entities/safe-user.entity';
 
 @ApiTags('Auth')
-@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({
@@ -37,6 +40,7 @@ export class AuthController {
     return this.authService.register(registerAuthDto);
   }
 
+  @Public()
   @Post('login')
   @ApiOperation({ summary: 'Login a user' })
   @ApiResponse({
@@ -59,6 +63,7 @@ export class AuthController {
     return this.authService.login(loginAuthDto);
   }
 
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Forgot password' })
@@ -85,6 +90,7 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
+  @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Change password' })
@@ -111,6 +117,7 @@ export class AuthController {
     return this.authService.resetPassword(resetPasswordDto);
   }
 
+  @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify OTP' })
@@ -135,5 +142,21 @@ export class AuthController {
   })
   verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout current session' })
+  @ApiResponse({ status: 200, description: 'Logged out successfully.' })
+  logout(@CurrentSid() sid: string, @CurrentUser() user: SafeUser) {
+    return this.authService.logout(sid, user.id);
+  }
+
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout from all devices' })
+  @ApiResponse({ status: 200, description: 'Logged out from all devices.' })
+  logoutAll(@CurrentUser() user: SafeUser, @CurrentSid() sid: string) {
+    return this.authService.logoutAll(user.id, sid);
   }
 }

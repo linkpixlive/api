@@ -19,7 +19,7 @@ import { AuthService } from './auth.service';
         global: true,
         secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: configService.getOrThrow<string>('JWT_EXPIRES_IN') as '7d',
+          expiresIn: `${configService.getOrThrow('JWT_EXPIRES_IN_DAYS')}d`,
         },
       }),
     }),
