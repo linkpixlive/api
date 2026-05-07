@@ -1,9 +1,9 @@
-import { UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -14,14 +14,15 @@ import { DonationsRepository } from '../db/repositories/donations.repositories';
 import { WidgetRepository } from '../db/repositories/widget.repositories';
 import { RedisService } from '../redis/redis.service';
 
-@UseGuards(ThrottlerGuard)
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: 'overlay',
-  pingInterval: 60000,
+  pingInterval: 30000,
   pingTimeout: 10000,
 })
-export class OverlayGateway implements OnGatewayConnection {
+export class OverlayGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -39,7 +40,9 @@ export class OverlayGateway implements OnGatewayConnection {
     const widget = await this.widgetRepository.findByToken(token);
     if (!widget || !widget.active) return client.disconnect();
 
-    await this.redisService.setWithExpire(`overlay:${token}`, 60, 'true');
+    client['token'] = token;
+
+    await this.redisService.setWithExpire(`overlay:${token}`, 80, 'true');
     await client.join(token);
   }
 
@@ -63,14 +66,17 @@ export class OverlayGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('heartbeat_pulse')
-  @Throttle({ default: { limit: 2, ttl: 60000 } })
+  @Throttle({ standard: { limit: 5, ttl: 60000 } })
   async handlePulse(@ConnectedSocket() client: Socket) {
-    const token = client.handshake.query.token as string;
-    await this.redisService.setWithExpire(`overlay:${token}`, 60, 'true');
+    const token = (client['token'] || client.handshake.query.token) as string;
+
+    if (!token) return;
+
+    await this.redisService.setWithExpire(`overlay:${token}`, 80, 'true');
   }
 
   async handleDisconnect(client: Socket) {
-    const token = client.handshake.query.token as string;
+    const token = (client['token'] || client.handshake.query.token) as string;
     if (!token) return;
 
     await this.redisService.remove(`overlay:${token}`);
