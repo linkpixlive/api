@@ -6,17 +6,13 @@ import {
 import { WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
-import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { WidgetSettingsMap } from './dto/widget-settings.map';
 import { WidgetEntity } from './entities/widget.entity';
 
 @Injectable()
 export class WidgetsService {
-  constructor(
-    private readonly widgetRepository: WidgetRepository,
-    private readonly overlayGateway: OverlayGateway,
-  ) {}
+  constructor(private readonly widgetRepository: WidgetRepository) {}
 
   async getWidgetSettings<T extends WidgetType>(
     userId: string,
@@ -70,10 +66,6 @@ export class WidgetsService {
       settings,
     });
 
-    if (type === WidgetType.overlay) {
-      this.overlayGateway.emitSettingsUpdated(widget.token);
-    }
-
     return WidgetEntity.fromPrisma<T>(widget);
   }
 
@@ -106,18 +98,6 @@ export class WidgetsService {
     return WidgetEntity.fromPrisma(widget);
   }
 
-  async testOverlay(userId: string) {
-    const overlay = await this.widgetRepository.findByUserAndType(
-      userId,
-      WidgetType.overlay,
-    );
-    if (!overlay || !overlay.active)
-      throw new NotFoundException('Active overlay not found');
-
-    this.overlayGateway.emitTestNotification(overlay.token);
-    return;
-  }
-
   private getDefaultSettings(type: WidgetType): Record<string, any> {
     switch (type) {
       case WidgetType.overlay:
@@ -125,6 +105,7 @@ export class WidgetsService {
           volume: 100,
           speakNameAmount: true,
           defaultNarrator: 'Ricardo',
+          isPaused: false,
         };
       case WidgetType.qrcode:
         return {

@@ -124,4 +124,10 @@ export class DonationsRepository {
       },
     });
   }
+
+  async findManyByIds(ids: string[]) {
+    return await this.prismaService.donation.findMany({
+      where: { id: { in: ids } },
+    });
+  }
 }

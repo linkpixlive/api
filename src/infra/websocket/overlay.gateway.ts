@@ -1,3 +1,4 @@
+import { Inject, forwardRef } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   ConnectedSocket,
@@ -10,9 +11,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
-import { DonationsRepository } from '../db/repositories/donations.repositories';
-import { WidgetRepository } from '../db/repositories/widget.repositories';
-import { RedisService } from '../redis/redis.service';
+import { OverlayService } from 'src/modules/widgets/overlay.service';
 
 @WebSocketGateway({
   cors: { origin: '*' },
@@ -27,59 +26,44 @@ export class OverlayGateway
   server: Server;
 
   constructor(
-    private readonly widgetRepository: WidgetRepository,
-    private readonly donationsRepository: DonationsRepository,
-    private readonly redisService: RedisService,
+    @Inject(forwardRef(() => OverlayService))
+    private readonly overlayService: OverlayService,
   ) {}
 
   async handleConnection(client: Socket) {
     const token = client.handshake.query.token as string;
-
     if (!token) return client.disconnect();
 
-    const widget = await this.widgetRepository.findByToken(token);
-    if (!widget || !widget.active) return client.disconnect();
+    const registered = await this.overlayService.registerConnection(token);
+    if (!registered) return client.disconnect();
 
     client['token'] = token;
-
-    await this.redisService.setWithExpire(`overlay:${token}`, 80, 'true');
     await client.join(token);
   }
 
-  @SubscribeMessage('displayed_donation')
+  async handleDisconnect(client: Socket) {
+    const token = client['token'] as string;
+    if (!token) return;
+    await this.overlayService.unregisterConnection(token);
+  }
+
+  @SubscribeMessage('alert_finished')
   @Throttle({ default: { limit: 4, ttl: 20000 } })
-  async handleDisplayedDonation(
-    client: Socket,
+  async handleAlertFinished(
+    @ConnectedSocket() client: Socket,
     @MessageBody() data: { id: string },
   ) {
-    const token = client.handshake.query.token as string;
-    const { id } = data;
-
-    const [donation, widget] = await Promise.all([
-      this.donationsRepository.findById(id),
-      this.widgetRepository.findByToken(token),
-    ]);
-
-    if (!donation || !widget || donation.userId !== widget.userId) return;
-
-    await this.donationsRepository.update(id, { status: 'displayed' });
+    const token = client['token'] as string;
+    if (!token || !data?.id) return;
+    await this.overlayService.alertFinished(token, data.id);
   }
 
   @SubscribeMessage('heartbeat_pulse')
   @Throttle({ standard: { limit: 5, ttl: 60000 } })
   async handlePulse(@ConnectedSocket() client: Socket) {
-    const token = (client['token'] || client.handshake.query.token) as string;
-
+    const token = client['token'] as string;
     if (!token) return;
-
-    await this.redisService.setWithExpire(`overlay:${token}`, 80, 'true');
-  }
-
-  async handleDisconnect(client: Socket) {
-    const token = (client['token'] || client.handshake.query.token) as string;
-    if (!token) return;
-
-    await this.redisService.remove(`overlay:${token}`);
+    await this.overlayService.updateOnlineStatus(token);
   }
 
   emitNewDonation(token: string, donation: OverlayDonationEntity) {

@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
-import { WebsocketModule } from 'src/infra/websocket/websocket.module';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 
 @Module({
-  imports: [WebsocketModule],
+  imports: [],
   controllers: [DashboardController],
   providers: [DashboardService],
 })

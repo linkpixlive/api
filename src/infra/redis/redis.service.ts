@@ -44,4 +44,24 @@ export class RedisService {
   async removeFromList(key: string, value: string) {
     await this.redis.srem(key, value);
   }
+
+  async addToListEnd(key: string, value: string) {
+    await this.redis.rpush(key, value);
+  }
+
+  async removeFromListStart(key: string): Promise<string | null> {
+    return await this.redis.lpop(key);
+  }
+
+  async getListLength(key: string): Promise<number> {
+    return await this.redis.llen(key);
+  }
+
+  async getListRange(
+    key: string,
+    start: number,
+    stop: number,
+  ): Promise<string[]> {
+    return await this.redis.lrange(key, start, stop);
+  }
 }

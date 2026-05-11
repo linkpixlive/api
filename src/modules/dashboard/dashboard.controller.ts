@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, ParseIntPipe, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -53,52 +46,5 @@ export class DashboardController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
   ) {
     return this.dashboardService.getHistory(user.id, page, limit);
-  }
-
-  @Post('alerts/skip')
-  @ApiOperation({
-    summary: 'Skip the currently displayed alert on the overlay',
-  })
-  @ApiResponse({ status: 200, description: 'Skip command sent.' })
-  @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
-  skip(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.skip(user.id);
-  }
-
-  @Post('alerts/pause')
-  @ApiOperation({ summary: 'Pause the overlay alert queue' })
-  @ApiResponse({ status: 200, description: 'Pause command sent.' })
-  @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
-  pause(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.pause(user.id);
-  }
-
-  @Post('alerts/resume')
-  @ApiOperation({ summary: 'Resume the overlay alert queue' })
-  @ApiResponse({ status: 200, description: 'Resume command sent.' })
-  @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
-  resume(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.resume(user.id);
-  }
-
-  @Post('alerts/clear')
-  @ApiOperation({ summary: 'Clear all pending alerts from the overlay queue' })
-  @ApiResponse({ status: 200, description: 'Clear command sent.' })
-  @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  @ApiResponse({ status: 404, description: 'User not found.' })
-  clear(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.clear(user.id);
-  }
-
-  @Post('alerts/replay/:id')
-  @ApiOperation({ summary: 'Replay a past donation on the overlay' })
-  @ApiResponse({ status: 200, description: 'Replay command sent.' })
-  @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  @ApiResponse({ status: 404, description: 'Donation or user not found.' })
-  replay(@CurrentUser() user: SafeUser, @Param('id') donationId: string) {
-    return this.dashboardService.replay(user.id, donationId);
   }
 }

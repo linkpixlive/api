@@ -1,9 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { AiModule } from 'src/infra/ai/ai.module';
-import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
-import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayModule } from 'src/infra/gateway/gateway.module';
 import { SpeechModule } from 'src/infra/speech/speech.module';
 import { StorageModule } from 'src/infra/storage/storage.module';
@@ -18,7 +15,6 @@ import { DonationsQueueService } from './donations-queue.service';
     AiModule,
     StorageModule,
     SpeechModule,
-    ConfigModule,
     WebsocketModule,
     WidgetsModule,
     BullModule.registerQueue({
@@ -34,12 +30,7 @@ import { DonationsQueueService } from './donations-queue.service';
       },
     }),
   ],
-  providers: [
-    DonationsQueueService,
-    DonationsQueueProcessor,
-    DonationsRepository,
-    UsersRepository,
-  ],
+  providers: [DonationsQueueService, DonationsQueueProcessor],
   exports: [DonationsQueueService],
 })
 export class DonationsQueueModule {}

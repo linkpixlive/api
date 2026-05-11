@@ -23,4 +23,8 @@ export class OverlayWidgetSettingsDto {
   @IsString()
   @IsNotEmpty()
   defaultNarrator: string;
+
+  @ApiProperty({ example: false })
+  @IsBoolean()
+  isPaused: boolean;
 }

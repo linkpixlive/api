@@ -12,6 +12,7 @@ import { AiModule } from './infra/ai/ai.module';
 import { DbModule } from './infra/db/db.module';
 import { GatewayModule } from './infra/gateway/gateway.module';
 import { EmailModule } from './infra/queues/email/email.module';
+import { RedisModule } from './infra/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DonationsModule } from './modules/donations/donations.module';
@@ -61,6 +62,7 @@ import { DonationSettingsModule } from './modules/donation-settings/donation-set
     WalletsModule,
     WithdrawalsModule,
     DbModule,
+    RedisModule,
     SecurityModule,
     EmailModule,
     HttpModule,
