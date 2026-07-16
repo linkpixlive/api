@@ -1,22 +1,9 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Ip,
-  Param,
-  Post,
-  Query,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Body, Controller, Get, Ip, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from 'src/common/decorators/isPublic';
 import { DonationsService } from './donations.service';
 import { DonationDto } from './dto/donation.dto';
-import { WebhookPixResponseDto } from './dto/webhook-pix-response.dto';
 import { DonationEntity } from './entities/donation.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
 
@@ -24,10 +11,7 @@ import { PublicUserEntity } from './entities/public-user.entity';
 @Public()
 @Controller()
 export class DonationsController {
-  constructor(
-    private readonly donationsService: DonationsService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly donationsService: DonationsService) {}
 
   @Get('/user/:username')
   @ApiOperation({ summary: 'Get public user information' })
@@ -66,38 +50,5 @@ export class DonationsController {
   })
   donation(@Body() donationDto: DonationDto, @Ip() ip: string) {
     return this.donationsService.donation(donationDto, ip);
-  }
-
-  @Post('webhook/pix')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary:
-      'Pix webhook is activated when a payment update is identified in the gateway.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Webhook received successfully.',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized (invalid HMAC)',
-  })
-  async webhookPix(
-    @Query('hmac') hmac: string,
-    @Body() body: { pix: WebhookPixResponseDto[] },
-  ) {
-    const secret = this.configService.get<string>('EFI_WEBHOOK_SECRET');
-
-    if (hmac !== secret) {
-      throw new UnauthorizedException('Invalid HMAC secret');
-    }
-
-    const transactions = body.pix || [];
-
-    for (const transaction of transactions) {
-      await this.donationsService.webhookPix(transaction.txid);
-    }
-
-    return 'ok';
   }
 }

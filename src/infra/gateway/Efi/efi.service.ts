@@ -3,10 +3,16 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as https from 'https';
 import { firstValueFrom } from 'rxjs';
+import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { GatewayResponseRepository } from 'src/infra/db/repositories/gateway-response.repositories';
 import { GatewayContract } from '../contract/gateway.contract';
-import { EfiPixResponse, EfiTokenResponse } from './efi.interface';
+import {
+  EfiPixResponse,
+  EfiSendPixResponse,
+  EfiSentPixStatusResponse,
+  EfiTokenResponse,
+} from './efi.interface';
 
 @Injectable()
 export class EfiService extends GatewayContract {
@@ -123,6 +129,99 @@ export class EfiService extends GatewayContract {
       default:
         return TransactionStatus.PENDING;
     }
+  }
+
+  private mapEfiSentPixStatus(efiStatus: string): SentPixStatus {
+    switch (efiStatus) {
+      case 'REALIZADO':
+      case 'CONCLUIDO':
+        return SentPixStatus.SUCCESS;
+      case 'NAO_REALIZADO':
+      case 'REJEITADO':
+        return SentPixStatus.FAILED;
+      case 'EM_PROCESSAMENTO':
+      default:
+        return SentPixStatus.PROCESSING;
+    }
+  }
+
+  async sendPix({
+    idempotencyId,
+    amount,
+    pixDestination,
+  }: {
+    idempotencyId: string;
+    amount: number;
+    pixDestination: string;
+  }): Promise<{ status: SentPixStatus; transactionId?: string }> {
+    const token = await this.getAccessToken();
+
+    const { data, status } = await firstValueFrom(
+      this.httpService.put<EfiSendPixResponse>(
+        `${this.configService.get('EFI_API_URL')}/v3/gn/pix/${idempotencyId}`,
+        {
+          valor: amount.toFixed(2),
+          pagador: {
+            chave: this.configService.get('EFI_PIX_KEY') as string,
+          },
+          favorecido: {
+            chave: pixDestination,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          httpsAgent: this.httpsAgent,
+        },
+      ),
+    );
+
+    await this.gatewayResponseRepository.create({
+      interactionType: 'REQUEST_WITHDRAWAL',
+      externalId: idempotencyId,
+      payload: JSON.stringify(data),
+      provider: 'efi',
+      statusCode: status,
+    });
+
+    return {
+      status: this.mapEfiSentPixStatus(data.status),
+      transactionId: data.e2eId,
+    };
+  }
+
+  async getSentPixStatus(
+    idempotencyId: string,
+  ): Promise<{ status: SentPixStatus; transactionId?: string }> {
+    const token = await this.getAccessToken();
+
+    const { data, status } = await firstValueFrom(
+      this.httpService.get<EfiSentPixStatusResponse>(
+        `${this.configService.get('EFI_API_URL')}/v2/gn/pix/enviados/id-envio/${idempotencyId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          httpsAgent: this.httpsAgent,
+        },
+      ),
+    );
+
+    await this.gatewayResponseRepository.create({
+      interactionType: 'RESPONSE_WEBHOOK_WITHDRAWAL',
+      externalId: idempotencyId,
+      payload: JSON.stringify(data),
+      provider: 'efi',
+      statusCode: status,
+    });
+
+    return {
+      status: this.mapEfiSentPixStatus(data.status),
+      transactionId: data.endToEndId,
+    };
   }
 
   private async getAccessToken() {

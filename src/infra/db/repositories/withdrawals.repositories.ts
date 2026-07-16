@@ -14,6 +14,18 @@ import {
 export class WithdrawalsRepository {
   constructor(private prismaService: PrismaService) {}
 
+  async findById(id: string) {
+    const withdrawal = await this.prismaService.withdrawal.findUnique({
+      where: { id },
+    });
+
+    if (!withdrawal) {
+      throw new NotFoundException('Withdrawal not found.');
+    }
+
+    return withdrawal;
+  }
+
   async processWithdrawal(params: CreateWithdrawalParams) {
     try {
       return await this.prismaService.$transaction(async (tx) => {
@@ -89,7 +101,32 @@ export class WithdrawalsRepository {
     };
   }
 
-  async approveWithdrawal(id: string) {
+  async processingWithdrawal(id: string, transactionId?: string) {
+    return await this.prismaService.$transaction(async (tx) => {
+      const withdrawal = await tx.withdrawal.findUnique({
+        where: { id },
+      });
+
+      if (!withdrawal) {
+        throw new NotFoundException('Withdrawal not found.');
+      }
+
+      if (withdrawal.status !== WithdrawalStatus.pending) {
+        throw new BadRequestException('Withdrawal is not pending.');
+      }
+
+      return await tx.withdrawal.update({
+        where: { id },
+        data: {
+          status: WithdrawalStatus.processing,
+          transactionId,
+          updatedAt: new Date(),
+        },
+      });
+    });
+  }
+
+  async approveWithdrawal(id: string, transactionId?: string) {
     return await this.prismaService.$transaction(async (tx) => {
       const withdrawal = await tx.withdrawal.findUnique({
         where: { id },
@@ -100,16 +137,17 @@ export class WithdrawalsRepository {
       }
 
       const updateResult = await tx.withdrawal.updateMany({
-        where: { id, status: WithdrawalStatus.pending },
+        where: { id, status: WithdrawalStatus.processing },
         data: {
           status: WithdrawalStatus.success,
+          transactionId,
           updatedAt: new Date(),
         },
       });
 
       if (updateResult.count === 0) {
         throw new BadRequestException(
-          'Withdrawal is not pending or already processed.',
+          'Withdrawal is not processing or already processed.',
         );
       }
 
@@ -130,7 +168,7 @@ export class WithdrawalsRepository {
           withdrawalId: withdrawal.id,
           amount: withdrawal.grossAmount,
           type: 'withdraw_confirm',
-          transactionId: `withdraw-confirm-${withdrawal.id}`,
+          transactionId: transactionId ?? '',
           balanceAfter: wallet.currentBalance,
         },
       });
@@ -150,7 +188,12 @@ export class WithdrawalsRepository {
       }
 
       const updateResult = await tx.withdrawal.updateMany({
-        where: { id, status: WithdrawalStatus.pending },
+        where: {
+          id,
+          status: {
+            in: [WithdrawalStatus.pending, WithdrawalStatus.processing],
+          },
+        },
         data: {
           status: WithdrawalStatus.failed,
           updatedAt: new Date(),
@@ -159,7 +202,7 @@ export class WithdrawalsRepository {
 
       if (updateResult.count === 0) {
         throw new BadRequestException(
-          'Withdrawal is not pending or already processed.',
+          'Withdrawal is not pending or processing.',
         );
       }
 
@@ -181,12 +224,18 @@ export class WithdrawalsRepository {
           withdrawalId: withdrawal.id,
           amount: withdrawal.grossAmount,
           type: 'refund',
-          transactionId: `withdraw-reject-${withdrawal.id}`,
+          transactionId: '',
           balanceAfter: wallet.currentBalance,
         },
       });
 
       return updatedWithdrawal;
+    });
+  }
+
+  async findProcessingWithdrawals() {
+    return await this.prismaService.withdrawal.findMany({
+      where: { status: WithdrawalStatus.processing },
     });
   }
 }

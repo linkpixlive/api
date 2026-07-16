@@ -19,3 +19,15 @@ export interface EfiPixResponse {
     original: string;
   };
 }
+
+export interface EfiSendPixResponse {
+  status: string;
+  e2eId?: string;
+  idEnvio: string;
+}
+
+export interface EfiSentPixStatusResponse {
+  status: string;
+  endToEndId?: string;
+  idEnvio: string;
+}

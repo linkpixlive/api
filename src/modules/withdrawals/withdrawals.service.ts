@@ -5,11 +5,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Withdrawal } from '@prisma/client';
+import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { SecurityService } from '../../common/security/security.service';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { WalletsRepository } from '../../infra/db/repositories/wallets.repositories';
 import { WithdrawalsRepository } from '../../infra/db/repositories/withdrawals.repositories';
+import { GatewayContract } from '../../infra/gateway/contract/gateway.contract';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
@@ -23,6 +25,7 @@ export class WithdrawalsService {
     private pixKeysRepository: PixKeysRepository,
     private securityService: SecurityService,
     private configService: ConfigService,
+    private gatewayContract: GatewayContract,
   ) {}
 
   async create(
@@ -94,13 +97,48 @@ export class WithdrawalsService {
   }
 
   async approve(id: string): Promise<WithdrawalEntity> {
-    const withdrawal = await this.withdrawalsRepository.approveWithdrawal(id);
-    return this.mapToEntity(withdrawal);
+    const withdrawal = await this.withdrawalsRepository.findById(id);
+
+    const pixKey = this.securityService.decryptData(withdrawal.pixValue);
+    const withdrawalId = withdrawal.id.replace(/-/g, '');
+
+    const pixDestination =
+      this.configService.get('NODE_ENV') === 'development'
+        ? 'efipay@sejaefi.com.br'
+        : pixKey;
+
+    const result = await this.gatewayContract.sendPix({
+      idempotencyId: withdrawalId,
+      amount: Number(withdrawal.netAmount),
+      pixDestination,
+    });
+
+    const updated = await this.withdrawalsRepository.processingWithdrawal(
+      id,
+      result.transactionId,
+    );
+
+    return this.mapToEntity(updated);
   }
 
   async reject(id: string): Promise<WithdrawalEntity> {
     const withdrawal = await this.withdrawalsRepository.rejectWithdrawal(id);
     return this.mapToEntity(withdrawal);
+  }
+
+  async handleWebhookPixSend(id: string): Promise<void> {
+    const uuid = `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
+
+    const result = await this.gatewayContract.getSentPixStatus(id);
+
+    if (result.status === SentPixStatus.SUCCESS) {
+      await this.withdrawalsRepository.approveWithdrawal(
+        uuid,
+        result.transactionId,
+      );
+    } else if (result.status === SentPixStatus.FAILED) {
+      await this.withdrawalsRepository.rejectWithdrawal(uuid);
+    }
   }
 
   private mapToEntity(withdrawal: Withdrawal): WithdrawalEntity {

@@ -22,6 +22,7 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { WidgetsModule } from './modules/widgets/widgets.module';
 import { DonationSettingsModule } from './modules/donation-settings/donation-settings.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { DonationSettingsModule } from './modules/donation-settings/donation-set
     AdminModule,
     WidgetsModule,
     DonationSettingsModule,
+    WebhooksModule,
   ],
   controllers: [],
   providers: [
