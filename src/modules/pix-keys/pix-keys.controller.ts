@@ -18,19 +18,19 @@ export class PixKeysController {
   constructor(private readonly pixKeysService: PixKeysService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Register a new Pix key' })
+  @ApiOperation({ summary: 'Registrar uma nova chave Pix' })
   @ApiResponse({
     status: 201,
     type: PixKeyEntity,
-    description: 'Pix key registered successfully.',
+    description: 'Chave Pix registrada com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid key format or limit reached.',
+    description: 'Formato de chave inválido ou limite atingido.',
   })
   @ApiResponse({
     status: 409,
-    description: 'Pix key already registered.',
+    description: 'Chave Pix já registrada.',
   })
   create(
     @CurrentUser() user: SafeUser,
@@ -40,36 +40,36 @@ export class PixKeysController {
   }
 
   @Get('masked')
-  @ApiOperation({ summary: 'List all Pix keys masked for the current user' })
+  @ApiOperation({ summary: 'Listar todas as chaves Pix mascaradas do usuário' })
   @ApiResponse({
     status: 200,
     type: PixKeyEntity,
-    description: 'List of masked pix keys.',
+    description: 'Lista de chaves Pix mascaradas.',
   })
   findAllMasked(@CurrentUser() user: SafeUser) {
     return this.pixKeysService.findAllMasked(user);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all Pix keys for the current user' })
+  @ApiOperation({ summary: 'Listar todas as chaves Pix do usuário' })
   @ApiResponse({
     status: 200,
     type: PixKeyEntity,
-    description: 'Pix keys returned successfully.',
+    description: 'Chaves Pix retornadas com sucesso.',
   })
   findAll(@CurrentUser() user: SafeUser) {
     return this.pixKeysService.findAll(user);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a Pix key' })
+  @ApiOperation({ summary: 'Excluir uma chave Pix' })
   @ApiResponse({
     status: 200,
-    description: 'Pix key deleted successfully.',
+    description: 'Chave Pix excluída com sucesso.',
   })
   @ApiResponse({
     status: 404,
-    description: 'Pix key not found.',
+    description: 'Chave Pix não encontrada.',
   })
   remove(@CurrentUser() user: SafeUser, @Param('id') id: string) {
     return this.pixKeysService.remove(user, id);

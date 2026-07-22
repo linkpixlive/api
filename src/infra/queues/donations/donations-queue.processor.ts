@@ -58,7 +58,7 @@ export class DonationsQueueProcessor extends WorkerHost {
 
       await this.overlayService.handleNewDonation(overlay, updatedDonation.id);
     } catch (error) {
-      this.logger.error(`Failed to process donation ${donation_id}:`, error);
+      this.logger.error(`Falha ao processar doação ${donation_id}:`, error);
       throw error;
     }
   }
@@ -67,7 +67,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     const status = await this.gateway.getPixStatus(transactionId);
 
     if (status !== TransactionStatus.PAID) {
-      throw new BadRequestException('Transaction not paid');
+      throw new BadRequestException('Transação não paga');
     }
   }
 
@@ -100,7 +100,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     const donation = await this.donationsRepository.findById(id);
 
     if (!donation || donation.status === 'paid') {
-      throw new BadRequestException('Donation not found or already processed');
+      throw new BadRequestException('Doação não encontrada ou já processada');
     }
 
     return donation;
@@ -111,18 +111,18 @@ export class DonationsQueueProcessor extends WorkerHost {
       await this.usersRepository.findByIdWithConfig(userId);
 
     if (!userWithConfig) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException('Usuário não encontrado');
     }
 
     const { donationSettings, widgets } = userWithConfig;
     const overlay = widgets[0];
 
     if (!donationSettings) {
-      throw new BadRequestException('Donation settings not found');
+      throw new BadRequestException('Configurações de doação não encontradas');
     }
 
     if (!overlay) {
-      throw new BadRequestException('Active overlay not found');
+      throw new BadRequestException('Overlay ativo não encontrado');
     }
 
     return {

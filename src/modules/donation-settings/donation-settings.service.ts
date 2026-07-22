@@ -13,7 +13,7 @@ export class DonationSettingsService {
     const settings = await this.donationSettingsRepository.findByUserId(userId);
 
     if (!settings) {
-      throw new NotFoundException('Donation settings not found for this user');
+      throw new NotFoundException('Configurações de doação não encontradas para este usuário');
     }
 
     return new DonationSettingsEntity(settings);

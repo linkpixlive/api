@@ -49,11 +49,11 @@ export class AuthService {
     ]);
 
     if (usernameUser && usernameUser.email !== email) {
-      throw new ConflictException('Username already in use');
+      throw new ConflictException('Nome de usuário já está em uso');
     }
 
     if (cpfUser && cpfUser.email !== email) {
-      throw new ConflictException('CPF already in use');
+      throw new ConflictException('CPF já está em uso');
     }
 
     const encryptedCpf = this.securityService.encryptData(cpf);
@@ -71,19 +71,19 @@ export class AuthService {
 
     if (emailUser) {
       if (emailUser.verifiedEmail) {
-        throw new ConflictException('Email already in use');
+        throw new ConflictException('Email já está em uso');
       }
 
       await this.usersRepository.update(emailUser.id, userData);
       await this.sendVerificationOtp(email);
-      return 'This email is already pending verification. A new code has been sent to your email.';
+      return 'Este email já está pendente de verificação. Um novo código foi enviado para seu email.';
     }
 
     await this.usersRepository.create(userData);
 
     await this.sendVerificationOtp(email);
 
-    return 'Check your email and finish creating your account.';
+    return 'Verifique seu email e finalize o cadastro.';
   }
 
   async login(loginAuthDto: LoginAuthDto) {
@@ -92,16 +92,16 @@ export class AuthService {
     const user = await this.usersRepository.findByEmail(email);
 
     if (!user || !user.active)
-      throw new UnauthorizedException('User not exists.');
+      throw new UnauthorizedException('Usuário não existe.');
 
     const isPasswordValid = await this.comparePassword(password, user.password);
 
     if (!isPasswordValid)
-      throw new UnauthorizedException('Invalid credentials.');
+      throw new UnauthorizedException('Credenciais inválidas.');
 
     if (!user.verifiedEmail) {
       await this.sendVerificationOtp(email);
-      throw new UnauthorizedException('User not verified, check your email.');
+      throw new UnauthorizedException('Usuário não verificado, verifique seu email.');
     }
 
     return await this.createSession(user.id, user.roles);
@@ -110,7 +110,7 @@ export class AuthService {
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const { email } = forgotPasswordDto;
 
-    const responseMsg = `An email was sent to ${email} with a link to change your password.`;
+    const responseMsg = `Um email foi enviado para ${email} com um link para alterar sua senha.`;
 
     const user = await this.usersRepository.findByEmail(email);
     if (!user) return responseMsg;
@@ -131,7 +131,7 @@ export class AuthService {
 
     const sendEmail = await this.emailService.sendEmail({
       to: email,
-      subject: 'Forgot Password',
+      subject: 'Esqueci a Senha',
       templateName: 'forgot-password',
       context: { link: `https://tipply.com.br/forgot-passowrd?token=${uuid}` },
       metadata: {},
@@ -148,13 +148,13 @@ export class AuthService {
     const updatePassword =
       await this.changePassRepository.findByToken(hashedToken);
 
-    if (!updatePassword) throw new BadRequestException('invalid token');
+    if (!updatePassword) throw new BadRequestException('token inválido');
 
     const nowDate = new Date();
 
     if (nowDate > updatePassword.expiresAt) {
       throw new BadRequestException(
-        'time has expired, start the process again',
+        'tempo expirado, inicie o processo novamente',
       );
     }
 
@@ -166,7 +166,7 @@ export class AuthService {
 
     await this.changePassRepository.deleteByToken(hashedToken);
 
-    return 'password changed successfully';
+    return 'senha alterada com sucesso';
   }
 
   async verifyOtp({ otp, email }: VerifyOtpDto) {
@@ -175,14 +175,14 @@ export class AuthService {
     const hashedOtp = this.securityService.hashData(otp);
 
     if (!otpData) {
-      throw new BadRequestException('OTP expired or not found');
+      throw new BadRequestException('OTP expirado ou não encontrado');
     }
 
     if (otpData.attempts >= 5) {
       await this.redisService.remove(redisKey);
       await this.sendVerificationOtp(email);
       throw new BadRequestException(
-        'Too many attempts. A new code has been sent to your email.',
+        'Muitas tentativas. Um novo código foi enviado para seu email.',
       );
     }
 
@@ -193,16 +193,16 @@ export class AuthService {
       });
 
       if (!updated) {
-        throw new BadRequestException('OTP expired or not found');
+      throw new BadRequestException('OTP expirado ou não encontrado');
       }
 
-      throw new BadRequestException(`Invalid OTP`);
+      throw new BadRequestException('OTP inválido');
     }
 
     const user = await this.usersRepository.findByEmail(email);
 
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException('Usuário não encontrado');
     }
 
     const updatedUser = await this.usersRepository.update(user.id, {
@@ -285,7 +285,7 @@ export class AuthService {
         const secondsLeft = cooldownLimit - secondsPassed;
 
         throw new BadRequestException(
-          `Please wait ${secondsLeft} seconds to request a new code.`,
+          `Aguarde ${secondsLeft} segundos para solicitar um novo código.`,
         );
       }
     }
@@ -298,7 +298,7 @@ export class AuthService {
 
     await this.emailService.sendEmail({
       to: email,
-      subject: 'Verify your email',
+      subject: 'Verifique seu email',
       templateName: 'verify-email',
       context: { otp },
       metadata: {},

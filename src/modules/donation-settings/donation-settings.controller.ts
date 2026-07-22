@@ -19,10 +19,10 @@ export class DonationSettingsController {
 
   @Get()
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user donation business rules' })
+  @ApiOperation({ summary: 'Obter regras de doação do usuário atual' })
   @ApiResponse({
     status: 200,
-    description: 'Donation settings retrieved successfully',
+    description: 'Configurações de doação recuperadas com sucesso',
   })
   async getMySettings(@CurrentUser() user: SafeUser) {
     return this.donationSettingsService.getSettings(user.id);
@@ -30,10 +30,10 @@ export class DonationSettingsController {
 
   @Patch()
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update donation business rules' })
+  @ApiOperation({ summary: 'Atualizar regras de doação' })
   @ApiResponse({
     status: 200,
-    description: 'Donation settings updated successfully',
+    description: 'Configurações de doação atualizadas com sucesso',
   })
   async updateSettings(
     @CurrentUser() user: SafeUser,

@@ -14,35 +14,35 @@ export class DonationsController {
   constructor(private readonly donationsService: DonationsService) {}
 
   @Get('/user/:username')
-  @ApiOperation({ summary: 'Get public user information' })
+  @ApiOperation({ summary: 'Obter informações públicas do usuário' })
   @ApiResponse({
     status: 200,
     type: PublicUserEntity,
-    description: 'User information received successfully.',
+    description: 'Informações do usuário recebidas com sucesso.',
   })
   @ApiResponse({
     status: 404,
-    description: 'User not found',
+    description: 'Usuário não encontrado',
   })
   async getUser(@Param('username') username: string) {
     return this.donationsService.getUser(username);
   }
 
   @Post('donation')
-  @ApiOperation({ summary: 'Create a new donation' })
+  @ApiOperation({ summary: 'Criar uma nova doação' })
   @ApiResponse({
     status: 201,
     type: DonationEntity,
     description:
-      'Donation created, returns Pix code and donation informations.',
+      'Doação criada, retorna código Pix e informações da doação.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid data (amount, userId, voiceId...)',
+    description: 'Dados inválidos (amount, userId, voiceId...)',
   })
   @ApiResponse({
     status: 429,
-    description: 'Too many requests (Rate Limited).',
+    description: 'Muitas requisições (Limite de taxa).',
   })
   @Throttle({
     burst: { limit: 2, ttl: 10000 },

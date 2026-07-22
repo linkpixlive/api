@@ -22,7 +22,7 @@ export class DonationsRepository {
 
       if (!donation || donation.status !== 'pending') {
         throw new BadRequestException(
-          'Donation already processed or not found',
+          'Doação já processada ou não encontrada',
         );
       }
 
@@ -37,7 +37,7 @@ export class DonationsRepository {
       });
 
       if (updateResult.count === 0) {
-        throw new BadRequestException('Donation already processed');
+        throw new BadRequestException('Doação já processada');
       }
 
       const updatedDonation = await tx.donation.findUniqueOrThrow({

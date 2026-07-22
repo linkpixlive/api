@@ -14,7 +14,7 @@ export class WithdrawalEntity {
 
   @ApiProperty({
     example: 'johndoe@email.com',
-    description: 'Pix key value',
+    description: 'Valor da chave Pix',
   })
   @Expose()
   pixValue: string;
@@ -23,11 +23,11 @@ export class WithdrawalEntity {
   @Expose()
   amount: number;
 
-  @ApiProperty({ example: 96.0, description: 'Amount after fees' })
+  @ApiProperty({ example: 96.0, description: 'Valor após taxas' })
   @Expose()
   netAmount: number;
 
-  @ApiProperty({ example: 4.0, description: 'Fee amount' })
+  @ApiProperty({ example: 4.0, description: 'Valor da taxa' })
   @Expose()
   feeAmount: number;
 

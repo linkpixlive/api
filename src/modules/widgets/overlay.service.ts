@@ -136,7 +136,7 @@ export class OverlayService {
     ]);
 
     if (!donation || donation.userId !== userId) {
-      throw new NotFoundException('Donation not found');
+      throw new NotFoundException('Doação não encontrada');
     }
 
     const queueKey = `overlay:queue:${widget.token}`;
@@ -165,7 +165,7 @@ export class OverlayService {
       WidgetType.overlay,
     );
     if (!widget || !widget.active)
-      throw new NotFoundException('Active overlay not found');
+      throw new NotFoundException('Overlay ativo não encontrado');
     return widget;
   }
 

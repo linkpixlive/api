@@ -11,31 +11,31 @@ export class OverlayController {
   constructor(private readonly overlayService: OverlayService) {}
 
   @Post('test')
-  @ApiOperation({ summary: 'Send a test notification to the overlay' })
+  @ApiOperation({ summary: 'Enviar notificação de teste para o overlay' })
   async test(@CurrentUser() user: SafeUser) {
     return this.overlayService.testOverlay(user.id);
   }
 
   @Post('toggle-pause')
-  @ApiOperation({ summary: 'Toggle pause state of overlay alerts' })
+  @ApiOperation({ summary: 'Alternar pausa dos alertas do overlay' })
   async togglePause(@CurrentUser() user: SafeUser) {
     return this.overlayService.togglePause(user.id);
   }
 
   @Post('skip')
-  @ApiOperation({ summary: 'Skip the current alert and dispatch the next one' })
+  @ApiOperation({ summary: 'Pular o alerta atual e exibir o próximo' })
   async skip(@CurrentUser() user: SafeUser) {
     return this.overlayService.skipCurrent(user.id);
   }
 
   @Delete('queue')
-  @ApiOperation({ summary: 'Clear all pending alerts from the queue' })
+  @ApiOperation({ summary: 'Limpar todos os alertas pendentes da fila' })
   async clearQueue(@CurrentUser() user: SafeUser) {
     return this.overlayService.clearQueue(user.id);
   }
 
   @Post('replay/:donationId')
-  @ApiOperation({ summary: 'Re-add a donation to the alert queue for replay' })
+  @ApiOperation({ summary: 'Readicionar doação à fila de alertas para repetir' })
   async replay(
     @CurrentUser() user: SafeUser,
     @Param('donationId') donationId: string,

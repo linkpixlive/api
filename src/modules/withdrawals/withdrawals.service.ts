@@ -37,7 +37,7 @@ export class WithdrawalsService {
     );
     if (dto.amount < minAmount) {
       throw new BadRequestException(
-        `Minimum withdrawal amount is R$ ${minAmount}`,
+        `Valor mínimo para saque é R$ ${minAmount}`,
       );
     }
 
@@ -46,13 +46,13 @@ export class WithdrawalsService {
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet not found.');
+      throw new NotFoundException('Carteira não encontrada.');
     }
 
     const pix = await this.pixKeysRepository.findById(dto.pixId);
 
     if (!pix || pix.userId !== user.id) {
-      throw new NotFoundException('Pix key not found.');
+      throw new NotFoundException('Chave Pix não encontrada.');
     }
 
     const feePercentage = this.configService.getOrThrow<number>(

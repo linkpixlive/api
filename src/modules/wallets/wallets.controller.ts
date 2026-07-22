@@ -17,15 +17,15 @@ export class WalletsController {
   constructor(private readonly walletsService: WalletsService) {}
 
   @Get('balances')
-  @ApiOperation({ summary: 'Get the current user balance summary' })
+  @ApiOperation({ summary: 'Obter o resumo de saldo do usuário' })
   @ApiResponse({
     status: 200,
     type: WalletBalancesEntity,
-    description: 'Balance summary returned successfully.',
+    description: 'Resumo de saldo retornado com sucesso.',
   })
   @ApiResponse({
     status: 404,
-    description: 'Wallet not found.',
+    description: 'Carteira não encontrada.',
   })
   getBalances(@CurrentUser() user: SafeUser) {
     return this.walletsService.getBalances(user);

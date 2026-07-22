@@ -21,7 +21,7 @@ export class WidgetsController {
   constructor(private readonly widgetsService: WidgetsService) {}
 
   @Get(':type')
-  @ApiOperation({ summary: 'Get settings for a specific widget type' })
+  @ApiOperation({ summary: 'Obter configurações de um tipo de widget' })
   @ApiResponse({ status: 200, type: WidgetEntity })
   async getSettings(
     @CurrentUser() user: SafeUser,
@@ -31,7 +31,7 @@ export class WidgetsController {
   }
 
   @Post(':type')
-  @ApiOperation({ summary: 'Create settings for a specific widget type' })
+  @ApiOperation({ summary: 'Criar configurações para um tipo de widget' })
   @ApiResponse({ status: 201, type: WidgetEntity })
   async createSettings(
     @CurrentUser() user: SafeUser,
@@ -42,7 +42,7 @@ export class WidgetsController {
   }
 
   @Put(':type')
-  @ApiOperation({ summary: 'Update settings for a specific widget type' })
+  @ApiOperation({ summary: 'Atualizar configurações de um tipo de widget' })
   @ApiResponse({ status: 200, type: WidgetEntity })
   async updateSettings(
     @CurrentUser() user: SafeUser,
@@ -54,14 +54,14 @@ export class WidgetsController {
 
   @Public()
   @Get('public/:type/:token')
-  @ApiOperation({ summary: 'Get public widget settings for OBS/External use' })
+  @ApiOperation({ summary: 'Obter configurações públicas do widget para OBS/Uso externo' })
   @ApiResponse({ status: 200 })
   async getPublicSettings(@Param() { token }: PublicWidgetParams) {
     return this.widgetsService.getPublicWidgetSettings(token);
   }
 
   @Post(':type/reset-token')
-  @ApiOperation({ summary: 'Reset the token for a specific widget type' })
+  @ApiOperation({ summary: 'Resetar o token de um tipo de widget' })
   @ApiResponse({ status: 200, type: WidgetEntity })
   async resetToken(
     @CurrentUser() user: SafeUser,

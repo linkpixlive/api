@@ -30,7 +30,7 @@ export class DonationsService {
     const settings = user?.donationSettings;
 
     if (!user || !settings) {
-      throw new NotFoundException('User or settings not found');
+      throw new NotFoundException('Usuário ou configurações não encontrados');
     }
 
     const overlayStatus = overlay
@@ -59,18 +59,18 @@ export class DonationsService {
     const user = await this.usersRepository.findByUsernameWithConfig(username);
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuário não encontrado');
     }
 
     const settings = user.donationSettings;
 
     if (!settings) {
-      throw new BadRequestException('Donation settings not found');
+      throw new BadRequestException('Configurações de doação não encontradas');
     }
 
     if (message && message.length > settings.maxLength) {
       throw new BadRequestException(
-        `Message exceeds maximum length of ${settings.maxLength} characters`,
+        `Mensagem excede o tamanho máximo de ${settings.maxLength} caracteres`,
       );
     }
 
@@ -78,13 +78,13 @@ export class DonationsService {
 
     if (amountNum.lt(settings.minTextAmount)) {
       throw new BadRequestException(
-        `Minimum donation amount for message is R$${Number(settings.minTextAmount)}`,
+        `Valor mínimo de doação para mensagem é R$${Number(settings.minTextAmount)}`,
       );
     }
 
     if (amountNum.lt(settings.minAudioAmount)) {
       throw new BadRequestException(
-        `Minimum donation amount for audio is R$${Number(settings.minAudioAmount)}`,
+        `Valor mínimo de doação para áudio é R$${Number(settings.minAudioAmount)}`,
       );
     }
 
@@ -94,7 +94,7 @@ export class DonationsService {
 
     if (!transaction) {
       throw new BadRequestException(
-        'We were unable to create the donation, please try again.',
+        'Não foi possível criar a doação, tente novamente.',
       );
     }
 
@@ -122,7 +122,7 @@ export class DonationsService {
 
     if (!donation) {
       throw new NotFoundException(
-        `Donation not found for txid: ${transactionId}`,
+        `Doação não encontrada para o txid: ${transactionId}`,
       );
     }
 

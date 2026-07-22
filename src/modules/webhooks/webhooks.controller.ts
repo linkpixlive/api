@@ -27,15 +27,15 @@ export class WebhooksController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Pix webhook is activated when a payment update is identified in the gateway.',
+      'O webhook Pix é ativado quando uma atualização de pagamento é identificada no gateway.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Webhook received successfully.',
+    description: 'Webhook recebido com sucesso.',
   })
   @ApiResponse({
     status: 401,
-    description: 'Unauthorized (invalid HMAC)',
+    description: 'Não autorizado (HMAC inválido)',
   })
   async webhookPix(
     @Query('hmac') hmac: string,
@@ -44,7 +44,7 @@ export class WebhooksController {
     const secret = this.configService.get<string>('EFI_WEBHOOK_SECRET');
 
     if (hmac !== secret) {
-      throw new UnauthorizedException('Invalid HMAC secret');
+      throw new UnauthorizedException('Segredo HMAC inválido');
     }
 
     const transactions = body.pix || [];

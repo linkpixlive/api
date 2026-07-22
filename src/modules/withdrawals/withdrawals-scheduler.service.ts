@@ -31,16 +31,16 @@ export class WithdrawalsSchedulerService {
             result.transactionId,
           );
           this.logger.log(
-            `Withdrawal ${withdrawal.id} approved via scheduler.`,
+            `Saque ${withdrawal.id} aprovado via agendador.`,
           );
         } else if (result.status === SentPixStatus.FAILED) {
           await this.withdrawalsRepository.rejectWithdrawal(withdrawal.id);
           this.logger.log(
-            `Withdrawal ${withdrawal.id} rejected via scheduler.`,
+            `Saque ${withdrawal.id} rejeitado via agendador.`,
           );
         }
       } catch {
-        this.logger.error(`Failed to resolve withdrawal ${withdrawal.id}`);
+        this.logger.error(`Falha ao resolver saque ${withdrawal.id}`);
       }
     }
   }

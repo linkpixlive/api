@@ -13,7 +13,7 @@ export class WalletsService {
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet not found.');
+      throw new NotFoundException('Carteira não encontrada.');
     }
 
     const currentBalance = Number(wallet.currentBalance);

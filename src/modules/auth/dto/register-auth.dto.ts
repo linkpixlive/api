@@ -12,7 +12,7 @@ import {
 export class RegisterAuthDto {
   @ApiProperty({
     example: 'John Doe',
-    description: 'Full name of the user',
+    description: 'Nome completo do usuário',
   })
   @IsString()
   @MinLength(3)
@@ -21,17 +21,17 @@ export class RegisterAuthDto {
 
   @ApiProperty({
     example: 'johndoe',
-    description: 'Unique alphanumeric username',
+    description: 'Nome de usuário alfanumérico único',
   })
   @IsString()
-  @Matches(/^[a-zA-Z0-9_]+$/, { message: 'Username must be alphanumeric' })
+  @Matches(/^[a-zA-Z0-9_]+$/, { message: 'Nome de usuário deve ser alfanumérico' })
   @MinLength(3)
   @MaxLength(30)
   username: string;
 
   @ApiProperty({
     example: 'johndoe@email.com',
-    description: 'Valid email address',
+    description: 'Endereço de email válido',
   })
   @IsString()
   @IsEmail()
@@ -41,20 +41,20 @@ export class RegisterAuthDto {
   @ApiProperty({
     example: 'P@ssword123',
     description:
-      'Password (min 8 chars, must contain upper, lower, number or special)',
+      'Senha (mín 8 caracteres, deve conter maiúscula, minúscula, número ou especial)',
   })
   @IsString()
   @MinLength(8)
   @MaxLength(36)
   @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
     message:
-      'Password too weak. Use uppercase, numbers, and special characters.',
+      'Senha muito fraca. Use maiúsculas, números e caracteres especiais.',
   })
   password: string;
 
   @ApiProperty({
     example: '12345678901',
-    description: 'CPF (11 digits, numbers only)',
+    description: 'CPF (11 dígitos, apenas números)',
   })
   @IsNumberString()
   @Length(11, 11)

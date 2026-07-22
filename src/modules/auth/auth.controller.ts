@@ -19,18 +19,18 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
+  @ApiOperation({ summary: 'Registrar um novo usuário' })
   @ApiResponse({
     status: 201,
-    description: 'User registered successfully.',
+    description: 'Usuário registrado com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid data (email already exists, format, etc).',
+    description: 'Dados inválidos (email já existe, formato, etc).',
   })
   @ApiResponse({
     status: 429,
-    description: 'Too many requests.',
+    description: 'Muitas solicitações.',
   })
   @Throttle({
     burst: { limit: 1, ttl: 1000 },
@@ -42,18 +42,18 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  @ApiOperation({ summary: 'Login a user' })
+  @ApiOperation({ summary: 'Autenticar usuário' })
   @ApiResponse({
     status: 200,
-    description: 'User logged in successfully.',
+    description: 'Usuário autenticado com sucesso.',
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid credentials.',
+    description: 'Credenciais inválidas.',
   })
   @ApiResponse({
     status: 429,
-    description: 'Too many requests.',
+    description: 'Muitas solicitações.',
   })
   @Throttle({
     burst: { limit: 2, ttl: 1000 },
@@ -66,22 +66,22 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Forgot password' })
+  @ApiOperation({ summary: 'Esqueci a senha' })
   @ApiResponse({
     status: 200,
-    description: 'Email with password change link sent successfully.',
+    description: 'Email com link de redefinição de senha enviado com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid data (email format, etc).',
+    description: 'Dados inválidos (formato de email, etc).',
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid credentials (email not found, etc).',
+    description: 'Credenciais inválidas (email não encontrado, etc).',
   })
   @ApiResponse({
     status: 429,
-    description: 'Too many requests.',
+    description: 'Muitas solicitações.',
   })
   @Throttle({
     recovery_limit: { limit: 4, ttl: 900000 },
@@ -93,22 +93,22 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Change password' })
+  @ApiOperation({ summary: 'Alterar senha' })
   @ApiResponse({
     status: 200,
-    description: 'Password changed successfully.',
+    description: 'Senha alterada com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid data (password format, etc).',
+    description: 'Dados inválidos (formato de senha, etc).',
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid credentials (token expired, already used, etc).',
+    description: 'Credenciais inválidas (token expirado, já utilizado, etc).',
   })
   @ApiResponse({
     status: 429,
-    description: 'Too many requests.',
+    description: 'Muitas solicitações.',
   })
   @Throttle({
     recovery_limit: { limit: 4, ttl: 900000 },
@@ -120,22 +120,22 @@ export class AuthController {
   @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify OTP' })
+  @ApiOperation({ summary: 'Verificar OTP' })
   @ApiResponse({
     status: 200,
-    description: 'OTP verified successfully.',
+    description: 'OTP verificado com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid data (OTP format, etc).',
+    description: 'Dados inválidos (formato de OTP, etc).',
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid credentials (OTP expired, already used, etc).',
+    description: 'Credenciais inválidas (OTP expirado, já utilizado, etc).',
   })
   @ApiResponse({
     status: 429,
-    description: 'Too many requests.',
+    description: 'Muitas solicitações.',
   })
   @Throttle({
     recovery_limit: { limit: 4, ttl: 900000 },
@@ -146,16 +146,16 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Logout current session' })
-  @ApiResponse({ status: 200, description: 'Logged out successfully.' })
+  @ApiOperation({ summary: 'Sair da sessão atual' })
+  @ApiResponse({ status: 200, description: 'Sessão encerrada com sucesso.' })
   logout(@CurrentSid() sid: string, @CurrentUser() user: SafeUser) {
     return this.authService.logout(sid, user.id);
   }
 
   @Post('logout-all')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Logout from all devices' })
-  @ApiResponse({ status: 200, description: 'Logged out from all devices.' })
+  @ApiOperation({ summary: 'Sair de todos os dispositivos' })
+  @ApiResponse({ status: 200, description: 'Sessão encerrada em todos os dispositivos.' })
   logoutAll(@CurrentUser() user: SafeUser, @CurrentSid() sid: string) {
     return this.authService.logoutAll(user.id, sid);
   }

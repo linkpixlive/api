@@ -37,7 +37,7 @@ export class PixKeysService {
     );
     if (count >= maxKeys) {
       throw new BadRequestException(
-        `You can register up to ${maxKeys} Pix keys.`,
+        `Você pode registrar até ${maxKeys} chaves Pix.`,
       );
     }
 
@@ -48,7 +48,7 @@ export class PixKeysService {
     );
 
     if (existing) {
-      throw new ConflictException('This Pix key is already registered.');
+      throw new ConflictException('Esta chave Pix já está registrada.');
     }
 
     const encryptedKey = this.securityService.encryptData(dto.key);
@@ -80,7 +80,7 @@ export class PixKeysService {
     const pixKey = await this.pixKeysRepository.findById(id);
 
     if (!pixKey || pixKey.userId !== user.id) {
-      throw new NotFoundException('Pix key not found.');
+      throw new NotFoundException('Chave Pix não encontrada.');
     }
 
     const deleted = await this.pixKeysRepository.delete(user.id, id);
@@ -97,7 +97,7 @@ export class PixKeysService {
     if (digits.length === 11 && cpf.isValid(digits)) return 'cpf';
     if (digits.length === 14 && cnpj.isValid(digits)) return 'cnpj';
 
-    throw new BadRequestException('Invalid Pix key format.');
+    throw new BadRequestException('Formato de chave Pix inválido.');
   }
 
   private mapToEntity(pixKey: PixKey): PixKeyEntity {

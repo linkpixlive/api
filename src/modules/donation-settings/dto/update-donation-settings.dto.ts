@@ -4,29 +4,29 @@ import { IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
 export class UpdateDonationSettingsDto {
   @ApiPropertyOptional({ example: 250 })
   @IsOptional()
-  @IsNumber()
-  @Min(0)
+  @IsNumber({}, { message: 'O tamanho máximo deve ser um número' })
+  @Min(0, { message: 'O tamanho máximo não pode ser negativo' })
   maxLength?: number;
 
   @ApiPropertyOptional({ example: 5.0 })
   @IsOptional()
-  @IsNumber()
-  @Min(1)
+  @IsNumber({}, { message: 'O valor mínimo de áudio deve ser um número' })
+  @Min(1, { message: 'O valor mínimo de áudio é 1' })
   minAudioAmount?: number;
 
   @ApiPropertyOptional({ example: 1.0 })
   @IsOptional()
-  @IsNumber()
-  @Min(1)
+  @IsNumber({}, { message: 'O valor mínimo de texto deve ser um número' })
+  @Min(1, { message: 'O valor mínimo de texto é 1' })
   minTextAmount?: number;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: 'Filtrar profanidade deve ser um valor booleano' })
   filterProfanity?: boolean;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: 'Moderação de IA deve ser um valor booleano' })
   aiModeration?: boolean;
 }

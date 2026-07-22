@@ -20,7 +20,7 @@ export class WidgetsService {
   ): Promise<WidgetEntity<T>> {
     const widget = await this.widgetRepository.findByUserAndType(userId, type);
 
-    if (!widget) throw new NotFoundException('Widget settings not found');
+    if (!widget) throw new NotFoundException('Configurações do widget não encontradas');
 
     return WidgetEntity.fromPrisma<T>(widget);
   }
@@ -36,7 +36,7 @@ export class WidgetsService {
     );
 
     if (existingWidget) {
-      throw new ConflictException('Widget settings already exist');
+      throw new ConflictException('Configurações do widget já existem');
     }
 
     const widget = await this.widgetRepository.create(userId, {
@@ -58,7 +58,7 @@ export class WidgetsService {
     );
 
     if (!existingWidget) {
-      throw new NotFoundException('Widget settings not found');
+      throw new NotFoundException('Configurações do widget não encontradas');
     }
 
     const widget = await this.widgetRepository.update(user.id, {
@@ -71,7 +71,7 @@ export class WidgetsService {
 
   async getPublicWidgetSettings<T extends WidgetType>(token: string) {
     const widget = await this.widgetRepository.findByToken(token);
-    if (!widget) throw new NotFoundException('Widget not found');
+    if (!widget) throw new NotFoundException('Widget não encontrado');
 
     return WidgetEntity.fromPrisma<T>(widget);
   }
@@ -86,7 +86,7 @@ export class WidgetsService {
     );
 
     if (!existingWidget) {
-      throw new NotFoundException('Widget not found');
+      throw new NotFoundException('Widget não encontrado');
     }
 
     const widget = await this.widgetRepository.updateToken(

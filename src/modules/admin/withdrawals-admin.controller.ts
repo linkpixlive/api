@@ -12,38 +12,38 @@ export class WithdrawalsAdminController {
   constructor(private readonly withdrawalsService: WithdrawalsService) {}
 
   @Patch(':id/approve')
-  @ApiOperation({ summary: 'Approve a pending withdrawal' })
+  @ApiOperation({ summary: 'Aprovar um saque pendente' })
   @ApiResponse({
     status: 200,
     type: WithdrawalEntity,
-    description: 'Withdrawal approved successfully.',
+    description: 'Saque aprovado com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Withdrawal is not pending.',
+    description: 'O saque não está pendente.',
   })
   @ApiResponse({
     status: 404,
-    description: 'Withdrawal not found.',
+    description: 'Saque não encontrado.',
   })
   approve(@Param('id') id: string) {
     return this.withdrawalsService.approve(id);
   }
 
   @Patch(':id/reject')
-  @ApiOperation({ summary: 'Reject a pending withdrawal' })
+  @ApiOperation({ summary: 'Rejeitar um saque pendente' })
   @ApiResponse({
     status: 200,
     type: WithdrawalEntity,
-    description: 'Withdrawal rejected successfully.',
+    description: 'Saque rejeitado com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Withdrawal is not pending.',
+    description: 'O saque não está pendente.',
   })
   @ApiResponse({
     status: 404,
-    description: 'Withdrawal not found.',
+    description: 'Saque não encontrado.',
   })
   reject(@Param('id') id: string) {
     return this.withdrawalsService.reject(id);

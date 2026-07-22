@@ -10,7 +10,7 @@ export class AuthCleanupService {
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async handleCleanup() {
-    this.logger.debug('Running unverified users cleanup...');
+    this.logger.debug('Executando limpeza de usuários não verificados...');
 
     const fifteenMinutesAgo = new Date();
     fifteenMinutesAgo.setMinutes(fifteenMinutesAgo.getMinutes() - 15);
@@ -20,11 +20,11 @@ export class AuthCleanupService {
         await this.usersRepository.deleteManyUnverified(fifteenMinutesAgo);
 
       if (result.count > 0) {
-        this.logger.log(`Cleaned up ${result.count} unverified users.`);
+        this.logger.log(`Limpou ${result.count} usuários não verificados.`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to cleanup unverified users: ${message}`);
+      this.logger.error(`Falha ao limpar usuários não verificados: ${message}`);
     }
   }
 }

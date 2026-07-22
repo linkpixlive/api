@@ -19,19 +19,19 @@ export class WithdrawalsController {
   constructor(private readonly withdrawalsService: WithdrawalsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Request a new withdrawal' })
+  @ApiOperation({ summary: 'Solicitar um novo saque' })
   @ApiResponse({
     status: 201,
     type: WithdrawalEntity,
-    description: 'Withdrawal request submitted successfully.',
+    description: 'Saque solicitado com sucesso.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Insufficient balance or invalid amount.',
+    description: 'Saldo insuficiente ou valor inválido.',
   })
   @ApiResponse({
     status: 404,
-    description: 'Pix key not found.',
+    description: 'Chave Pix não encontrada.',
   })
   create(
     @CurrentUser() user: SafeUser,
@@ -41,11 +41,11 @@ export class WithdrawalsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List withdrawal history with filters' })
+  @ApiOperation({ summary: 'Listar histórico de saques com filtros' })
   @ApiResponse({
     status: 200,
     type: WithdrawalEntity,
-    description: 'List of withdrawals returned successfully.',
+    description: 'Lista de saques retornada com sucesso.',
   })
   findAll(
     @CurrentUser() user: SafeUser,
