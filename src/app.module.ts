@@ -23,6 +23,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { WidgetsModule } from './modules/widgets/widgets.module';
 import { DonationSettingsModule } from './modules/donation-settings/donation-settings.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     WidgetsModule,
     DonationSettingsModule,
     WebhooksModule,
+    UsersModule,
   ],
   controllers: [],
   providers: [

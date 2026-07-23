@@ -35,24 +35,25 @@ export class DonationsQueueProcessor extends WorkerHost {
       const donation = await this.getDonation(donation_id);
       await this.verifyPaymentStatus(donation.transactionId);
 
-      const { user, donationSettings, overlay, overlaySettings } =
-        await this.getUserWithConfig(donation.userId);
-
-      const cleanMessage = await this.getCleanMessage(
-        donation.messageRaw,
-        donationSettings,
+      const { user, overlay, overlaySettings } = await this.getUserWithConfig(
+        donation.userId,
       );
+
+      // const cleanMessage = await this.getCleanMessage(
+      //   donation.messageRaw,
+      //   donationSettings,
+      // );
 
       const ttsKey = await this.generateAndUploadAudio({
         donation,
         user,
-        message: cleanMessage,
+        message: donation.messageRaw ?? '',
         speakNameAmount: overlaySettings.speakNameAmount,
       });
 
       const updatedDonation = await this.donationsRepository.processDonation({
         donationId: donation.id,
-        message: cleanMessage,
+        message: donation.messageRaw ?? '',
         voiceUri: ttsKey,
       });
 

@@ -18,6 +18,8 @@ export class UsersRepository {
         cpfHash: data.cpfHash,
         roles: data.roles ?? [UserRole.streamer],
         verifiedEmail: data.verifiedEmail,
+        verified: data.verified,
+        usernameChangedAt: data.usernameChangedAt,
         wallet: { create: {} },
         donationSettings: { create: {} },
       },
@@ -86,7 +88,34 @@ export class UsersRepository {
         cpfHash: data.cpfHash,
         roles: data.roles,
         verifiedEmail: data.verifiedEmail,
+        verified: data.verified,
+        usernameChangedAt: data.usernameChangedAt,
       },
+    });
+  }
+
+  async changeUsernameWithBlacklist(
+    userId: string,
+    oldUsername: string,
+    newUsername: string,
+    blacklistExpiresAt: Date | null,
+  ) {
+    return await this.prismaService.$transaction(async (tx) => {
+      await tx.usernameBlacklist.create({
+        data: {
+          username: oldUsername,
+          originalOwnerId: userId,
+          expiresAt: blacklistExpiresAt,
+        },
+      });
+
+      return await tx.user.update({
+        where: { id: userId },
+        data: {
+          username: newUsername,
+          usernameChangedAt: new Date(),
+        },
+      });
     });
   }
 

@@ -81,6 +81,8 @@ model User {
   
   active           Boolean  @default(true)
   verifiedEmail    Boolean  @default(false) @map("verified_email")
+  verified         Boolean  @default(false)
+  usernameChangedAt DateTime? @map("username_changed_at")
   roles            UserRole[] @default([streamer])
 
   wallet           Wallet?
@@ -91,11 +93,26 @@ model User {
   changePassword   ChangePassword[]   
   donationSettings DonationSettings?  
   widgets          Widget[]
+  usernameBlacklists UsernameBlacklist[] @relation("OriginalOwner")
 
   @@index([email])
   @@index([username])
   @@index([cpfHash])
   @@map("users")
+}
+
+model UsernameBlacklist {
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  username        String    @unique @db.VarChar(50)
+  originalOwnerId String    @map("original_owner_id") @db.VarChar(36)
+  expiresAt       DateTime? @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  originalOwner User @relation("OriginalOwner", fields: [originalOwnerId], references: [id], onDelete: Cascade)
+
+  @@index([username])
+  @@index([expiresAt])
+  @@map("username_blacklist")
 }
 
 model Wallet {

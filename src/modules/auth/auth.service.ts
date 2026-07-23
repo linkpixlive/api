@@ -12,6 +12,7 @@ import crypto from 'node:crypto';
 import { SecurityService } from 'src/common/security/security.service';
 import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { UsersService } from '../users/users.service';
 import { EmailService } from 'src/infra/queues/email/email.service';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -36,11 +37,14 @@ export class AuthService {
     private emailService: EmailService,
     private redisService: RedisService,
     private configService: ConfigService,
+    private usersService: UsersService,
   ) {}
 
   async register(registerAuthDto: RegisterAuthDto) {
     const { name, username, email, password, cpf } = registerAuthDto;
     const hashedCpf = this.securityService.hashData(cpf);
+
+    await this.usersService.validateUsernameAvailability(username);
 
     const [emailUser, usernameUser, cpfUser] = await Promise.all([
       this.usersRepository.findByEmail(email),
@@ -101,7 +105,9 @@ export class AuthService {
 
     if (!user.verifiedEmail) {
       await this.sendVerificationOtp(email);
-      throw new UnauthorizedException('Usuário não verificado, verifique seu email.');
+      throw new UnauthorizedException(
+        'Usuário não verificado, verifique seu email.',
+      );
     }
 
     return await this.createSession(user.id, user.roles);
@@ -193,7 +199,7 @@ export class AuthService {
       });
 
       if (!updated) {
-      throw new BadRequestException('OTP expirado ou não encontrado');
+        throw new BadRequestException('OTP expirado ou não encontrado');
       }
 
       throw new BadRequestException('OTP inválido');

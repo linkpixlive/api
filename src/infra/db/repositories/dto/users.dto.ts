@@ -8,6 +8,8 @@ export interface CreateUserParams {
   cpf: string;
   cpfHash: string;
   verifiedEmail?: boolean;
+  verified?: boolean;
+  usernameChangedAt?: Date;
   roles?: UserRole[];
 }
 
@@ -19,5 +21,7 @@ export interface UpdateUserParams {
   cpf?: string;
   cpfHash?: string;
   verifiedEmail?: boolean;
+  verified?: boolean;
+  usernameChangedAt?: Date;
   roles?: UserRole[];
 }
