@@ -38,6 +38,10 @@ export class DonationSettingsEntity implements DonationSettings {
   @Expose()
   blockedWords: string[];
 
+  @ApiProperty({ example: 'uuid-voice-id', nullable: true })
+  @Expose()
+  defaultVoiceId: string | null;
+
   @ApiProperty({ example: '2026-04-16T12:00:00.000Z' })
   @Expose()
   updatedAt: Date;

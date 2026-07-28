@@ -4,6 +4,6 @@ export abstract class SpeechContract {
     voice,
   }: {
     message: string;
-    voice?: string;
-  }): Promise<string>;
+    voice?: string | null;
+  }): Promise<Buffer>;
 }

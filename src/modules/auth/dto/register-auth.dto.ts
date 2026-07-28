@@ -24,7 +24,9 @@ export class RegisterAuthDto {
     description: 'Nome de usuário alfanumérico único',
   })
   @IsString()
-  @Matches(/^[a-zA-Z0-9_]+$/, { message: 'Nome de usuário deve ser alfanumérico' })
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: 'Nome de usuário deve ser alfanumérico',
+  })
   @MinLength(3)
   @MaxLength(30)
   username: string;

@@ -155,7 +155,10 @@ export class AuthController {
   @Post('logout-all')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sair de todos os dispositivos' })
-  @ApiResponse({ status: 200, description: 'Sessão encerrada em todos os dispositivos.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Sessão encerrada em todos os dispositivos.',
+  })
   logoutAll(@CurrentUser() user: SafeUser, @CurrentSid() sid: string) {
     return this.authService.logoutAll(user.id, sid);
   }

@@ -20,7 +20,7 @@ export class GoogleService extends SpeechContract {
   }: {
     message: string;
     voice?: string;
-  }): Promise<string> {
+  }): Promise<Buffer> {
     const response = this.httpService.post<GoogleTTSResponse>(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.configService.get('GEMINI_KEY')}`,
       {
@@ -39,6 +39,6 @@ export class GoogleService extends SpeechContract {
 
     if (!data.audioContent) throw new BadRequestException('Error Google TTS');
 
-    return data.audioContent;
+    return Buffer.from(data.audioContent, 'base64');
   }
 }

@@ -30,14 +30,10 @@ export class WithdrawalsSchedulerService {
             withdrawal.id,
             result.transactionId,
           );
-          this.logger.log(
-            `Saque ${withdrawal.id} aprovado via agendador.`,
-          );
+          this.logger.log(`Saque ${withdrawal.id} aprovado via agendador.`);
         } else if (result.status === SentPixStatus.FAILED) {
           await this.withdrawalsRepository.rejectWithdrawal(withdrawal.id);
-          this.logger.log(
-            `Saque ${withdrawal.id} rejeitado via agendador.`,
-          );
+          this.logger.log(`Saque ${withdrawal.id} rejeitado via agendador.`);
         }
       } catch {
         this.logger.error(`Falha ao resolver saque ${withdrawal.id}`);

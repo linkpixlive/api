@@ -9,6 +9,7 @@ import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
+import { VoicesService } from 'src/modules/voices/voices.service';
 import { OverlayWidgetSettingsDto } from 'src/modules/widgets/dto/overlay-settings.dto';
 import { OverlayService } from 'src/modules/widgets/overlay.service';
 
@@ -24,6 +25,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly storage: StorageContract,
     private readonly speech: SpeechContract,
     private readonly overlayService: OverlayService,
+    private readonly voiceService: VoicesService,
   ) {
     super();
   }
@@ -89,9 +91,15 @@ export class DonationsQueueProcessor extends WorkerHost {
 
     const fullMessage = `${nameAmountPrefix}${message}`.trim();
 
-    const tts = await this.speech.generateTTS({ message: fullMessage });
-    const ttsBuffer = Buffer.from(tts, 'base64');
-    const ttsKey = `tts/${user.username}-${donation.id}.mp3`;
+    const voice = donation.voiceId
+      ? await this.voiceService.findById(donation.voiceId)
+      : null;
+
+    const ttsBuffer = await this.speech.generateTTS({
+      message: fullMessage,
+      voice: voice?.voiceId,
+    });
+    const ttsKey = `tts/${user.username}-${donation.id}.wav`;
 
     await this.storage.uploadAudio(ttsBuffer, ttsKey);
     return ttsKey;

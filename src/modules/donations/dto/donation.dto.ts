@@ -2,6 +2,7 @@ import {
   IsNotEmpty,
   IsNumber,
   IsString,
+  IsUUID,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -25,8 +26,8 @@ export class DonationDto {
   @Min(1, { message: 'O valor mínimo é 1' })
   amount: number;
 
-  @ApiProperty({ example: 'voice-id-123' })
-  @IsString({ message: 'O ID da voz deve ser uma string' })
+  @ApiProperty({ example: 'uuid-voice-id' })
+  @IsUUID('4', { message: 'O ID da voz deve ser um UUID válido' })
   @IsNotEmpty({ message: 'O ID da voz não pode estar vazio' })
   voiceId: string;
 

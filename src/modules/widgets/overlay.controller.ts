@@ -35,7 +35,9 @@ export class OverlayController {
   }
 
   @Post('replay/:donationId')
-  @ApiOperation({ summary: 'Readicionar doação à fila de alertas para repetir' })
+  @ApiOperation({
+    summary: 'Readicionar doação à fila de alertas para repetir',
+  })
   async replay(
     @CurrentUser() user: SafeUser,
     @Param('donationId') donationId: string,

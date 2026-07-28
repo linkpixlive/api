@@ -5,4 +5,5 @@ export interface UpdateDonationSettingsParams {
   filterProfanity?: boolean;
   filterSpam?: boolean;
   blockedWords?: string[];
+  defaultVoiceId?: string | null;
 }

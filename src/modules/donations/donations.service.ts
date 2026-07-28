@@ -7,6 +7,7 @@ import { DonationStatus, PaymentMethod } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
 import { RedisService } from 'src/infra/redis/redis.service';
@@ -22,6 +23,7 @@ export class DonationsService {
     private readonly gateway: GatewayContract,
     private readonly donationsQueue: DonationsQueueService,
     private readonly redisService: RedisService,
+    private readonly voicesRepository: VoicesRepository,
   ) {}
 
   async getUser(username: string) {
@@ -55,6 +57,11 @@ export class DonationsService {
     ip: string,
   ): Promise<DonationEntity> {
     const { name, message, amount, voiceId, username } = donationDto;
+
+    const voice = await this.voicesRepository.findById(voiceId);
+    if (!voice || !voice.isActive) {
+      throw new BadRequestException('Voz não encontrada ou indisponível');
+    }
 
     const user = await this.usersRepository.findByUsernameWithConfig(username);
 

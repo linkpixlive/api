@@ -19,6 +19,8 @@ export class ListWithdrawalsQueryDto extends PaginationQueryDto {
 
   @ApiProperty({ enum: WithdrawalStatus, required: false })
   @IsOptional()
-  @IsEnum(WithdrawalStatus, { message: 'status deve ser um status de saque válido' })
+  @IsEnum(WithdrawalStatus, {
+    message: 'status deve ser um status de saque válido',
+  })
   status?: WithdrawalStatus;
 }

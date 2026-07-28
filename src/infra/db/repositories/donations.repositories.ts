@@ -21,9 +21,7 @@ export class DonationsRepository {
       });
 
       if (!donation || donation.status !== 'pending') {
-        throw new BadRequestException(
-          'Doação já processada ou não encontrada',
-        );
+        throw new BadRequestException('Doação já processada ou não encontrada');
       }
 
       const updateResult = await tx.donation.updateMany({

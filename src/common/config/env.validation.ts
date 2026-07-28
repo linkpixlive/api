@@ -126,6 +126,10 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   EMAIL_FROM_ADDRESS: string;
+
+  @IsString()
+  @IsNotEmpty()
+  GRADIUM_API_KEY: string;
 }
 
 export function validate(config: Record<string, unknown>) {

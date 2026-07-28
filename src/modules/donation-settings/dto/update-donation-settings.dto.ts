@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class UpdateDonationSettingsDto {
   @ApiPropertyOptional({ example: 250 })
@@ -29,4 +29,9 @@ export class UpdateDonationSettingsDto {
   @IsOptional()
   @IsBoolean({ message: 'Moderação de IA deve ser um valor booleano' })
   aiModeration?: boolean;
+
+  @ApiPropertyOptional({ example: 'uuid-voice-id' })
+  @IsOptional()
+  @IsUUID('4', { message: 'O ID da voz padrão deve ser um UUID válido' })
+  defaultVoiceId?: string;
 }

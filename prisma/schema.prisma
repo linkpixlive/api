@@ -149,6 +149,21 @@ model PixKey {
   @@map("pix_keys")
 }
 
+model Voice {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  name      String   @db.VarChar(100)
+  provider  String   @db.VarChar(50)
+  voiceId   String   @map("voice_id") @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  photoUri  String?  @map("photo_uri") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  donationSettings DonationSettings[]
+  donations        Donation[]
+
+  @@map("voices")
+}
+
 model Donation {
   id            String         @id @default(uuid()) @db.VarChar(36)
   userId        String         @map("user_id") @db.VarChar(36)
@@ -156,7 +171,7 @@ model Donation {
   messageRaw    String?        @map("message_raw") @db.VarChar(500)
   message       String?        @db.VarChar(500)
   messageType   MessageType?   @map("message_type")
-  voiceId       String?        @map("voice_id") @db.VarChar(50)
+  voiceId       String?        @map("voice_id") @db.VarChar(36)
   voiceUrl      String?        @map("voice_url") @db.VarChar(500)
   amount        Decimal        @db.Decimal(12, 2)
   status        DonationStatus @default(pending)
@@ -170,6 +185,7 @@ model Donation {
 
   user        User         @relation("ReceivedDonations", fields: [userId], references: [id], onDelete: Cascade)
   transaction Transaction?
+  voice       Voice?       @relation(fields: [voiceId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([status])
@@ -260,9 +276,11 @@ model DonationSettings {
   filterProfanity Boolean  @default(false) @map("filter_profanity")
   filterSpam      Boolean  @default(false) @map("filter_spam")
   blockedWords    String[] @default([]) @map("blocked_words")
+  defaultVoiceId  String?  @map("default_voice_id") @db.VarChar(36)
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultVoice    Voice?   @relation(fields: [defaultVoiceId], references: [id], onDelete: SetNull)
 
   @@map("donation_settings")
 }

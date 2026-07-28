@@ -10,6 +10,7 @@ import { WithdrawalsRepository } from './repositories/withdrawals.repositories';
 import { DonationSettingsRepository } from './repositories/donation-settings.repositories';
 import { WidgetRepository } from './repositories/widget.repositories';
 import { UsernameBlacklistRepository } from './repositories/username-blacklist.repositories';
+import { VoicesRepository } from './repositories/voices.repositories';
 
 @Global()
 @Module({
@@ -25,6 +26,7 @@ import { UsernameBlacklistRepository } from './repositories/username-blacklist.r
     DonationSettingsRepository,
     WidgetRepository,
     UsernameBlacklistRepository,
+    VoicesRepository,
   ],
   exports: [
     PrismaService,
@@ -38,6 +40,7 @@ import { UsernameBlacklistRepository } from './repositories/username-blacklist.r
     DonationSettingsRepository,
     WidgetRepository,
     UsernameBlacklistRepository,
+    VoicesRepository,
   ],
 })
 export class DbModule {}

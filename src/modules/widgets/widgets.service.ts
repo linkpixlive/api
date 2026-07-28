@@ -20,7 +20,8 @@ export class WidgetsService {
   ): Promise<WidgetEntity<T>> {
     const widget = await this.widgetRepository.findByUserAndType(userId, type);
 
-    if (!widget) throw new NotFoundException('Configurações do widget não encontradas');
+    if (!widget)
+      throw new NotFoundException('Configurações do widget não encontradas');
 
     return WidgetEntity.fromPrisma<T>(widget);
   }

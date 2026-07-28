@@ -33,8 +33,7 @@ export class DonationsController {
   @ApiResponse({
     status: 201,
     type: DonationEntity,
-    description:
-      'Doação criada, retorna código Pix e informações da doação.',
+    description: 'Doação criada, retorna código Pix e informações da doação.',
   })
   @ApiResponse({
     status: 400,

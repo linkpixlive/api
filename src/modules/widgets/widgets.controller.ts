@@ -54,7 +54,9 @@ export class WidgetsController {
 
   @Public()
   @Get('public/:type/:token')
-  @ApiOperation({ summary: 'Obter configurações públicas do widget para OBS/Uso externo' })
+  @ApiOperation({
+    summary: 'Obter configurações públicas do widget para OBS/Uso externo',
+  })
   @ApiResponse({ status: 200 })
   async getPublicSettings(@Param() { token }: PublicWidgetParams) {
     return this.widgetsService.getPublicWidgetSettings(token);

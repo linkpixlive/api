@@ -19,7 +19,9 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  @ApiOperation({ summary: 'Obter estatísticas de doações dos últimos 30 dias' })
+  @ApiOperation({
+    summary: 'Obter estatísticas de doações dos últimos 30 dias',
+  })
   @ApiResponse({
     status: 200,
     type: DashboardStatsEntity,
