@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiHeader,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -20,6 +21,12 @@ export class WithdrawalsController {
 
   @Post()
   @ApiOperation({ summary: 'Solicitar um novo saque' })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description:
+      'Chave de idempotência gerada pelo cliente para evitar saques duplicados',
+  })
   @ApiResponse({
     status: 201,
     type: WithdrawalEntity,
@@ -36,8 +43,9 @@ export class WithdrawalsController {
   create(
     @CurrentUser() user: SafeUser,
     @Body() createWithdrawalDto: CreateWithdrawalDto,
+    @Headers('idempotency-key') clientKey?: string,
   ) {
-    return this.withdrawalsService.create(user, createWithdrawalDto);
+    return this.withdrawalsService.create(user, createWithdrawalDto, clientKey);
   }
 
   @Get()

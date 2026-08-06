@@ -1,4 +1,5 @@
 import { Donation } from '@prisma/client';
+import * as xss from 'xss';
 
 export class OverlayDonationEntity {
   id: string;
@@ -20,7 +21,7 @@ export class OverlayDonationEntity {
       id: donation.id,
       name: donation.name,
       amount: Number(donation.amount),
-      message: donation.message,
+      message: donation.message ? xss.filterXSS(donation.message) : null,
       audioUrl,
       messageType: donation.messageType as string,
     });

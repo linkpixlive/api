@@ -199,6 +199,8 @@ model Withdrawal {
   userId        String           @map("user_id") @db.VarChar(36)
   pixId         String?          @map("pix_id") @db.VarChar(36)
   pixValue      String           @map("pix_value") @db.VarChar(255)
+  keyMasked     String           @map("key_masked") @db.VarChar(255)
+  clientKey     String?          @map("client_key") @db.VarChar(128)
   status        WithdrawalStatus @default(pending)
   grossAmount   Decimal          @map("gross_amount") @db.Decimal(12, 2)
   netAmount     Decimal          @map("net_amount") @db.Decimal(12, 2)
@@ -211,6 +213,7 @@ model Withdrawal {
   pixKey      PixKey?      @relation(fields: [pixId], references: [id], onDelete: SetNull)
   transaction Transaction?
 
+  @@unique([userId, clientKey], name: "withdrawals_user_client_key")
   @@index([userId])
   @@index([status])
   @@index([createdAt])

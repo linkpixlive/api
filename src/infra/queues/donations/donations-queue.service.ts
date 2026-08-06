@@ -6,7 +6,7 @@ import { Queue } from 'bullmq';
 export class DonationsQueueService {
   constructor(@InjectQueue('donations-queue') private donationsQueue: Queue) {}
 
-  async sendDonation(data: any) {
+  async sendDonation(data: { donation_id: string }) {
     await this.donationsQueue.add('send-donation', data);
   }
 }

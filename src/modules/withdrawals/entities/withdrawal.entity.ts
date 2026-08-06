@@ -13,11 +13,11 @@ export class WithdrawalEntity {
   pixId: string | null;
 
   @ApiProperty({
-    example: 'johndoe@email.com',
-    description: 'Valor da chave Pix',
+    example: 'joh***@email.com',
+    description: 'Valor mascarado da chave Pix',
   })
   @Expose()
-  pixValue: string;
+  keyMasked: string;
 
   @ApiProperty({ example: 100.0 })
   @Expose()

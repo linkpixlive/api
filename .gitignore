@@ -49,6 +49,9 @@ lerna-debug.log*
 # git worktrees
 /.worktrees
 
+# opencode plugin local deps
+/.opencode/plugin/node_modules
+
 # Runtime data
 pids
 *.pid

@@ -34,6 +34,8 @@ export class WithdrawalsRepository {
             userId: params.userId,
             pixId: params.pixId,
             pixValue: params.pixKey,
+            keyMasked: params.keyMasked,
+            clientKey: params.clientKey ?? null,
             grossAmount: params.grossAmount,
             netAmount: params.netAmount,
             feeAmount: params.feeAmount,
@@ -230,6 +232,16 @@ export class WithdrawalsRepository {
       });
 
       return updatedWithdrawal;
+    });
+  }
+
+  async findByClientKey(userId: string, clientKey: string) {
+    return await this.prismaService.withdrawal.findFirst({
+      where: {
+        userId,
+        clientKey,
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
