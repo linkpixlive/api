@@ -90,25 +90,34 @@ export class EfiService extends GatewayContract {
     };
   }
 
-  async getPixStatus(transactionId: string): Promise<TransactionStatus> {
+  async getPixStatus(transactionId: string): Promise<{
+    status: TransactionStatus;
+    paidAmount?: number;
+  }> {
     const token = await this.getAccessToken();
 
     const {
       data,
       status,
-    }: { data: { status: string; txid: string }; status: number } =
-      await firstValueFrom(
-        this.httpService.get(
-          `${this.configService.get('EFI_API_URL')}/v2/cob/${transactionId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            httpsAgent: this.httpsAgent,
+    }: {
+      data: {
+        status: string;
+        txid: string;
+        valor?: { original?: string };
+      };
+      status: number;
+    } = await firstValueFrom(
+      this.httpService.get(
+        `${this.configService.get('EFI_API_URL')}/v2/cob/${transactionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
-        ),
-      );
+          httpsAgent: this.httpsAgent,
+        },
+      ),
+    );
 
     await this.gatewayResponseRepository.create({
       interactionType: 'RESPONSE_WEBHOOK_PIX',
@@ -118,16 +127,21 @@ export class EfiService extends GatewayContract {
       statusCode: status,
     });
 
+    const paidAmount =
+      data.status === 'CONCLUIDA' && data.valor?.original
+        ? Number(data.valor.original)
+        : undefined;
+
     switch (data.status) {
       case 'ATIVA':
-        return TransactionStatus.PENDING;
+        return { status: TransactionStatus.PENDING };
       case 'CONCLUIDA':
-        return TransactionStatus.PAID;
+        return { status: TransactionStatus.PAID, paidAmount };
       case 'REMOVIDA_PELO_USUARIO_RECEBEDOR':
       case 'REMOVIDA_PELO_PSP':
-        return TransactionStatus.FAILED;
+        return { status: TransactionStatus.FAILED };
       default:
-        return TransactionStatus.PENDING;
+        return { status: TransactionStatus.PENDING };
     }
   }
 

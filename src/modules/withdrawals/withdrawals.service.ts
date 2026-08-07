@@ -184,7 +184,10 @@ export class WithdrawalsService {
         gatewayResult.transactionId,
       );
     } else if (gatewayResult.status === SentPixStatus.FAILED) {
-      await this.withdrawalsRepository.rejectWithdrawal(uuid);
+      await this.withdrawalsRepository.rejectWithdrawal(
+        uuid,
+        gatewayResult.transactionId,
+      );
     }
     // PROCESSING — leave it; the scheduler cron will retry on next tick
   }

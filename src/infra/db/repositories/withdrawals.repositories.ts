@@ -43,7 +43,7 @@ export class WithdrawalsRepository {
           },
         });
 
-        await tx.wallet.update({
+        const updatedWallet = await tx.wallet.update({
           where: {
             userId: params.userId,
             currentBalance: { gte: params.grossAmount },
@@ -51,6 +51,17 @@ export class WithdrawalsRepository {
           data: {
             currentBalance: { decrement: params.grossAmount },
             pendingBalance: { increment: params.grossAmount },
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId: params.userId,
+            withdrawalId: withdrawal.id,
+            amount: params.grossAmount,
+            type: 'withdraw_reserve',
+            transactionId: withdrawal.id,
+            balanceAfter: updatedWallet.currentBalance,
           },
         });
 
@@ -179,7 +190,7 @@ export class WithdrawalsRepository {
     });
   }
 
-  async rejectWithdrawal(id: string) {
+  async rejectWithdrawal(id: string, transactionId?: string) {
     return await this.prismaService.$transaction(async (tx) => {
       const withdrawal = await tx.withdrawal.findUnique({
         where: { id },
@@ -199,6 +210,7 @@ export class WithdrawalsRepository {
         data: {
           status: WithdrawalStatus.failed,
           updatedAt: new Date(),
+          ...(transactionId ? { transactionId } : {}),
         },
       });
 
@@ -226,7 +238,7 @@ export class WithdrawalsRepository {
           withdrawalId: withdrawal.id,
           amount: withdrawal.grossAmount,
           type: 'refund',
-          transactionId: '',
+          transactionId: transactionId ?? '',
           balanceAfter: wallet.currentBalance,
         },
       });
@@ -245,9 +257,11 @@ export class WithdrawalsRepository {
     });
   }
 
-  async findProcessingWithdrawals() {
+  async findProcessingWithdrawals(limit = 100) {
     return await this.prismaService.withdrawal.findMany({
       where: { status: WithdrawalStatus.processing },
+      take: limit,
+      orderBy: { createdAt: 'asc' },
     });
   }
 }

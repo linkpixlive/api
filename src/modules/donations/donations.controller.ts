@@ -24,6 +24,14 @@ export class DonationsController {
     status: 404,
     description: 'Usuário não encontrado',
   })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas requisições.',
+  })
+  @Throttle({
+    burst: { limit: 10, ttl: 10000 },
+    username_lookup: { limit: 60, ttl: 600000 },
+  })
   async getUser(@Param('username') username: string) {
     return this.donationsService.getUser(username);
   }

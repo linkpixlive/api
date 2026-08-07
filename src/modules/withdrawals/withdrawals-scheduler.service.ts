@@ -35,8 +35,11 @@ export class WithdrawalsSchedulerService {
           await this.withdrawalsRepository.rejectWithdrawal(withdrawal.id);
           this.logger.log(`Saque ${withdrawal.id} rejeitado via agendador.`);
         }
-      } catch {
-        this.logger.error(`Falha ao resolver saque ${withdrawal.id}`);
+      } catch (error) {
+        this.logger.error(
+          `Falha ao resolver saque ${withdrawal.id}`,
+          error instanceof Error ? error.stack : String(error),
+        );
       }
     }
   }

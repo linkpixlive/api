@@ -7,7 +7,10 @@ export abstract class GatewayContract {
     secondsToExpire?: number;
   }): Promise<{ pix: string; transactionId: string; expiredAt: Date }>;
 
-  abstract getPixStatus(transactionId: string): Promise<TransactionStatus>;
+  abstract getPixStatus(transactionId: string): Promise<{
+    status: TransactionStatus;
+    paidAmount?: number;
+  }>;
 
   abstract sendPix(params: {
     idempotencyId: string;

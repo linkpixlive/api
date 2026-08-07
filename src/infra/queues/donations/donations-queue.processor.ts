@@ -1,6 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException, Logger } from '@nestjs/common';
 import { Donation, DonationSettings, User } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/client';
 import { Job } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { AiContract } from 'src/infra/ai/contract/ai.contract';
@@ -35,7 +36,7 @@ export class DonationsQueueProcessor extends WorkerHost {
 
     try {
       const donation = await this.getDonation(donation_id);
-      await this.verifyPaymentStatus(donation.transactionId);
+      await this.verifyPaymentStatus(donation.transactionId, donation.amount);
 
       const { user, overlay, overlaySettings } = await this.getUserWithConfig(
         donation.userId,
@@ -66,11 +67,23 @@ export class DonationsQueueProcessor extends WorkerHost {
     }
   }
 
-  private async verifyPaymentStatus(transactionId: string) {
-    const status = await this.gateway.getPixStatus(transactionId);
+  private async verifyPaymentStatus(
+    transactionId: string,
+    expectedAmount: Decimal,
+  ) {
+    const result = await this.gateway.getPixStatus(transactionId);
 
-    if (status !== TransactionStatus.PAID) {
+    if (result.status !== TransactionStatus.PAID) {
       throw new BadRequestException('Transação não paga');
+    }
+
+    if (
+      result.paidAmount !== undefined &&
+      !new Decimal(result.paidAmount).equals(expectedAmount)
+    ) {
+      throw new BadRequestException(
+        `Valor pago (R$${result.paidAmount}) difere do valor da doação (R$${String(expectedAmount)})`,
+      );
     }
   }
 
