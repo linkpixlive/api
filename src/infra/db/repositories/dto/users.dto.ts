@@ -24,4 +24,7 @@ export interface UpdateUserParams {
   verified?: boolean;
   usernameChangedAt?: Date;
   roles?: UserRole[];
+  totpSecret?: string | null;
+  totpEnabled?: boolean;
+  active?: boolean;
 }

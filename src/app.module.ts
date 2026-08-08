@@ -25,6 +25,7 @@ import { DonationSettingsModule } from './modules/donation-settings/donation-set
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { UsersModule } from './modules/users/users.module';
 import { VoicesModule } from './modules/voices/voices.module';
+import { AccountSettingsModule } from './modules/account-settings/account-settings.module';
 
 @Module({
   imports: [
@@ -55,6 +56,41 @@ import { VoicesModule } from './modules/voices/voices.module';
           ttl: 3600000,
           limit: 500,
         },
+        {
+          name: 'login_limit',
+          ttl: 300000,
+          limit: 10,
+        },
+        {
+          name: 'registration_limit',
+          ttl: 900000,
+          limit: 3,
+        },
+        {
+          name: 'recovery_limit',
+          ttl: 900000,
+          limit: 4,
+        },
+        {
+          name: 'email_change_limit',
+          ttl: 900000,
+          limit: 3,
+        },
+        {
+          name: 'password_change_limit',
+          ttl: 900000,
+          limit: 3,
+        },
+        {
+          name: '2fa_limit',
+          ttl: 300000,
+          limit: 5,
+        },
+        {
+          name: 'deactivation_limit',
+          ttl: 900000,
+          limit: 3,
+        },
       ],
       storage: new ThrottlerStorageRedisService(process.env.REDIS_URL),
     }),
@@ -77,13 +113,13 @@ import { VoicesModule } from './modules/voices/voices.module';
     WebhooksModule,
     UsersModule,
     VoicesModule,
+    AccountSettingsModule,
   ],
   controllers: [],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    ...(process.env.NODE_ENV !== 'development'
+      ? [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
+      : []),
   ],
 })
 export class AppModule {}

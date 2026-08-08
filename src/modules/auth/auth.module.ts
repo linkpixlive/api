@@ -10,6 +10,7 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { UsersModule } from '../users/users.module';
+import { VerificationService } from './verification.service';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UsersModule } from '../users/users.module';
   providers: [
     AuthService,
     AuthCleanupService,
+    VerificationService,
     SecurityService,
     {
       provide: APP_GUARD,
@@ -41,5 +43,6 @@ import { UsersModule } from '../users/users.module';
       useClass: RolesGuard,
     },
   ],
+  exports: [VerificationService],
 })
 export class AuthModule {}

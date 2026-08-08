@@ -90,6 +90,9 @@ export class UsersRepository {
         verifiedEmail: data.verifiedEmail,
         verified: data.verified,
         usernameChangedAt: data.usernameChangedAt,
+        totpSecret: data.totpSecret,
+        totpEnabled: data.totpEnabled,
+        active: data.active,
       },
     });
   }
