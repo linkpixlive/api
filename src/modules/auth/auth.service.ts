@@ -15,7 +15,7 @@ import { ChangePasswordRepository } from 'src/infra/db/repositories/change-passw
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { EmailService } from 'src/infra/queues/email/email.service';
 import { RedisService } from 'src/infra/redis/redis.service';
-import { UsersService } from '../users/users.service';
+import { ProfileService } from '../profile/profile.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
@@ -40,7 +40,7 @@ export class AuthService {
     private emailService: EmailService,
     private redisService: RedisService,
     private configService: ConfigService,
-    private usersService: UsersService,
+    private profileService: ProfileService,
     private verificationService: VerificationService,
   ) {}
 
@@ -48,7 +48,7 @@ export class AuthService {
     const { name, username, email, password, cpf } = registerAuthDto;
     const hashedCpf = this.securityService.hashData(cpf);
 
-    await this.usersService.validateUsernameAvailability(username);
+    await this.profileService.validateUsernameAvailability(username);
 
     const [emailUser, usernameUser, cpfUser] = await Promise.all([
       this.usersRepository.findByEmail(email),

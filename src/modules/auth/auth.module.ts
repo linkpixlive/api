@@ -9,7 +9,7 @@ import { AuthCleanupService } from './auth-cleanup.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import { UsersModule } from '../users/users.module';
+import { ProfileModule } from '../profile/profile.module';
 import { VerificationService } from './verification.service';
 
 @Module({
@@ -26,7 +26,7 @@ import { VerificationService } from './verification.service';
       }),
     }),
     EmailModule,
-    UsersModule,
+    ProfileModule,
   ],
   controllers: [AuthController],
   providers: [

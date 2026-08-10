@@ -23,7 +23,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { WidgetsModule } from './modules/widgets/widgets.module';
 import { DonationSettingsModule } from './modules/donation-settings/donation-settings.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
-import { UsersModule } from './modules/users/users.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { VoicesModule } from './modules/voices/voices.module';
 import { AccountSettingsModule } from './modules/account-settings/account-settings.module';
 
@@ -111,7 +111,7 @@ import { AccountSettingsModule } from './modules/account-settings/account-settin
     WidgetsModule,
     DonationSettingsModule,
     WebhooksModule,
-    UsersModule,
+    ProfileModule,
     VoicesModule,
     AccountSettingsModule,
   ],
