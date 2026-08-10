@@ -42,7 +42,23 @@ export class SafeUser {
 
   @ApiHideProperty()
   @Expose()
+  usernameChangedAt: Date | null;
+
+  @ApiHideProperty()
+  @Expose()
   roles: UserRole[];
+
+  @ApiHideProperty()
+  @Exclude()
+  password: string;
+
+  @ApiHideProperty()
+  @Exclude()
+  totpSecret: string | null;
+
+  @ApiHideProperty()
+  @Expose()
+  totpEnabled: boolean;
 
   constructor(partial: Partial<SafeUser>) {
     Object.assign(this, partial);
@@ -59,7 +75,11 @@ export class SafeUser {
       createdAt: user.createdAt,
       active: user.active,
       verifiedEmail: user.verifiedEmail,
+      usernameChangedAt: user.usernameChangedAt,
       roles: user.roles,
+      password: user.password,
+      totpSecret: user.totpSecret,
+      totpEnabled: user.totpEnabled,
     });
   }
 }

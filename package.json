@@ -24,6 +24,7 @@
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset",
     "db:deploy": "prisma migrate deploy",
+    "db:seed": "ts-node prisma/seed.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -54,6 +55,7 @@
     "handlebars": "^4.7.8",
     "helmet": "^8.1.0",
     "ioredis": "^5.10.0",
+    "otplib": "^13.4.1",
     "pg": "^8.19.0",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.9.3",

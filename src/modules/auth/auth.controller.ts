@@ -6,6 +6,7 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/isPublic';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -61,6 +62,33 @@ export class AuthController {
   })
   login(@Body() loginAuthDto: LoginAuthDto) {
     return this.authService.login(loginAuthDto);
+  }
+
+  @Public()
+  @Post('login-2fa')
+  @ApiOperation({ summary: 'Autenticar usuário com segundo fator (2FA)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuário autenticado com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Credenciais inválidas, código inválido ou nonce expirado.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: '2FA não ativo nesta conta.',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas solicitações.',
+  })
+  @Throttle({
+    burst: { limit: 2, ttl: 1000 },
+    login_limit: { limit: 10, ttl: 300000 },
+  })
+  login2fa(@Body() login2faDto: Login2faDto) {
+    return this.authService.login2fa(login2faDto);
   }
 
   @Public()

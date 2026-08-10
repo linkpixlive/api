@@ -9,7 +9,8 @@ import { AuthCleanupService } from './auth-cleanup.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import { UsersModule } from '../users/users.module';
+import { ProfileModule } from '../profile/profile.module';
+import { VerificationService } from './verification.service';
 
 @Module({
   imports: [
@@ -25,12 +26,13 @@ import { UsersModule } from '../users/users.module';
       }),
     }),
     EmailModule,
-    UsersModule,
+    ProfileModule,
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
     AuthCleanupService,
+    VerificationService,
     SecurityService,
     {
       provide: APP_GUARD,
@@ -41,5 +43,6 @@ import { UsersModule } from '../users/users.module';
       useClass: RolesGuard,
     },
   ],
+  exports: [VerificationService],
 })
 export class AuthModule {}

@@ -92,6 +92,8 @@ src/
    |---|---|---|
    | `overlay:<overlay_key>` | `overlay:a1b2c3d4-...` | 60s (heartbeat) |
    | `otp:verification:<email>` | `otp:verification:user@mail.com` | 600s |
+   | `totp:setup:<userId>` | `totp:setup:a1b2c3d4-...` | 600s (pending 2FA secret until first code confirmed) |
+   | `auth:pending_2fa:<nonce>` | `auth:pending_2fa:6b7c...` | 300s (one-shot nonce → userId during 2FA login leg) |
 
 2. **Always set TTL.** Use `RedisService.setWithExpire()` for all new keys. Keys without TTL risk accumulating indefinitely.
 3. **Use `RedisService` abstraction.** Never inject the raw `REDIS_CLIENT` (`ioredis`) directly in modules or services. Always go through `RedisService`.
@@ -193,6 +195,8 @@ src/
 3. **JWT payload:** `{ sub: userId }`. Do not add extra claims unless strictly necessary.
 4. **Token expiration:** 7 days. Configured in `AuthModule`.
 5. **Rate limiting is mandatory.** Every public endpoint MUST have a `@Throttle()` override with appropriate limits. Use named throttlers for domain-specific limits (`burst`, `registration_limit`, `donation_create`, etc.).
+6. **Auto-reactivation on login.** `AuthService.login` reactivates an inactive account automatically when valid credentials are supplied, while preserving the "Usuário não existe" ambiguity for truly non-existent emails.
+7. **2FA login flow.** When `user.totpEnabled` is true, `login` returns `{ requires2fa: true, nonce }` instead of a JWT. The second leg is `POST /auth/login-2fa` with `{ email, password, totp, nonce }`, which re-validates credentials (defends against stolen nonce) and exchanges the one-shot nonce for a session JWT.
 
 ---
 

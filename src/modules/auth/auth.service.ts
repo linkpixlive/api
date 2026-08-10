@@ -9,17 +9,20 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
+import { verifySync } from 'otplib';
 import { SecurityService } from 'src/common/security/security.service';
 import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
-import { UsersService } from '../users/users.service';
 import { EmailService } from 'src/infra/queues/email/email.service';
 import { RedisService } from 'src/infra/redis/redis.service';
+import { ProfileService } from '../profile/profile.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { VerificationService } from './verification.service';
 
 interface OtpData {
   otp: string;
@@ -37,14 +40,15 @@ export class AuthService {
     private emailService: EmailService,
     private redisService: RedisService,
     private configService: ConfigService,
-    private usersService: UsersService,
+    private profileService: ProfileService,
+    private verificationService: VerificationService,
   ) {}
 
   async register(registerAuthDto: RegisterAuthDto) {
     const { name, username, email, password, cpf } = registerAuthDto;
     const hashedCpf = this.securityService.hashData(cpf);
 
-    await this.usersService.validateUsernameAvailability(username);
+    await this.profileService.validateUsernameAvailability(username);
 
     const [emailUser, usernameUser, cpfUser] = await Promise.all([
       this.usersRepository.findByEmail(email),
@@ -79,13 +83,13 @@ export class AuthService {
       }
 
       await this.usersRepository.update(emailUser.id, userData);
-      await this.sendVerificationOtp(email);
+      await this.verificationService.sendVerificationOtp(email);
       return 'Este email já está pendente de verificação. Um novo código foi enviado para seu email.';
     }
 
     await this.usersRepository.create(userData);
 
-    await this.sendVerificationOtp(email);
+    await this.verificationService.sendVerificationOtp(email);
 
     return 'Verifique seu email e finalize o cadastro.';
   }
@@ -95,20 +99,68 @@ export class AuthService {
 
     const user = await this.usersRepository.findByEmail(email);
 
-    if (!user || !user.active)
-      throw new UnauthorizedException('Usuário não existe.');
+    if (!user) throw new UnauthorizedException('Usuário não existe.');
 
     const isPasswordValid = await this.comparePassword(password, user.password);
 
     if (!isPasswordValid)
       throw new UnauthorizedException('Credenciais inválidas.');
 
+    if (!user.active) {
+      await this.usersRepository.update(user.id, { active: true });
+    }
+
     if (!user.verifiedEmail) {
-      await this.sendVerificationOtp(email);
+      await this.verificationService.sendVerificationOtp(email);
       throw new UnauthorizedException(
         'Usuário não verificado, verifique seu email.',
       );
     }
+
+    if (user.totpEnabled) {
+      const nonce = crypto.randomUUID();
+      await this.redisService.setWithExpire(
+        `auth:pending_2fa:${nonce}`,
+        300,
+        user.id,
+      );
+      return { requires2fa: true, nonce };
+    }
+
+    return await this.createSession(user.id, user.roles);
+  }
+
+  async login2fa(login2faDto: Login2faDto) {
+    const { email, password, totp, nonce } = login2faDto;
+
+    const user = await this.usersRepository.findByEmail(email);
+
+    if (!user) throw new UnauthorizedException('Credenciais inválidas.');
+
+    const isPasswordValid = await this.comparePassword(password, user.password);
+
+    if (!isPasswordValid)
+      throw new UnauthorizedException('Credenciais inválidas.');
+
+    const pendingUserId = await this.redisService.get<string>(
+      `auth:pending_2fa:${nonce}`,
+    );
+
+    if (!pendingUserId)
+      throw new UnauthorizedException('Sessão expirada. Faça login novamente.');
+
+    if (pendingUserId !== user.id) throw new UnauthorizedException();
+
+    if (!user.totpEnabled || !user.totpSecret)
+      throw new BadRequestException('2FA não ativo nesta conta');
+
+    const secret = this.securityService.decryptData(user.totpSecret);
+
+    const result = verifySync({ token: totp, secret });
+
+    if (!result.valid) throw new UnauthorizedException('Código inválido');
+
+    await this.redisService.remove(`auth:pending_2fa:${nonce}`);
 
     return await this.createSession(user.id, user.roles);
   }
@@ -186,7 +238,7 @@ export class AuthService {
 
     if (otpData.attempts >= 5) {
       await this.redisService.remove(redisKey);
-      await this.sendVerificationOtp(email);
+      await this.verificationService.sendVerificationOtp(email);
       throw new BadRequestException(
         'Muitas tentativas. Um novo código foi enviado para seu email.',
       );
@@ -268,46 +320,5 @@ export class AuthService {
 
   private async comparePassword(password: string, hash: string) {
     return await bcrypt.compare(password, hash);
-  }
-
-  private async sendVerificationOtp(email: string) {
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const redisKey = `otp:verification:${email}`;
-
-    const hashedOtp = this.securityService.hashData(otp);
-
-    const otpData = await this.redisService.get<OtpData>(redisKey);
-
-    if (otpData) {
-      const now = new Date();
-      const createdDate = new Date(otpData.createdAt);
-
-      const secondsPassed = Math.floor(
-        (now.getTime() - createdDate.getTime()) / 1000,
-      );
-      const cooldownLimit = 60;
-
-      if (secondsPassed < cooldownLimit) {
-        const secondsLeft = cooldownLimit - secondsPassed;
-
-        throw new BadRequestException(
-          `Aguarde ${secondsLeft} segundos para solicitar um novo código.`,
-        );
-      }
-    }
-
-    await this.redisService.setWithExpire(redisKey, 600, {
-      otp: hashedOtp,
-      attempts: 0,
-      createdAt: new Date(),
-    });
-
-    await this.emailService.sendEmail({
-      to: email,
-      subject: 'Verifique seu email',
-      templateName: 'verify-email',
-      context: { otp },
-      metadata: {},
-    });
   }
 }

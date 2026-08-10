@@ -2,10 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { UsernameBlacklistRepository } from 'src/infra/db/repositories/username-blacklist.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { UpdateUsernameDto } from './dto/update-username.dto';
-import { VerifyUserDto } from './dto/verify-user.dto';
 
 @Injectable()
-export class UsersService {
+export class ProfileService {
   constructor(
     private usersRepository: UsersRepository,
     private usernameBlacklistRepository: UsernameBlacklistRepository,
@@ -80,19 +79,5 @@ export class UsersService {
     );
 
     return { username: newUsername };
-  }
-
-  async verifyUser(userId: string, verifyUserDto: VerifyUserDto) {
-    const user = await this.usersRepository.findById(userId);
-
-    if (!user) {
-      throw new BadRequestException('Usuário não encontrado');
-    }
-
-    const updatedUser = await this.usersRepository.update(userId, {
-      verified: verifyUserDto.verified,
-    });
-
-    return { verified: updatedUser.verified };
   }
 }

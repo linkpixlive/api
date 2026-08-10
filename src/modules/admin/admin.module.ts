@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
-import { WithdrawalsModule } from '../withdrawals/withdrawals.module';
-import { WithdrawalsAdminController } from './withdrawals-admin.controller';
+import { SecurityService } from 'src/common/security/security.service';
+import { GatewayModule } from 'src/infra/gateway/gateway.module';
+import { AdminController } from './controllers/admin.controller';
+import { AdminUsersService } from './services/admin-users.service';
+import { AdminWithdrawalsService } from './services/admin-withdrawals.service';
 
 @Module({
-  imports: [WithdrawalsModule],
-  controllers: [WithdrawalsAdminController],
+  imports: [GatewayModule],
+  controllers: [AdminController],
+  providers: [AdminWithdrawalsService, AdminUsersService, SecurityService],
 })
 export class AdminModule {}
