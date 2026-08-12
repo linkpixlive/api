@@ -5,10 +5,14 @@ import {
   UpdateDonationParams,
 } from './dto/donations.dto';
 import { ProcessDonationParams } from './dto/transactions.dto';
+import { WalletsRepository } from './wallets.repositories';
 
 @Injectable()
 export class DonationsRepository {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private walletsRepository: WalletsRepository,
+  ) {}
 
   async processDonation({
     donationId,
@@ -42,28 +46,7 @@ export class DonationsRepository {
         where: { id: donationId },
       });
 
-      const wallet = await tx.wallet.update({
-        where: { userId: updatedDonation.userId },
-        data: {
-          currentBalance: {
-            increment: updatedDonation.amount,
-          },
-          lastTransactionId: updatedDonation.transactionId,
-          updatedAt: new Date(),
-        },
-      });
-
-      await tx.transaction.create({
-        data: {
-          donationId: updatedDonation.id,
-          amount: updatedDonation.amount,
-          balanceAfter: wallet.currentBalance,
-          type: 'donation',
-          ip: updatedDonation.ip,
-          transactionId: updatedDonation.transactionId,
-          userId: updatedDonation.userId,
-        },
-      });
+      await this.walletsRepository.creditDonation(tx, updatedDonation);
 
       return updatedDonation;
     });

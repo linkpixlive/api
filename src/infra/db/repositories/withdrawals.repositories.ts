@@ -4,15 +4,20 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, WithdrawalStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/client';
 import { PrismaService } from '../prisma.service';
 import {
   CreateWithdrawalParams,
   FindWithdrawalsParams,
 } from './dto/withdrawals.dto';
+import { WalletsRepository } from './wallets.repositories';
 
 @Injectable()
 export class WithdrawalsRepository {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private walletsRepository: WalletsRepository,
+  ) {}
 
   async findById(id: string) {
     const withdrawal = await this.prismaService.withdrawal.findUnique({
@@ -27,55 +32,29 @@ export class WithdrawalsRepository {
   }
 
   async processWithdrawal(params: CreateWithdrawalParams) {
-    try {
-      return await this.prismaService.$transaction(async (tx) => {
-        const withdrawal = await tx.withdrawal.create({
-          data: {
-            userId: params.userId,
-            pixId: params.pixId,
-            pixValue: params.pixKey,
-            keyMasked: params.keyMasked,
-            clientKey: params.clientKey ?? null,
-            grossAmount: params.grossAmount,
-            netAmount: params.netAmount,
-            feeAmount: params.feeAmount,
-            status: WithdrawalStatus.pending,
-          },
-        });
-
-        const updatedWallet = await tx.wallet.update({
-          where: {
-            userId: params.userId,
-            currentBalance: { gte: params.grossAmount },
-          },
-          data: {
-            currentBalance: { decrement: params.grossAmount },
-            pendingBalance: { increment: params.grossAmount },
-          },
-        });
-
-        await tx.transaction.create({
-          data: {
-            userId: params.userId,
-            withdrawalId: withdrawal.id,
-            amount: params.grossAmount,
-            type: 'withdraw_reserve',
-            transactionId: withdrawal.id,
-            balanceAfter: updatedWallet.currentBalance,
-          },
-        });
-
-        return withdrawal;
+    return await this.prismaService.$transaction(async (tx) => {
+      const withdrawal = await tx.withdrawal.create({
+        data: {
+          userId: params.userId,
+          pixId: params.pixId,
+          pixValue: params.pixKey,
+          keyMasked: params.keyMasked,
+          clientKey: params.clientKey ?? null,
+          grossAmount: params.grossAmount,
+          netAmount: params.netAmount,
+          feeAmount: params.feeAmount,
+          status: WithdrawalStatus.pending,
+        },
       });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new BadRequestException('Insufficient available balance.');
-      }
-      throw error;
-    }
+
+      await this.walletsRepository.reserveForWithdrawal(tx, {
+        id: withdrawal.id,
+        userId: params.userId,
+        grossAmount: new Decimal(params.grossAmount),
+      });
+
+      return withdrawal;
+    });
   }
 
   async findByUserId(params: FindWithdrawalsParams) {
@@ -168,23 +147,11 @@ export class WithdrawalsRepository {
         where: { id },
       });
 
-      const wallet = await tx.wallet.update({
-        where: { userId: withdrawal.userId },
-        data: {
-          pendingBalance: { decrement: withdrawal.grossAmount },
-        },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId: withdrawal.userId,
-          withdrawalId: withdrawal.id,
-          amount: withdrawal.grossAmount,
-          type: 'withdraw_confirm',
-          transactionId: transactionId ?? '',
-          balanceAfter: wallet.currentBalance,
-        },
-      });
+      await this.walletsRepository.confirmWithdrawal(
+        tx,
+        withdrawal,
+        transactionId ?? '',
+      );
 
       return updatedWithdrawal;
     });
@@ -224,24 +191,11 @@ export class WithdrawalsRepository {
         where: { id },
       });
 
-      const wallet = await tx.wallet.update({
-        where: { userId: withdrawal.userId },
-        data: {
-          pendingBalance: { decrement: withdrawal.grossAmount },
-          currentBalance: { increment: withdrawal.grossAmount },
-        },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId: withdrawal.userId,
-          withdrawalId: withdrawal.id,
-          amount: withdrawal.grossAmount,
-          type: 'refund',
-          transactionId: transactionId ?? '',
-          balanceAfter: wallet.currentBalance,
-        },
-      });
+      await this.walletsRepository.refundWithdrawal(
+        tx,
+        withdrawal,
+        transactionId ?? '',
+      );
 
       return updatedWithdrawal;
     });
