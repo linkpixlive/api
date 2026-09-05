@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { EmailService } from 'src/infra/queues/email/email.service';
 import { RedisKeys, REDIS_TTL } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
-import { SecurityService } from 'src/common/security/security.service';
+import { hashData } from 'src/common/utils/crypto.util';
 
 interface OtpData {
   otp: string;
@@ -16,14 +16,13 @@ export class VerificationService {
   constructor(
     private readonly redisService: RedisService,
     private readonly emailService: EmailService,
-    private readonly securityService: SecurityService,
   ) {}
 
   async sendVerificationOtp(email: string): Promise<void> {
     const otp = crypto.randomInt(100000, 999999).toString();
     const redisKey = RedisKeys.otpVerification(email);
 
-    const hashedOtp = this.securityService.hashData(otp);
+    const hashedOtp = hashData(otp);
 
     const otpData = await this.redisService.get<OtpData>(redisKey);
 

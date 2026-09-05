@@ -7,13 +7,14 @@ import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validate } from './common/config/env.validation';
-import { SecurityModule } from './common/security/security.module';
+import { RolesGuard } from './common/guards/roles.guard';
 import { AiModule } from './infra/ai/ai.module';
 import { DbModule } from './infra/db/db.module';
 import { GatewayModule } from './infra/gateway/gateway.module';
 import { EmailModule } from './infra/queues/email/email.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuthGuard } from './modules/auth/auth.guard';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DonationsModule } from './modules/donations/donations.module';
 import { PixKeysModule } from './modules/pix-keys/pix-keys.module';
@@ -42,81 +43,9 @@ import { HealthModule } from './modules/health/health.module';
     }),
     ThrottlerModule.forRoot({
       throttlers: [
-        {
-          name: 'burst',
-          ttl: 1000,
-          limit: 5,
-        },
-        {
-          name: 'standard',
-          ttl: 60000,
-          limit: 45,
-        },
-        {
-          name: 'long_term',
-          ttl: 3600000,
-          limit: 500,
-        },
-        {
-          name: 'login_limit',
-          ttl: 300000,
-          limit: 10,
-        },
-        {
-          name: 'registration_limit',
-          ttl: 900000,
-          limit: 3,
-        },
-        {
-          name: 'recovery_limit',
-          ttl: 900000,
-          limit: 4,
-        },
-        {
-          name: 'email_change_limit',
-          ttl: 900000,
-          limit: 3,
-        },
-        {
-          name: 'password_change_limit',
-          ttl: 900000,
-          limit: 3,
-        },
-        {
-          name: '2fa_limit',
-          ttl: 300000,
-          limit: 5,
-        },
-        {
-          name: 'deactivation_limit',
-          ttl: 900000,
-          limit: 3,
-        },
-        {
-          name: 'ws_alert_finished',
-          ttl: 20000,
-          limit: 8,
-        },
-        {
-          name: 'ws_heartbeat',
-          ttl: 60000,
-          limit: 5,
-        },
-        {
-          name: 'donation_status',
-          ttl: 3600000,
-          limit: 120,
-        },
-        {
-          name: 'donation_create',
-          ttl: 3600000,
-          limit: 15,
-        },
-        {
-          name: 'username_lookup',
-          ttl: 600000,
-          limit: 60,
-        },
+        { ttl: 60000, limit: 45 },
+        { name: 'burst', ttl: 1000, limit: 5 },
+        { name: 'long_term', ttl: 3600000, limit: 500 },
       ],
       storage: new ThrottlerStorageRedisService(process.env.REDIS_URL),
     }),
@@ -128,7 +57,6 @@ import { HealthModule } from './modules/health/health.module';
     WithdrawalsModule,
     DbModule,
     RedisModule,
-    SecurityModule,
     EmailModule,
     HttpModule,
     GatewayModule,
@@ -147,6 +75,8 @@ import { HealthModule } from './modules/health/health.module';
     ...(process.env.NODE_ENV !== 'development'
       ? [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
       : []),
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

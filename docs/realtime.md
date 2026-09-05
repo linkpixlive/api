@@ -40,11 +40,11 @@ Templates Handlebars em `src/templates/emails/*.hbs` (`verify-email`, `forgot-pa
 
 ## WebSocket (Socket.IO)
 
-Emitir de processors/serviços de domínio — nunca de controllers HTTP. Eventos em `snake_case`; todo `@SubscribeMessage` com `@Throttle`.
+Emitir de processors/serviços de domínio — nunca de controllers HTTP. Eventos em `snake_case`; sem throttling de WS (o ThrottlerGuard padrão é HTTP-only — throttle de mensagens exigiria guard custom).
 
 | Gateway | Namespace | Auth na conexão | Sala | Emite | Escuta |
 |---|---|---|---|---|---|
-| `OverlayGateway` | `/overlay` | `query.token` validado no DB (widget ativo) | `token` | `new_donation`, `skip_alert`, `pause_alerts`, `resume_alerts`, `clear_alerts`, `settings_updated` | `alert_finished` (8/20s), `heartbeat_pulse` (5/60s) |
+| `OverlayGateway` | `/overlay` | `query.token` validado no DB (widget ativo) | `token` | `new_donation`, `skip_alert`, `pause_alerts`, `resume_alerts`, `clear_alerts`, `settings_updated` | `alert_finished`, `heartbeat_pulse` |
 | `DashboardGateway` | `/dashboard` | `handshake.auth.token` decodificado com `jwt.decode` (**sem verificar assinatura/expiração** — caveat conhecido) | `userId` | `queue_sync`, `overlay_status`, `donation:created`, `donation:updated` | — |
 
 ## Motor da fila de alertas (`modules/widgets/overlay.service.ts`)

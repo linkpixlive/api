@@ -1,6 +1,6 @@
 # Arquitetura
 
-> Verificado contra o código em 2026-09-02.
+> Verificado contra o código em 2026-09-05.
 
 ## Camadas
 
@@ -44,7 +44,15 @@ Injete sempre a abstração, nunca o provider. Exceção: email não tem contrac
 - `AuthGuard` + `RolesGuard` globais (APP_GUARD em `AuthModule`): tudo protegido por padrão; `@Public()` libera, `@Roles(UserRole.admin)` restringe.
 - `ThrottlerGuard` global (APP_GUARD em `AppModule`) **exceto em `development`**. Detalhes em `docs/security.md`.
 
+## Rotas admin
+
+- Toda rota admin: prefixo `admin/...` + `@Roles(UserRole.admin)` na **classe** do controller — os guards globais aplicam a restrição; nunca `@UseGuards` local.
+- Controllers **e services** admin vivem em `src/modules/admin` (`controllers/`, `services/`), mesmo quando o recurso pertence a outro domínio — o módulo admin é a superfície admin centralizada e fala direto com os repositories (globais via `DbModule`).
+- Fronteira do service: operação **exclusiva de admin** → service próprio no módulo admin (`AdminVoicesService` sobre `VoicesRepository`); operação **compartilhada** com público/streamer → reusa o service do domínio (`VoicesService.findById` alimenta o TTS, `findActivePublic` o endpoint público); ação cross-domain (aprovar saque, verificar usuário) também ganha service admin próprio.
+
 ## Exceções e padrões especiais (não generalizar)
+
+- Cripto (`common/utils/crypto.util.ts`: `encryptData`/`decryptData`/`hashData`) e URL de áudio (`audioUrl.util.ts`) são funções puras que leem env direto (`process.env`) por desenho — não virar service nem migrar para `ConfigService`.
 
 - `webhooks.controller.ts` lança `HttpException` direto — a validação HMAC é fronteira de confiança do webhook.
 - `WidgetsModule ⇄ WebsocketModule ⇄ OverlayService` usam `forwardRef`: ciclo por desenho (gateways ⇄ motor da fila).

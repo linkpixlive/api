@@ -53,5 +53,5 @@
 | `otpVerification` | `otp:verification:<email>` | 600s | OTP de email (hash sha256) |
 | `totpSetup` | `totp:setup:<userId>` | 600s | segredo 2FA pendente (criptografado) |
 | `authPending2fa` | `auth:pending_2fa:<nonce>` | 300s | nonce one-shot do login 2FA |
-| (inline em auth) | `auth:session:<sid>` | TTL = dias do JWT | sessão revogável |
-| (inline em auth) | `auth:user_sessions:<userId>` | — | set de sids (logout-all) |
+| `session` | `auth:session:<sid>` | TTL = dias do JWT (definido no login) | sessão revogável |
+| `userSessions` | `auth:user_sessions:<userId>` | acompanha as sessões | set de sids (logout-all) |

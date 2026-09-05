@@ -31,8 +31,7 @@ export class WebhooksController {
   @Post('webhook/pix')
   @HttpCode(HttpStatus.OK)
   @Throttle({
-    webhook_burst: { limit: 5, ttl: 1000 },
-    webhook_sustained: { limit: 20, ttl: 60000 },
+    default: { limit: 20, ttl: 60000 },
   })
   @ApiOperation({
     summary:

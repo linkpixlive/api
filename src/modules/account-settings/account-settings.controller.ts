@@ -45,7 +45,7 @@ export class AccountSettingsController {
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @ApiResponse({ status: 409, description: 'Email já está em uso.' })
-  @Throttle({ email_change_limit: { limit: 3, ttl: 900000 } })
+  @Throttle({ default: { limit: 3, ttl: 900000 } })
   changeEmail(@CurrentUser() user: SafeUser, @Body() dto: ChangeEmailDto) {
     return this.accountSettingsService.changeEmail(user, dto);
   }
@@ -55,7 +55,7 @@ export class AccountSettingsController {
   @ApiResponse({ status: 200, description: 'Senha alterada com sucesso.' })
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
-  @Throttle({ password_change_limit: { limit: 3, ttl: 900000 } })
+  @Throttle({ default: { limit: 3, ttl: 900000 } })
   changePassword(
     @CurrentUser() user: SafeUser,
     @CurrentSid() sid: string,
@@ -68,7 +68,7 @@ export class AccountSettingsController {
   @ApiOperation({ summary: 'Desativar conta' })
   @ApiResponse({ status: 200, description: 'Conta desativada com sucesso.' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
-  @Throttle({ deactivation_limit: { limit: 3, ttl: 900000 } })
+  @Throttle({ default: { limit: 3, ttl: 900000 } })
   deactivateAccount(
     @CurrentUser() user: SafeUser,
     @Body() dto: DeactivateAccountDto,
@@ -85,7 +85,7 @@ export class AccountSettingsController {
   })
   @ApiResponse({ status: 400, description: '2FA já está ativo.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  @Throttle({ '2fa_limit': { limit: 5, ttl: 300000 } })
+  @Throttle({ default: { limit: 5, ttl: 300000 } })
   setup2fa(@CurrentUser() user: SafeUser) {
     return this.accountSettingsService.setup2fa(user);
   }
@@ -98,7 +98,7 @@ export class AccountSettingsController {
     description: 'Código inválido ou setup expirado.',
   })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  @Throttle({ '2fa_limit': { limit: 5, ttl: 300000 } })
+  @Throttle({ default: { limit: 5, ttl: 300000 } })
   enable2fa(@CurrentUser() user: SafeUser, @Body() dto: Enable2faDto) {
     return this.accountSettingsService.enable2fa(user.id, dto);
   }
@@ -107,7 +107,7 @@ export class AccountSettingsController {
   @ApiOperation({ summary: 'Desativar 2FA' })
   @ApiResponse({ status: 200, description: '2FA desativado.' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
-  @Throttle({ '2fa_limit': { limit: 5, ttl: 300000 } })
+  @Throttle({ default: { limit: 5, ttl: 300000 } })
   disable2fa(@CurrentUser() user: SafeUser, @Body() dto: Disable2faDto) {
     return this.accountSettingsService.disable2fa(user, dto);
   }

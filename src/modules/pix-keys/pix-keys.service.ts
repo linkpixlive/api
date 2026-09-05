@@ -12,7 +12,11 @@ import {
   PIX_PHONE_REGEX,
   PIX_RANDOM_REGEX,
 } from '../../common/decorators/is-pix-key.decorator';
-import { SecurityService } from '../../common/security/security.service';
+import {
+  decryptData,
+  encryptData,
+  hashData,
+} from '../../common/utils/crypto.util';
 import { maskPixKey } from '../../common/utils/mask.util';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { SafeUser } from '../auth/entities/safe-user.entity';
@@ -23,7 +27,6 @@ import { PixKeyEntity } from './entities/pix-key.entity';
 export class PixKeysService {
   constructor(
     private pixKeysRepository: PixKeysRepository,
-    private securityService: SecurityService,
     private configService: ConfigService,
   ) {}
 
@@ -41,7 +44,7 @@ export class PixKeysService {
       );
     }
 
-    const keyHash = this.securityService.hashData(dto.key);
+    const keyHash = hashData(dto.key);
     const existing = await this.pixKeysRepository.findByUserIdAndKeyHash(
       user.id,
       keyHash,
@@ -51,7 +54,7 @@ export class PixKeysService {
       throw new ConflictException('Esta chave Pix já está registrada.');
     }
 
-    const encryptedKey = this.securityService.encryptData(dto.key);
+    const encryptedKey = encryptData(dto.key);
     const maskedKey = maskPixKey(keyType, dto.key);
 
     const pixKey = await this.pixKeysRepository.create({
@@ -101,7 +104,7 @@ export class PixKeysService {
   }
 
   private mapToEntity(pixKey: PixKey): PixKeyEntity {
-    const decryptedKey = this.securityService.decryptData(pixKey.key);
+    const decryptedKey = decryptData(pixKey.key);
 
     return new PixKeyEntity({ ...pixKey, key: decryptedKey });
   }

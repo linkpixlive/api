@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/isPublic';
 import { UsersRepository } from '../../infra/db/repositories/users.repositories';
+import { RedisKeys } from '../../infra/redis/redis-keys';
 import { RedisService } from '../../infra/redis/redis.service';
 import { SafeUser } from './entities/safe-user.entity';
 
@@ -48,7 +49,7 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
 
       const session = await this.redisService.get(
-        `auth:session:${payload.sid}`,
+        RedisKeys.session(payload.sid),
       );
 
       if (!session) {

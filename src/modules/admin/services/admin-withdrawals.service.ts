@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Withdrawal } from '@prisma/client';
-import { SecurityService } from 'src/common/security/security.service';
+import { decryptData } from 'src/common/utils/crypto.util';
 import { WithdrawalsRepository } from 'src/infra/db/repositories/withdrawals.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { WithdrawalEntity } from 'src/modules/withdrawals/entities/withdrawal.entity';
@@ -10,7 +10,6 @@ import { WithdrawalEntity } from 'src/modules/withdrawals/entities/withdrawal.en
 export class AdminWithdrawalsService {
   constructor(
     private withdrawalsRepository: WithdrawalsRepository,
-    private securityService: SecurityService,
     private configService: ConfigService,
     private gatewayContract: GatewayContract,
   ) {}
@@ -21,7 +20,7 @@ export class AdminWithdrawalsService {
       undefined,
     );
 
-    const pixKey = this.securityService.decryptData(transition.pixValue);
+    const pixKey = decryptData(transition.pixValue);
     const idempotencyId = transition.id.replace(/-/g, '');
 
     const pixDestination =

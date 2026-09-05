@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { generateSecret, generateURI, verifySync } from 'otplib';
-import { SecurityService } from 'src/common/security/security.service';
+import { decryptData, encryptData } from 'src/common/utils/crypto.util';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
-import { RedisKeys, REDIS_TTL } from 'src/infra/redis/redis-keys';
+import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { VerificationService } from '../auth/verification.service';
@@ -31,7 +31,6 @@ export class AccountSettingsService {
 
   constructor(
     private readonly usersRepository: UsersRepository,
-    private readonly securityService: SecurityService,
     private readonly redisService: RedisService,
     private readonly verificationService: VerificationService,
   ) {}
@@ -116,7 +115,7 @@ export class AccountSettingsService {
     if (user.totpEnabled) throw new BadRequestException('2FA já está ativo');
 
     const secret = generateSecret();
-    const encryptedSecret = this.securityService.encryptData(secret);
+    const encryptedSecret = encryptData(secret);
 
     await this.redisService.setWithExpire(
       RedisKeys.totpSetup(user.id),
@@ -145,7 +144,7 @@ export class AccountSettingsService {
       );
     }
 
-    const secret = this.securityService.decryptData(pending.encryptedSecret);
+    const secret = decryptData(pending.encryptedSecret);
 
     const result = verifySync({ token: dto.token, secret });
 
@@ -180,13 +179,15 @@ export class AccountSettingsService {
 
   private async killAllSessions(userId: string): Promise<void> {
     const sessions = await this.redisService.getList(
-      `auth:user_sessions:${userId}`,
+      RedisKeys.userSessions(userId),
     );
 
     await Promise.all([
-      ...sessions.map((sid) => this.redisService.remove(`auth:session:${sid}`)),
       ...sessions.map((sid) =>
-        this.redisService.removeFromList(`auth:user_sessions:${userId}`, sid),
+        this.redisService.remove(RedisKeys.session(sid)),
+      ),
+      ...sessions.map((sid) =>
+        this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
       ),
     ]);
   }
@@ -196,17 +197,17 @@ export class AccountSettingsService {
     currentSid: string,
   ): Promise<void> {
     const sessions = await this.redisService.getList(
-      `auth:user_sessions:${userId}`,
+      RedisKeys.userSessions(userId),
     );
 
     const sessionsToKill = sessions.filter((sid) => sid !== currentSid);
 
     await Promise.all([
       ...sessionsToKill.map((sid) =>
-        this.redisService.remove(`auth:session:${sid}`),
+        this.redisService.remove(RedisKeys.session(sid)),
       ),
       ...sessionsToKill.map((sid) =>
-        this.redisService.removeFromList(`auth:user_sessions:${userId}`, sid),
+        this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
       ),
     ]);
   }

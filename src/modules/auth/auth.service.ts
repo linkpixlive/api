@@ -10,7 +10,11 @@ import { UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { verifySync } from 'otplib';
-import { SecurityService } from 'src/common/security/security.service';
+import {
+  decryptData,
+  encryptData,
+  hashData,
+} from 'src/common/utils/crypto.util';
 import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { EmailService } from 'src/infra/queues/email/email.service';
@@ -36,7 +40,6 @@ export class AuthService {
   constructor(
     private usersRepository: UsersRepository,
     private changePassRepository: ChangePasswordRepository,
-    private securityService: SecurityService,
     private jwtService: JwtService,
     private emailService: EmailService,
     private redisService: RedisService,
@@ -47,7 +50,7 @@ export class AuthService {
 
   async register(registerAuthDto: RegisterAuthDto) {
     const { name, username, email, password, cpf } = registerAuthDto;
-    const hashedCpf = this.securityService.hashData(cpf);
+    const hashedCpf = hashData(cpf);
 
     await this.profileService.validateUsernameAvailability(username);
 
@@ -65,7 +68,7 @@ export class AuthService {
       throw new ConflictException('CPF já está em uso');
     }
 
-    const encryptedCpf = this.securityService.encryptData(cpf);
+    const encryptedCpf = encryptData(cpf);
     const encryptedPassword = await this.generatePasswordHash(password);
 
     const userData = {
@@ -155,7 +158,7 @@ export class AuthService {
     if (!user.totpEnabled || !user.totpSecret)
       throw new BadRequestException('2FA não ativo nesta conta');
 
-    const secret = this.securityService.decryptData(user.totpSecret);
+    const secret = decryptData(user.totpSecret);
 
     const result = verifySync({ token: totp, secret });
 
@@ -177,7 +180,7 @@ export class AuthService {
     await this.changePassRepository.deleteManyByUserId(user.id);
 
     const uuid = crypto.randomUUID();
-    const hashedUUID = this.securityService.hashData(uuid);
+    const hashedUUID = hashData(uuid);
 
     const expeiresDate = new Date();
     expeiresDate.setMinutes(expeiresDate.getMinutes() + 2);
@@ -202,7 +205,7 @@ export class AuthService {
   async resetPassword(resetPassword: ResetPasswordDto) {
     const { newPassword, token } = resetPassword;
 
-    const hashedToken = this.securityService.hashData(token);
+    const hashedToken = hashData(token);
 
     const updatePassword =
       await this.changePassRepository.findByToken(hashedToken);
@@ -231,7 +234,7 @@ export class AuthService {
   async verifyOtp({ otp, email }: VerifyOtpDto) {
     const redisKey = RedisKeys.otpVerification(email);
     const otpData = await this.redisService.get<OtpData>(redisKey);
-    const hashedOtp = this.securityService.hashData(otp);
+    const hashedOtp = hashData(otp);
 
     if (!otpData) {
       throw new BadRequestException('OTP expirado ou não encontrado');
@@ -275,24 +278,24 @@ export class AuthService {
 
   async logout(sid: string, userId: string) {
     await Promise.all([
-      this.redisService.remove(`auth:session:${sid}`),
-      this.redisService.removeFromList(`auth:user_sessions:${userId}`, sid),
+      this.redisService.remove(RedisKeys.session(sid)),
+      this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
     ]);
   }
 
   async logoutAll(userId: string, currentSid: string) {
     const sessions = await this.redisService.getList(
-      `auth:user_sessions:${userId}`,
+      RedisKeys.userSessions(userId),
     );
 
     const sessionsToLogout = sessions.filter((sid) => sid !== currentSid);
 
     await Promise.all([
       ...sessionsToLogout.map((sid) =>
-        this.redisService.remove(`auth:session:${sid}`),
+        this.redisService.remove(RedisKeys.session(sid)),
       ),
       ...sessionsToLogout.map((sid) =>
-        this.redisService.removeFromList(`auth:user_sessions:${userId}`, sid),
+        this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
       ),
     ]);
   }
@@ -303,9 +306,13 @@ export class AuthService {
     const expiresIn = days * 24 * 60 * 60;
 
     await Promise.all([
-      this.redisService.setWithExpire(`auth:session:${sid}`, expiresIn, userId),
-      this.redisService.addToList(`auth:user_sessions:${userId}`, sid),
-      this.redisService.setExpire(`auth:user_sessions:${userId}`, expiresIn),
+      this.redisService.setWithExpire(
+        RedisKeys.session(sid),
+        expiresIn,
+        userId,
+      ),
+      this.redisService.addToList(RedisKeys.userSessions(userId), sid),
+      this.redisService.setExpire(RedisKeys.userSessions(userId), expiresIn),
     ]);
 
     return await this.jwtService.signAsync({

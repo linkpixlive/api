@@ -32,8 +32,9 @@
 ## Rate limiting
 
 - `ThrottlerGuard` global (**exceto em `development`**), storage Redis (`ThrottlerStorageRedisService`).
-- 12 throttlers nomeados em `app.module.ts`: `burst` (5/s), `standard` (45/min), `long_term` (500/h), `login_limit`, `registration_limit`, `recovery_limit`, `email_change_limit`, `password_change_limit`, `2fa_limit`, `deactivation_limit`, `ws_alert_finished`, `ws_heartbeat`. Outros usados inline: `donation_create`, `username_lookup`, `webhook_burst`, `webhook_sustained`, `health_check`.
-- Endpoint público novo → `@Throttle` explícito com os nomes apropriados.
+- `forRoot` (`app.module.ts`) define só **tetos globais**, válidos para todas as rotas (contador por rota+IP; limite efetivo de uma rota = mínimo entre os buckets): `default` sem nome (45/min — a base overridável), `burst` (5/s), `long_term` (500/h).
+- Regra específica de rota = **override no handler**: `@Throttle({ default: { limit, ttl } })` (mais `burst` quando a rota precisar de rajada própria). Armadilha do v6: o nome citado no decorator **precisa** existir no `forRoot`, senão é no-op silencioso; e não existe opt-in — registrar um nome novo o aplica a todas as rotas (`@SkipThrottle` é a única exceção por rota).
+- WebSocket: sem throttling — o guard padrão é HTTP-only; throttle de mensagens exigiria um guard custom.
 
 ## Sanitização
 

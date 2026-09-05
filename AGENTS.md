@@ -9,7 +9,7 @@ Backend da plataforma **LinkPix** (nome legado: Tipply): doações em lives via 
 - **Entrada/saída**: DTOs com `class-validator`; respostas via entities com `@Expose`.
 - **Dinheiro**: mutação financeira sempre em `$transaction` via `WalletsRepository.applyOp` (ledger é a fonte da verdade).
 - **Redis**: só via `RedisService`; chave nova = builder em `redis-keys.ts` + TTL + documentação em `docs/data.md`.
-- **Env**: só via `ConfigService` (exceto bootstrap); variável nova entra em `env.validation.ts` + `.env(.example)`.
+- **Env**: só via `ConfigService` (exceção: bootstrap e utils de runtime em `common/utils/`, que leem `process.env` direto); variável nova entra em `env.validation.ts` + `.env(.example)`.
 - **Decimal**: valores monetários com `Decimal` do Prisma, nunca float.
 - **Verificação**: `pnpm build` + `pnpm lint` — não há suíte de testes.
 

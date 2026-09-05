@@ -8,7 +8,7 @@ import { Public } from 'src/common/decorators/isPublic';
 @Controller('health')
 export class HealthController {
   @Get()
-  @Throttle({ health_check: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Health check da aplicação.' })
   @ApiResponse({
     status: 200,

@@ -23,8 +23,8 @@
 | `widgets` | CRUD de widgets overlay/qrcode + token; **motor da fila de alertas** (`overlay.service`) |
 | `webhooks` | `POST /webhook/pix` (Efí) — roteia doações e saques |
 | `dashboard` | estatísticas 30 dias + histórico paginado (busca por nome/mensagem) |
-| `admin` | `@Roles(admin)`: verificar usuários, aprovar/rejeitar saques; CRUD de vozes em `admin/voices` |
-| `voices` | catálogo de vozes TTS (consumido pelo pipeline de doações) |
+| `admin` | `@Roles(admin)`: verificar usuários, aprovar/rejeitar saques; CRUD de vozes (`admin/voices` — controller e `AdminVoicesService` próprios) |
+| `voices` | catálogo de vozes TTS: listagem pública (`GET /voices`) e resolução de voz para o TTS; o CRUD admin vive no módulo `admin` |
 | `health` | `GET /health` (liveness simples) |
 
 ## Fluxo da doação (ponta a ponta)

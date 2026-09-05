@@ -1,5 +1,4 @@
 import { Inject, forwardRef } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import {
   ConnectedSocket,
   MessageBody,
@@ -48,7 +47,6 @@ export class OverlayGateway
   }
 
   @SubscribeMessage('alert_finished')
-  @Throttle({ ws_alert_finished: { limit: 8, ttl: 20000 } })
   async handleAlertFinished(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { id: string },
@@ -59,7 +57,6 @@ export class OverlayGateway
   }
 
   @SubscribeMessage('heartbeat_pulse')
-  @Throttle({ ws_heartbeat: { limit: 5, ttl: 60000 } })
   async handlePulse(@ConnectedSocket() client: Socket) {
     const token = client['token'] as string;
     if (!token) return;
