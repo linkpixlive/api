@@ -26,6 +26,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { VoicesModule } from './modules/voices/voices.module';
 import { AccountSettingsModule } from './modules/account-settings/account-settings.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -91,6 +92,16 @@ import { AccountSettingsModule } from './modules/account-settings/account-settin
           ttl: 900000,
           limit: 3,
         },
+        {
+          name: 'ws_alert_finished',
+          ttl: 20000,
+          limit: 8,
+        },
+        {
+          name: 'ws_heartbeat',
+          ttl: 60000,
+          limit: 5,
+        },
       ],
       storage: new ThrottlerStorageRedisService(process.env.REDIS_URL),
     }),
@@ -114,6 +125,7 @@ import { AccountSettingsModule } from './modules/account-settings/account-settin
     ProfileModule,
     VoicesModule,
     AccountSettingsModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { DonationStatus, MessageType } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/client';
+import { Donation, DonationStatus, MessageType } from '@prisma/client';
+import { getAudioUrl } from 'src/common/utils/audioUrl.util';
 
 export class DonationHistoryEntity {
   @ApiProperty({ example: 'uuid-123', description: 'ID da transação' })
@@ -10,7 +10,7 @@ export class DonationHistoryEntity {
   name: string;
 
   @ApiProperty({ example: 10, description: 'Valor da doação' })
-  amount: Decimal;
+  amount: number;
 
   @ApiProperty({
     example: 'Keep up the good work!',
@@ -18,13 +18,6 @@ export class DonationHistoryEntity {
     nullable: true,
   })
   message: string | null;
-
-  @ApiProperty({
-    example: 'tts/audio.mp3',
-    description: 'Chave do áudio',
-    nullable: true,
-  })
-  audioUrl: string | null;
 
   @ApiProperty({
     example: 'text',
@@ -37,8 +30,19 @@ export class DonationHistoryEntity {
   @ApiProperty({ enum: DonationStatus, example: 'paid' })
   status: DonationStatus;
 
-  @ApiProperty({ example: '2026-04-16T12:00:00.000Z' })
-  createdAt: Date;
+  @ApiProperty({
+    example: 'Keep up the good work!',
+    description: 'Mensagem original antes da moderação',
+    nullable: true,
+  })
+  messageRaw: string | null;
+
+  @ApiProperty({
+    example: 'https://cdn.tipply.live/tts/johndoe-uuid-123.wav',
+    description: 'URL pública do áudio',
+    nullable: true,
+  })
+  voiceUrl: string | null;
 
   @ApiProperty({ example: '2026-04-16T12:05:00.000Z', nullable: true })
   approvedAt: Date | null;
@@ -47,17 +51,17 @@ export class DonationHistoryEntity {
     Object.assign(this, partial);
   }
 
-  // static toResponse(donation: Donation): DonationHistoryEntity {
-  //   return new DonationHistoryEntity({
-  //     id: donation.id,
-  //     name: donation.name,
-  //     amount: Number(donation.amount),
-  //     message: donation.message,
-  //     audioUrl: donation.voice_url,
-  //     messageType: donation.message_type,
-  //     status: donation.status,
-  //     createdAt: donation.created_at,
-  //     approvedAt: donation.approved_at,
-  //   });
-  // }
+  static fromDonation(donation: Donation): DonationHistoryEntity {
+    return new DonationHistoryEntity({
+      id: donation.id,
+      name: donation.name,
+      amount: Number(donation.amount),
+      message: donation.message,
+      messageType: donation.messageType,
+      status: donation.status,
+      messageRaw: donation.messageRaw,
+      voiceUrl: getAudioUrl(donation.voiceUrl),
+      approvedAt: donation.approvedAt,
+    });
+  }
 }

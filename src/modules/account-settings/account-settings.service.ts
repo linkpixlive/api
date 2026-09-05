@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import { generateSecret, generateURI, verifySync } from 'otplib';
 import { SecurityService } from 'src/common/security/security.service';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { RedisKeys, REDIS_TTL } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { VerificationService } from '../auth/verification.service';
@@ -117,9 +118,13 @@ export class AccountSettingsService {
     const secret = generateSecret();
     const encryptedSecret = this.securityService.encryptData(secret);
 
-    await this.redisService.setWithExpire(`totp:setup:${user.id}`, 600, {
-      encryptedSecret,
-    } satisfies Pending2faSetup);
+    await this.redisService.setWithExpire(
+      RedisKeys.totpSetup(user.id),
+      REDIS_TTL.totpSetup,
+      {
+        encryptedSecret,
+      } satisfies Pending2faSetup,
+    );
 
     const otpauthUrl = generateURI({
       issuer: 'LinkPix',
@@ -132,7 +137,7 @@ export class AccountSettingsService {
 
   async enable2fa(userId: string, dto: Enable2faDto) {
     const pending = await this.redisService.get<Pending2faSetup>(
-      `totp:setup:${userId}`,
+      RedisKeys.totpSetup(userId),
     );
     if (!pending) {
       throw new BadRequestException(
@@ -151,7 +156,7 @@ export class AccountSettingsService {
       totpEnabled: true,
     });
 
-    await this.redisService.remove(`totp:setup:${userId}`);
+    await this.redisService.remove(RedisKeys.totpSetup(userId));
 
     this.logger.log(`2FA enabled: userId=${userId}`);
 

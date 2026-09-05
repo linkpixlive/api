@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import crypto from 'node:crypto';
 import { EmailService } from 'src/infra/queues/email/email.service';
+import { RedisKeys, REDIS_TTL } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { SecurityService } from 'src/common/security/security.service';
 
@@ -20,7 +21,7 @@ export class VerificationService {
 
   async sendVerificationOtp(email: string): Promise<void> {
     const otp = crypto.randomInt(100000, 999999).toString();
-    const redisKey = `otp:verification:${email}`;
+    const redisKey = RedisKeys.otpVerification(email);
 
     const hashedOtp = this.securityService.hashData(otp);
 
@@ -44,7 +45,7 @@ export class VerificationService {
       }
     }
 
-    await this.redisService.setWithExpire(redisKey, 600, {
+    await this.redisService.setWithExpire(redisKey, REDIS_TTL.otpVerification, {
       otp: hashedOtp,
       attempts: 0,
       createdAt: new Date(),

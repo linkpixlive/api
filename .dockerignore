@@ -1,0 +1,33 @@
+# Build context mínimo: só código-fonte e configs de build entram na imagem.
+# Segredos (.env*) nunca devem chegar ao build context.
+
+# Dependências e artefatos locais
+node_modules
+dist
+coverage
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Segredos e variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Documentação e assets
+docs
+readme-assets
+*.md
+
+# Ferramentas de dev que não vão para a imagem
+scripts
+test
+eslint.config.mjs
+.prettierrc
+
+# Infra local
+Dockerfile
+docker-compose.yml
+.dockerignore

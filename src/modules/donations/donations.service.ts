@@ -10,6 +10,7 @@ import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
+import { RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { DonationDto } from './dto/donation.dto';
 import { DonationEntity } from './entities/donation.entity';
@@ -36,7 +37,7 @@ export class DonationsService {
     }
 
     const overlayStatus = overlay
-      ? await this.redisService.get(`overlay:${overlay.token}`)
+      ? await this.redisService.get(RedisKeys.overlayOnline(overlay.token))
       : null;
 
     const data = {

@@ -8,6 +8,9 @@ export class OverlayDonationEntity {
   message: string | null;
   audioUrl: string | null;
   messageType: string | null;
+  createdAt: Date;
+  isTest?: boolean;
+  isCurrent?: boolean;
 
   constructor(partial: Partial<OverlayDonationEntity>) {
     Object.assign(this, partial);
@@ -24,6 +27,7 @@ export class OverlayDonationEntity {
       message: donation.message ? xss.filterXSS(donation.message) : null,
       audioUrl,
       messageType: donation.messageType as string,
+      createdAt: donation.createdAt,
     });
   }
 }

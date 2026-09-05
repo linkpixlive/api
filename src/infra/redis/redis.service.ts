@@ -9,6 +9,21 @@ export class RedisService {
     await this.redis.setex(key, expiresIn, JSON.stringify(data));
   }
 
+  async setIfNotExists(
+    key: string,
+    expiresIn: number,
+    data: unknown,
+  ): Promise<boolean> {
+    const result = await this.redis.set(
+      key,
+      JSON.stringify(data),
+      'EX',
+      expiresIn,
+      'NX',
+    );
+    return result === 'OK';
+  }
+
   async get<T>(key: string): Promise<T | null> {
     const data = await this.redis.get(key);
     return data ? (JSON.parse(data) as T) : null;
@@ -49,8 +64,16 @@ export class RedisService {
     await this.redis.rpush(key, value);
   }
 
+  async addToListStart(key: string, value: string) {
+    await this.redis.lpush(key, value);
+  }
+
   async removeFromListStart(key: string): Promise<string | null> {
     return await this.redis.lpop(key);
+  }
+
+  async removeListValue(key: string, value: string) {
+    await this.redis.lrem(key, 0, value);
   }
 
   async getListLength(key: string): Promise<number> {

@@ -14,6 +14,7 @@ import { SecurityService } from 'src/common/security/security.service';
 import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { EmailService } from 'src/infra/queues/email/email.service';
+import { RedisKeys, REDIS_TTL } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { ProfileService } from '../profile/profile.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -120,8 +121,8 @@ export class AuthService {
     if (user.totpEnabled) {
       const nonce = crypto.randomUUID();
       await this.redisService.setWithExpire(
-        `auth:pending_2fa:${nonce}`,
-        300,
+        RedisKeys.authPending2fa(nonce),
+        REDIS_TTL.authPending2fa,
         user.id,
       );
       return { requires2fa: true, nonce };
@@ -143,7 +144,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
 
     const pendingUserId = await this.redisService.get<string>(
-      `auth:pending_2fa:${nonce}`,
+      RedisKeys.authPending2fa(nonce),
     );
 
     if (!pendingUserId)
@@ -160,7 +161,7 @@ export class AuthService {
 
     if (!result.valid) throw new UnauthorizedException('Código inválido');
 
-    await this.redisService.remove(`auth:pending_2fa:${nonce}`);
+    await this.redisService.remove(RedisKeys.authPending2fa(nonce));
 
     return await this.createSession(user.id, user.roles);
   }
@@ -228,7 +229,7 @@ export class AuthService {
   }
 
   async verifyOtp({ otp, email }: VerifyOtpDto) {
-    const redisKey = `otp:verification:${email}`;
+    const redisKey = RedisKeys.otpVerification(email);
     const otpData = await this.redisService.get<OtpData>(redisKey);
     const hashedOtp = this.securityService.hashData(otp);
 

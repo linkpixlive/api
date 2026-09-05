@@ -6,13 +6,18 @@ import {
 import { WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
+import { RedisKeys } from 'src/infra/redis/redis-keys';
+import { RedisService } from 'src/infra/redis/redis.service';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { WidgetSettingsMap } from './dto/widget-settings.map';
 import { WidgetEntity } from './entities/widget.entity';
 
 @Injectable()
 export class WidgetsService {
-  constructor(private readonly widgetRepository: WidgetRepository) {}
+  constructor(
+    private readonly widgetRepository: WidgetRepository,
+    private readonly redisService: RedisService,
+  ) {}
 
   async getWidgetSettings<T extends WidgetType>(
     userId: string,
@@ -95,6 +100,16 @@ export class WidgetsService {
       type,
       randomUUID(),
     );
+
+    if (existingWidget.token !== widget.token) {
+      await Promise.all([
+        this.redisService.remove(RedisKeys.overlayQueue(existingWidget.token)),
+        this.redisService.remove(
+          RedisKeys.overlayCurrent(existingWidget.token),
+        ),
+        this.redisService.remove(RedisKeys.overlayOnline(existingWidget.token)),
+      ]);
+    }
 
     return WidgetEntity.fromPrisma(widget);
   }

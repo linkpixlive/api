@@ -10,6 +10,8 @@ import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
+import { DashboardGateway } from 'src/infra/websocket/dashboard.gateway';
+import { DonationHistoryEntity } from 'src/modules/dashboard/entities/donation-history.entity';
 import { VoicesService } from 'src/modules/voices/voices.service';
 import { OverlayWidgetSettingsDto } from 'src/modules/widgets/dto/overlay-settings.dto';
 import { OverlayService } from 'src/modules/widgets/overlay.service';
@@ -27,6 +29,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly speech: SpeechContract,
     private readonly overlayService: OverlayService,
     private readonly voiceService: VoicesService,
+    private readonly dashboardGateway: DashboardGateway,
   ) {
     super();
   }
@@ -59,6 +62,12 @@ export class DonationsQueueProcessor extends WorkerHost {
         message: donation.messageRaw ?? '',
         voiceUri: ttsKey,
       });
+
+      const historyEntity = DonationHistoryEntity.fromDonation(updatedDonation);
+      this.dashboardGateway.emitDonationCreated(
+        updatedDonation.userId,
+        historyEntity,
+      );
 
       await this.overlayService.handleNewDonation(overlay, updatedDonation.id);
     } catch (error) {

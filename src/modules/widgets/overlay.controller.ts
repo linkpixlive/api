@@ -34,6 +34,15 @@ export class OverlayController {
     return this.overlayService.clearQueue(user.id);
   }
 
+  @Delete('queue/:donationId')
+  @ApiOperation({ summary: 'Remover doação específica da fila' })
+  async removeFromQueue(
+    @CurrentUser() user: SafeUser,
+    @Param('donationId') donationId: string,
+  ) {
+    return this.overlayService.removeFromQueue(user.id, donationId);
+  }
+
   @Post('replay/:donationId')
   @ApiOperation({
     summary: 'Readicionar doação à fila de alertas para repetir',

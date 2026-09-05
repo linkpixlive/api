@@ -1,14 +1,14 @@
-import { Controller, Get, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { DashboardService } from './dashboard.service';
+import { GetHistoryQueryDto } from './dto/get-history-query.dto';
 import { DashboardStatsEntity } from './entities/dashboard-stats.entity';
 import { DonationHistoryEntity } from './entities/donation-history.entity';
 
@@ -34,19 +34,17 @@ export class DashboardController {
 
   @Get('history')
   @ApiOperation({ summary: 'Obter histórico de doações paginado' })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiResponse({
     status: 200,
     type: DonationHistoryEntity,
     description: 'Histórico retornado com sucesso.',
   })
+  @ApiResponse({ status: 400, description: 'Parâmetros de query inválidos.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   getHistory(
     @CurrentUser() user: SafeUser,
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+    @Query() query: GetHistoryQueryDto,
   ) {
-    return this.dashboardService.getHistory(user.id, page, limit);
+    return this.dashboardService.getHistory(user.id, query);
   }
 }
