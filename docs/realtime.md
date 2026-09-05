@@ -6,24 +6,33 @@
 
 - Conexão global via `REDIS_URL` (`BullModule.forRoot`); filas em `infra/queues/<dominio>/`; processor `@Processor('...') extends WorkerHost`.
 - `defaultJobOptions` (todas as filas): `attempts: 3`, backoff exponencial 5s, `removeOnComplete: true`, `removeOnFail: 100`.
-- Erro no processor: loga e **re-lança** — o retry é do BullMQ.
+- Erro no processor: loga e **re-lança** para erros transitórios (Efí/rede/TTS/R2) — o retry é do BullMQ. Casos definitivos (doação já paga) são resolvidos no processor **sem rethrow**.
 - Nomes de fila e job em kebab-case.
 
 | Fila | Job | Produtor |
 |---|---|---|
-| `donations-queue` | `send-donation` | webhook Efí (doação `pending`) |
+| `donations-queue` | `send-donation` | webhook Efí (doação `pending`) e cron de expiração (vencida que a Efí confirma paga). Options próprias: `attempts: 4`, backoff exponencial 30s |
 | email | `send-email` | auth/account-settings (verificação, reset) |
 
 ## Pipeline `donations-queue` (processor)
 
-1. Carrega doação — falha se inexistente ou já `paid` (idempotência).
+1. Carrega doação — aceita `pending` ou `expired`; inexistente falha; já `paid`/`displayed` loga e **conclui com sucesso** (idempotência de retry).
 2. `gateway.getPixStatus` — exige `PAID` e valor igual (compara com `Decimal`).
-3. Carrega user + donationSettings + widget overlay ativo (`UsersRepository.findByIdWithConfig`).
+3. Carrega user + donationSettings + widget overlay ativo (`UsersRepository.findByIdWithConfig`) — overlay é **opcional**: streamer sem widget ativo segue o pipeline (o TTS usa `speakNameAmount: true` como padrão).
 4. Moderação IA (`AiContract.cleanMessage`): **chamada comentada** no processor — hoje `message = messageRaw`. `filterProfanity`/`filterSpam`/`blockedWords` só surtem efeito quando reativada.
 5. TTS: prefixo opcional `"<nome> mandou R$<valor>: "` (se `speakNameAmount` do widget); voz do `voiceId` da doação; `SpeechContract.generateTTS` → WAV.
 6. Upload R2 com chave `tts/<username>-<donationId>.wav` — no DB vai só a chave; URL = `BUCKET_URL/<key>` montada em runtime.
 7. `DonationsRepository.processDonation` (tx: `paid` + crédito no ledger).
-8. Dashboard gateway emite `donation:created`; `OverlayService.handleNewDonation` enfileira o alerta.
+8. Dashboard gateway emite `donation:created`; `OverlayService.handleNewDonation` enfileira o alerta — sem widget configurado ou com overlay offline, a doação segue paga/creditada e a etapa é apenas pulada.
+
+## Cron de expiração (`DonationsService.expireOverdueDonations`, 5min)
+
+O webhook consumido é só de **Pix recebido** — expiração não dispara evento, e cobrança vencida segue `ATIVA` na Efí (não há status EXPIRADA na cob v2). A expiração é decisão local via `expiredAt`:
+
+- Vencidas há +48h → `expired` direto, sem consulta.
+- Vencidas há 5min–48h → consulta `getPixStatus`: `CONCLUIDA` → reenfileira como pagamento (webhook perdido); `ATIVA` → `expired`; **erro de consulta → adia para o próximo tick** (400 transitório já atingiu cobrança paga — nunca expirar por falha de consulta).
+
+Detalhes e decisão em `docs/plans/2026-09-05-donation-expiry-and-retry.md`.
 
 ## email-queue
 

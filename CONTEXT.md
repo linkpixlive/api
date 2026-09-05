@@ -33,6 +33,7 @@
 2. Efí confirma → `POST /webhook/pix` → enfileira `{donation_id}` em `donations-queue`.
 3. Processor (ver `docs/realtime.md`): verifica pagamento → TTS → upload R2 → doação `paid` + crédito no ledger → WS `donation:created` → enfileira alerta no overlay.
 4. Overlay exibe; cliente emite `alert_finished` → status `displayed` → próxima da fila.
+5. Expiração: cron a cada 5min marca vencidas (`expiredAt` +5min) como `expired` — consultando a Efí antes, para não perder pagamento com webhook atrasado; +48h expira sem consulta. Webhook de expiração não existe (o consumido é só de Pix recebido).
 
 ## Ciclo de saque
 

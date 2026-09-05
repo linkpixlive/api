@@ -102,6 +102,21 @@ import { HealthModule } from './modules/health/health.module';
           ttl: 60000,
           limit: 5,
         },
+        {
+          name: 'donation_status',
+          ttl: 3600000,
+          limit: 120,
+        },
+        {
+          name: 'donation_create',
+          ttl: 3600000,
+          limit: 15,
+        },
+        {
+          name: 'username_lookup',
+          ttl: 600000,
+          limit: 60,
+        },
       ],
       storage: new ThrottlerStorageRedisService(process.env.REDIS_URL),
     }),

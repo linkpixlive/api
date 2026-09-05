@@ -39,4 +39,16 @@ export class CreateVoiceDto {
   @IsString({ message: 'A foto deve ser uma string' })
   @MaxLength(500, { message: 'A foto deve ter no máximo 500 caracteres' })
   photoUri?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/voices/amostra.wav',
+    maxLength: 500,
+    description: 'Áudio de exemplo reproduzido no formulário de doação',
+  })
+  @IsOptional()
+  @IsString({ message: 'A amostra de áudio deve ser uma string' })
+  @MaxLength(500, {
+    message: 'A amostra de áudio deve ter no máximo 500 caracteres',
+  })
+  sampleUrl?: string;
 }

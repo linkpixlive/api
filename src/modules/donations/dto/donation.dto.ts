@@ -1,6 +1,7 @@
 import {
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   IsUUID,
   MaxLength,
@@ -26,10 +27,10 @@ export class DonationDto {
   @Min(1, { message: 'O valor mínimo é 1' })
   amount: number;
 
-  @ApiProperty({ example: 'uuid-voice-id' })
+  @ApiProperty({ example: 'uuid-voice-id', nullable: true, required: false })
+  @IsOptional()
   @IsUUID('4', { message: 'O ID da voz deve ser um UUID válido' })
-  @IsNotEmpty({ message: 'O ID da voz não pode estar vazio' })
-  voiceId: string;
+  voiceId?: string | null;
 
   @ApiProperty({ example: 'streamer_username' })
   @IsString({ message: 'O nome de usuário deve ser uma string' })

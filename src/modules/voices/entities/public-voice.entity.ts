@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
 @Exclude()
-export class VoiceEntity {
+export class PublicVoiceEntity {
   @ApiProperty({ example: 'uuid-123' })
   @Expose()
   id: string;
@@ -15,20 +15,13 @@ export class VoiceEntity {
   @Expose()
   provider: string;
 
-  @ApiProperty({ example: 'pt-BR-Standard-A' })
-  @Expose()
-  voiceId: string;
-
-  @ApiProperty({ example: true })
-  @Expose()
-  isActive: boolean;
-
   @ApiProperty({
-    example: 'https://cdn.example.com/voices/foto.png',
+    example: 'https://cdn.example.com/voices/foto.jpg',
     nullable: true,
+    description: 'Imagem de exemplo da voz',
   })
   @Expose()
-  photoUri: string | null;
+  photoUrl: string | null;
 
   @ApiProperty({
     example: 'https://cdn.example.com/voices/amostra.wav',
@@ -38,11 +31,7 @@ export class VoiceEntity {
   @Expose()
   sampleUrl: string | null;
 
-  @ApiProperty({ example: '2026-04-16T12:00:00.000Z' })
-  @Expose()
-  createdAt: Date;
-
-  constructor(partial: Partial<VoiceEntity>) {
+  constructor(partial: Partial<PublicVoiceEntity>) {
     Object.assign(this, partial);
   }
 }

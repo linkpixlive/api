@@ -13,12 +13,33 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
+import { Public } from 'src/common/decorators/isPublic';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { CreateVoiceDto } from './dto/create-voice.dto';
 import { UpdateVoiceDto } from './dto/update-voice.dto';
+import { PublicVoiceEntity } from './entities/public-voice.entity';
 import { VoiceEntity } from './entities/voice.entity';
 import { VoicesService } from './voices.service';
+
+@ApiTags('Voices')
+@Controller('voices')
+export class VoicesPublicController {
+  constructor(private readonly voicesService: VoicesService) {}
+
+  @Get()
+  @Public()
+  @ApiOperation({ summary: 'Listar vozes ativas (público)' })
+  @ApiResponse({ status: 200, type: [PublicVoiceEntity] })
+  @Throttle({
+    burst: { limit: 20, ttl: 10000 },
+    standard: { limit: 45, ttl: 60000 },
+  })
+  findActive() {
+    return this.voicesService.findActivePublic();
+  }
+}
 
 @ApiTags('Admin / Voices')
 @ApiBearerAuth()

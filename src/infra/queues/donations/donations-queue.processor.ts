@@ -39,6 +39,8 @@ export class DonationsQueueProcessor extends WorkerHost {
 
     try {
       const donation = await this.getDonation(donation_id);
+      if (!donation) return;
+
       await this.verifyPaymentStatus(donation.transactionId, donation.amount);
 
       const { user, overlay, overlaySettings } = await this.getUserWithConfig(
@@ -54,7 +56,7 @@ export class DonationsQueueProcessor extends WorkerHost {
         donation,
         user,
         message: donation.messageRaw ?? '',
-        speakNameAmount: overlaySettings.speakNameAmount,
+        speakNameAmount: overlaySettings?.speakNameAmount ?? true,
       });
 
       const updatedDonation = await this.donationsRepository.processDonation({
@@ -69,7 +71,12 @@ export class DonationsQueueProcessor extends WorkerHost {
         historyEntity,
       );
 
-      await this.overlayService.handleNewDonation(overlay, updatedDonation.id);
+      if (overlay) {
+        await this.overlayService.handleNewDonation(
+          overlay,
+          updatedDonation.id,
+        );
+      }
     } catch (error) {
       this.logger.error(`Falha ao processar doação ${donation_id}:`, error);
       throw error;
@@ -130,8 +137,15 @@ export class DonationsQueueProcessor extends WorkerHost {
   private async getDonation(id: string) {
     const donation = await this.donationsRepository.findById(id);
 
-    if (!donation || donation.status === 'paid') {
-      throw new BadRequestException('Doação não encontrada ou já processada');
+    if (!donation) {
+      throw new BadRequestException('Doação não encontrada');
+    }
+
+    if (donation.status !== 'pending' && donation.status !== 'expired') {
+      this.logger.warn(
+        `Doação ${id} já processada (status ${donation.status}); ignorando`,
+      );
+      return null;
     }
 
     return donation;
@@ -146,21 +160,20 @@ export class DonationsQueueProcessor extends WorkerHost {
     }
 
     const { donationSettings, widgets } = userWithConfig;
-    const overlay = widgets[0];
 
     if (!donationSettings) {
       throw new BadRequestException('Configurações de doação não encontradas');
     }
 
-    if (!overlay) {
-      throw new BadRequestException('Overlay ativo não encontrado');
-    }
+    const overlay = widgets[0] ?? null;
 
     return {
       user: userWithConfig,
       donationSettings,
       overlay,
-      overlaySettings: overlay.settings as unknown as OverlayWidgetSettingsDto,
+      overlaySettings: overlay
+        ? (overlay.settings as unknown as OverlayWidgetSettingsDto)
+        : null,
     };
   }
 

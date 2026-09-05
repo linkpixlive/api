@@ -158,6 +158,7 @@ model Voice {
   voiceId   String   @map("voice_id") @db.VarChar(100)
   isActive  Boolean  @default(true) @map("is_active")
   photoUri  String?  @map("photo_uri") @db.VarChar(500)
+  sampleUrl String?  @map("sample_url") @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at")
 
   donationSettings DonationSettings[]

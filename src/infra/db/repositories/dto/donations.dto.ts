@@ -6,7 +6,7 @@ export interface CreateDonationParams {
   paymentMethod: 'pix';
   ip?: string;
   messageRaw?: string;
-  voiceId?: string;
+  voiceId?: string | null;
   pix?: string;
   status?: 'pending' | 'paid' | 'displayed' | 'failed' | 'expired';
   expiredAt?: Date;

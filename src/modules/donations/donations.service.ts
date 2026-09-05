@@ -1,10 +1,13 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { DonationStatus, PaymentMethod } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
+import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
@@ -13,11 +16,18 @@ import { DonationsQueueService } from 'src/infra/queues/donations/donations-queu
 import { RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { DonationDto } from './dto/donation.dto';
+import { DonationStatusEntity } from './entities/donation-status.entity';
 import { DonationEntity } from './entities/donation.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
 
+const EXPIRY_MARGIN_MS = 5 * 60 * 1000;
+const HARD_EXPIRY_MS = 48 * 60 * 60 * 1000;
+const OVERDUE_BATCH_LIMIT = 50;
+
 @Injectable()
 export class DonationsService {
+  private readonly logger = new Logger(DonationsService.name);
+
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly donationsRepository: DonationsRepository,
@@ -59,9 +69,12 @@ export class DonationsService {
   ): Promise<DonationEntity> {
     const { name, message, amount, voiceId, username } = donationDto;
 
-    const voice = await this.voicesRepository.findById(voiceId);
-    if (!voice || !voice.isActive) {
-      throw new BadRequestException('Voz não encontrada ou indisponível');
+    if (voiceId) {
+      const voice = await this.voicesRepository.findById(voiceId);
+
+      if (!voice || !voice.isActive) {
+        throw new BadRequestException('Voz não encontrada ou indisponível');
+      }
     }
 
     const user = await this.usersRepository.findByUsernameWithConfig(username);
@@ -86,13 +99,7 @@ export class DonationsService {
 
     if (amountNum.lt(settings.minTextAmount)) {
       throw new BadRequestException(
-        `Valor mínimo de doação para mensagem é R$${Number(settings.minTextAmount)}`,
-      );
-    }
-
-    if (amountNum.lt(settings.minAudioAmount)) {
-      throw new BadRequestException(
-        `Valor mínimo de doação para áudio é R$${Number(settings.minAudioAmount)}`,
+        `Valor mínimo de doação é R$${Number(settings.minTextAmount)}`,
       );
     }
 
@@ -124,6 +131,20 @@ export class DonationsService {
     return new DonationEntity(donation);
   }
 
+  async getDonation(id: string): Promise<DonationStatusEntity> {
+    const donation = await this.donationsRepository.findById(id);
+
+    if (!donation) {
+      throw new NotFoundException('Doação não encontrada');
+    }
+
+    return new DonationStatusEntity({
+      id: donation.id,
+      status: donation.status,
+      expiredAt: donation.expiredAt,
+    });
+  }
+
   async webhookPix(transactionId: string): Promise<void> {
     const donation =
       await this.donationsRepository.findByTransactionId(transactionId);
@@ -136,6 +157,49 @@ export class DonationsService {
 
     if (donation.status === DonationStatus.pending) {
       await this.donationsQueue.sendDonation({ donation_id: donation.id });
+    }
+  }
+
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async expireOverdueDonations(): Promise<void> {
+    const now = Date.now();
+
+    const hardExpired = await this.donationsRepository.expireOverdue(
+      new Date(now - HARD_EXPIRY_MS),
+    );
+
+    const overdue = await this.donationsRepository.findOverdue(
+      new Date(now - EXPIRY_MARGIN_MS),
+      OVERDUE_BATCH_LIMIT,
+    );
+
+    let expired = 0;
+    let requeued = 0;
+
+    for (const donation of overdue) {
+      try {
+        const result = await this.gateway.getPixStatus(donation.transactionId);
+
+        if (result.status === TransactionStatus.PAID) {
+          await this.donationsQueue.sendDonation({ donation_id: donation.id });
+          requeued++;
+          continue;
+        }
+
+        await this.donationsRepository.expireById(donation.id);
+        expired++;
+      } catch (error) {
+        this.logger.warn(
+          `Expiração da doação ${donation.id} adiada: falha ao consultar status na Efí`,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+
+    if (hardExpired || expired || requeued) {
+      this.logger.log(
+        `Expiração de doações: ${hardExpired} expiradas direto (+48h), ${expired} expiradas, ${requeued} pagas reenfileiradas`,
+      );
     }
   }
 }

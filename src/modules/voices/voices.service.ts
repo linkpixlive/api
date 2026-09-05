@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { CreateVoiceDto } from './dto/create-voice.dto';
 import { UpdateVoiceDto } from './dto/update-voice.dto';
+import { PublicVoiceEntity } from './entities/public-voice.entity';
 import { VoiceEntity } from './entities/voice.entity';
 
 @Injectable()
@@ -16,6 +17,20 @@ export class VoicesService {
   async findActive() {
     const voices = await this.voicesRepository.findActive();
     return voices.map((v) => new VoiceEntity(v));
+  }
+
+  async findActivePublic(): Promise<PublicVoiceEntity[]> {
+    const voices = await this.voicesRepository.findActive();
+    return voices.map(
+      (v) =>
+        new PublicVoiceEntity({
+          id: v.id,
+          name: v.name,
+          provider: v.provider,
+          photoUrl: v.photoUri,
+          sampleUrl: v.sampleUrl,
+        }),
+    );
   }
 
   async findById(id: string) {

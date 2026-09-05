@@ -4,6 +4,7 @@ export interface CreateVoiceParams {
   voiceId: string;
   isActive?: boolean;
   photoUri?: string;
+  sampleUrl?: string;
 }
 
 export interface UpdateVoiceParams {
@@ -12,4 +13,5 @@ export interface UpdateVoiceParams {
   voiceId?: string;
   isActive?: boolean;
   photoUri?: string;
+  sampleUrl?: string;
 }

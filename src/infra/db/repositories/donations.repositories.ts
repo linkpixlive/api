@@ -24,12 +24,15 @@ export class DonationsRepository {
         where: { id: donationId },
       });
 
-      if (!donation || donation.status !== 'pending') {
+      if (
+        !donation ||
+        (donation.status !== 'pending' && donation.status !== 'expired')
+      ) {
         throw new BadRequestException('Doação já processada ou não encontrada');
       }
 
       const updateResult = await tx.donation.updateMany({
-        where: { id: donationId, status: 'pending' },
+        where: { id: donationId, status: { in: ['pending', 'expired'] } },
         data: {
           status: 'paid',
           message: message,
@@ -76,6 +79,33 @@ export class DonationsRepository {
 
   async findById(id: string) {
     return await this.prismaService.donation.findUnique({ where: { id } });
+  }
+
+  async findOverdue(
+    expiredBefore: Date,
+    limit: number,
+  ): Promise<{ id: string; transactionId: string }[]> {
+    return await this.prismaService.donation.findMany({
+      where: { status: 'pending', expiredAt: { lt: expiredBefore } },
+      select: { id: true, transactionId: true },
+      orderBy: { expiredAt: 'asc' },
+      take: limit,
+    });
+  }
+
+  async expireById(id: string): Promise<void> {
+    await this.prismaService.donation.updateMany({
+      where: { id, status: 'pending' },
+      data: { status: 'expired' },
+    });
+  }
+
+  async expireOverdue(expiredBefore: Date): Promise<number> {
+    const result = await this.prismaService.donation.updateMany({
+      where: { status: 'pending', expiredAt: { lt: expiredBefore } },
+      data: { status: 'expired' },
+    });
+    return result.count;
   }
 
   async findByTransactionId(transactionId: string) {
