@@ -3,7 +3,7 @@ export function maskPixKey(keyType: string, key: string): string {
     case 'cpf': {
       const clean = key.replace(/\D/g, '');
       if (clean.length === 11) {
-        return `***.${clean.substring(3, 6)}.${clean.substring(6, 9)}-**`;
+        return `***.***.***-${clean.substring(9)}`;
       }
       return key;
     }
@@ -11,7 +11,7 @@ export function maskPixKey(keyType: string, key: string): string {
     case 'cnpj': {
       const clean = key.replace(/\D/g, '');
       if (clean.length === 14) {
-        return `**.${clean.substring(2, 5)}.${clean.substring(5, 8)}/${clean.substring(8, 12)}-**`;
+        return `**.***.***/****-${clean.substring(12)}`;
       }
       return key;
     }

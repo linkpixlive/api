@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { generateSecret, generateURI, verifySync } from 'otplib';
+import { MAX_TOTP_ATTEMPTS } from 'src/common/constants/auth.constants';
 import { decryptData, encryptData } from 'src/common/utils/crypto.util';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
@@ -23,6 +24,7 @@ import { AccountSettingsEntity } from './entities/account-settings.entity';
 
 interface Pending2faSetup {
   encryptedSecret: string;
+  attempts: number;
 }
 
 @Injectable()
@@ -122,6 +124,7 @@ export class AccountSettingsService {
       REDIS_TTL.totpSetup,
       {
         encryptedSecret,
+        attempts: 0,
       } satisfies Pending2faSetup,
     );
 
@@ -144,11 +147,31 @@ export class AccountSettingsService {
       );
     }
 
+    if (pending.attempts >= MAX_TOTP_ATTEMPTS) {
+      await this.redisService.remove(RedisKeys.totpSetup(userId));
+      throw new BadRequestException(
+        'Muitas tentativas. Reinicie o setup do 2FA.',
+      );
+    }
+
     const secret = decryptData(pending.encryptedSecret);
 
     const result = verifySync({ token: dto.token, secret });
 
-    if (!result.valid) throw new BadRequestException('Código inválido');
+    if (!result.valid) {
+      const updated = await this.redisService.update(
+        RedisKeys.totpSetup(userId),
+        { ...pending, attempts: pending.attempts + 1 },
+      );
+
+      if (!updated) {
+        throw new BadRequestException(
+          'Configuração expirada ou não iniciada. Reinicie o setup.',
+        );
+      }
+
+      throw new BadRequestException('Código inválido');
+    }
 
     await this.usersRepository.update(userId, {
       totpSecret: pending.encryptedSecret,
@@ -166,6 +189,13 @@ export class AccountSettingsService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid)
       throw new UnauthorizedException('Credenciais inválidas');
+
+    if (!user.totpEnabled || !user.totpSecret)
+      throw new BadRequestException('2FA não está ativo nesta conta');
+
+    const secret = decryptData(user.totpSecret);
+    const result = verifySync({ token: dto.token, secret });
+    if (!result.valid) throw new UnauthorizedException('Código inválido');
 
     await this.usersRepository.update(user.id, {
       totpSecret: null,

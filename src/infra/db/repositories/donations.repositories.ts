@@ -1,5 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import {
+  DonationAlreadyProcessedError,
+  DonationNotFoundError,
+} from '../../../common/errors/donations.errors';
 import {
   CreateDonationParams,
   UpdateDonationParams,
@@ -24,11 +28,12 @@ export class DonationsRepository {
         where: { id: donationId },
       });
 
-      if (
-        !donation ||
-        (donation.status !== 'pending' && donation.status !== 'expired')
-      ) {
-        throw new BadRequestException('Doação já processada ou não encontrada');
+      if (!donation) {
+        throw new DonationNotFoundError();
+      }
+
+      if (donation.status !== 'pending' && donation.status !== 'expired') {
+        throw new DonationAlreadyProcessedError();
       }
 
       const updateResult = await tx.donation.updateMany({
@@ -42,7 +47,7 @@ export class DonationsRepository {
       });
 
       if (updateResult.count === 0) {
-        throw new BadRequestException('Doação já processada');
+        throw new DonationAlreadyProcessedError();
       }
 
       const updatedDonation = await tx.donation.findUniqueOrThrow({

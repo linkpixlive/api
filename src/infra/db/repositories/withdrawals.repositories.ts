@@ -1,11 +1,12 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma, WithdrawalStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { PrismaService } from '../prisma.service';
+import {
+  WithdrawalClientKeyConflictError,
+  WithdrawalInvalidStatusError,
+  WithdrawalNotFoundError,
+} from '../../../common/errors/withdrawals.errors';
 import {
   CreateWithdrawalParams,
   FindWithdrawalsParams,
@@ -20,41 +21,45 @@ export class WithdrawalsRepository {
   ) {}
 
   async findById(id: string) {
-    const withdrawal = await this.prismaService.withdrawal.findUnique({
+    return await this.prismaService.withdrawal.findUnique({
       where: { id },
     });
-
-    if (!withdrawal) {
-      throw new NotFoundException('Withdrawal not found.');
-    }
-
-    return withdrawal;
   }
 
   async processWithdrawal(params: CreateWithdrawalParams) {
-    return await this.prismaService.$transaction(async (tx) => {
-      const withdrawal = await tx.withdrawal.create({
-        data: {
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const withdrawal = await tx.withdrawal.create({
+          data: {
+            userId: params.userId,
+            pixId: params.pixId,
+            pixValue: params.pixKey,
+            keyMasked: params.keyMasked,
+            clientKey: params.clientKey ?? null,
+            grossAmount: params.grossAmount,
+            netAmount: params.netAmount,
+            feeAmount: params.feeAmount,
+            status: WithdrawalStatus.pending,
+          },
+        });
+
+        await this.walletsRepository.reserveForWithdrawal(tx, {
+          id: withdrawal.id,
           userId: params.userId,
-          pixId: params.pixId,
-          pixValue: params.pixKey,
-          keyMasked: params.keyMasked,
-          clientKey: params.clientKey ?? null,
-          grossAmount: params.grossAmount,
-          netAmount: params.netAmount,
-          feeAmount: params.feeAmount,
-          status: WithdrawalStatus.pending,
-        },
-      });
+          grossAmount: new Decimal(params.grossAmount),
+        });
 
-      await this.walletsRepository.reserveForWithdrawal(tx, {
-        id: withdrawal.id,
-        userId: params.userId,
-        grossAmount: new Decimal(params.grossAmount),
+        return withdrawal;
       });
-
-      return withdrawal;
-    });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new WithdrawalClientKeyConflictError();
+      }
+      throw error;
+    }
   }
 
   async findByUserId(params: FindWithdrawalsParams) {
@@ -100,11 +105,11 @@ export class WithdrawalsRepository {
       });
 
       if (!withdrawal) {
-        throw new NotFoundException('Withdrawal not found.');
+        throw new WithdrawalNotFoundError();
       }
 
       if (withdrawal.status !== WithdrawalStatus.pending) {
-        throw new BadRequestException('Withdrawal is not pending.');
+        throw new WithdrawalInvalidStatusError('Withdrawal is not pending.');
       }
 
       return await tx.withdrawal.update({
@@ -125,7 +130,7 @@ export class WithdrawalsRepository {
       });
 
       if (!withdrawal) {
-        throw new NotFoundException('Withdrawal not found.');
+        throw new WithdrawalNotFoundError();
       }
 
       const updateResult = await tx.withdrawal.updateMany({
@@ -138,7 +143,7 @@ export class WithdrawalsRepository {
       });
 
       if (updateResult.count === 0) {
-        throw new BadRequestException(
+        throw new WithdrawalInvalidStatusError(
           'Withdrawal is not processing or already processed.',
         );
       }
@@ -150,7 +155,7 @@ export class WithdrawalsRepository {
       await this.walletsRepository.confirmWithdrawal(
         tx,
         withdrawal,
-        transactionId ?? '',
+        transactionId ?? `confirm:${withdrawal.id}`,
       );
 
       return updatedWithdrawal;
@@ -164,7 +169,7 @@ export class WithdrawalsRepository {
       });
 
       if (!withdrawal) {
-        throw new NotFoundException('Withdrawal not found.');
+        throw new WithdrawalNotFoundError();
       }
 
       const updateResult = await tx.withdrawal.updateMany({
@@ -182,7 +187,7 @@ export class WithdrawalsRepository {
       });
 
       if (updateResult.count === 0) {
-        throw new BadRequestException(
+        throw new WithdrawalInvalidStatusError(
           'Withdrawal is not pending or processing.',
         );
       }
@@ -194,7 +199,7 @@ export class WithdrawalsRepository {
       await this.walletsRepository.refundWithdrawal(
         tx,
         withdrawal,
-        transactionId ?? '',
+        transactionId ?? `refund:${withdrawal.id}`,
       );
 
       return updatedWithdrawal;

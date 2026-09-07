@@ -123,10 +123,11 @@ model Wallet {
   currentBalance    Decimal  @default(0) @map("current_balance") @db.Decimal(12, 2)
   pendingBalance    Decimal  @default(0) @map("pending_balance") @db.Decimal(12, 2)
   blockedBalance    Decimal  @default(0) @map("blocked_balance") @db.Decimal(12, 2)
-  lastTransactionId String?  @map("last_transaction_id") @db.VarChar(36)
+  lastTransactionId String?  @unique @map("last_transaction_id") @db.VarChar(36)
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastTransaction Transaction? @relation("WalletLastTransaction", fields: [lastTransactionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([userId])
   @@map("wallets")
@@ -201,7 +202,7 @@ model Withdrawal {
   id            String           @id @default(uuid()) @db.VarChar(36)
   userId        String           @map("user_id") @db.VarChar(36)
   pixId         String?          @map("pix_id") @db.VarChar(36)
-  pixValue      String           @map("pix_value") @db.VarChar(255)
+  pixValue      String           @map("pix_value") @db.VarChar(512)
   keyMasked     String           @map("key_masked") @db.VarChar(255)
   clientKey     String?          @map("client_key") @db.VarChar(128)
   status        WithdrawalStatus @default(pending)
@@ -214,7 +215,7 @@ model Withdrawal {
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   pixKey      PixKey?      @relation(fields: [pixId], references: [id], onDelete: SetNull)
-  transaction Transaction?
+  transactions Transaction[]
 
   @@unique([userId, clientKey], name: "withdrawals_user_client_key")
   @@index([userId])
@@ -233,16 +234,19 @@ model Transaction {
   createdAt     DateTime        @default(now()) @map("created_at")
   ip            String?         @db.VarChar(255)
 
-  donationId    String? @unique @map("donation_id") @db.VarChar(36)
-  withdrawalId  String? @unique @map("withdrawal_id") @db.VarChar(36)
+  donationId   String? @unique @map("donation_id") @db.VarChar(36)
+  withdrawalId String? @map("withdrawal_id") @db.VarChar(36)
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  donation   Donation?   @relation(fields: [donationId], references: [id], onDelete: SetNull)
-  withdrawal Withdrawal? @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  donation     Donation?   @relation(fields: [donationId], references: [id], onDelete: SetNull)
+  withdrawal   Withdrawal? @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
+  walletAsLast Wallet?     @relation("WalletLastTransaction")
 
+  @@unique([withdrawalId, type], map: "transactions_withdrawal_id_type_key")
   @@index([userId])
+  
   @@index([type])
-  @@index([createdAt])
+  @@index([createdAt])@@index([userId, createdAt])
   @@index([donationId])
   @@index([withdrawalId])
   @@map("transactions")

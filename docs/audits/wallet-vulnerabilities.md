@@ -3,6 +3,21 @@
 > Escopo: `src/modules/wallets/*`, `src/infra/db/repositories/wallets.repositories.ts`, `src/infra/db/repositories/dto/wallets.dto.ts`, `prisma/schema.prisma` (models `Wallet`/`Transaction`).  
 > Data: 2026-09-02
 
+## Resolução (2026-09-05)
+
+Migration `20260905160000_wallet_audit_fixes`.
+
+| # | Status | Correção |
+|---|--------|----------|
+| 1 | ✅ corrigida | `withdrawal_id` deixou de ser único; unique composta `(withdrawal_id, type)` permite reserve/confirm/refund coexistirem. `transactionId` real (`confirm:{id}`/`refund:{id}`) no lugar de `''`. |
+| 2 | ✅ corrigida | `reconcile()` ordena por `createdAt` + `id` (desempate determinístico). |
+| 3 | ✅ corrigida | Lock distribuído `wallets:reconcile:lock` (SET NX, TTL 6h) no cron; ledger paginado por cursor (500/chunk). Paginação de wallets (lotes de 100) já existia. |
+| 4 | ✅ corrigida | `applyOp`/`reconcile` não lançam mais `HttpException`: erros de domínio em `wallets.errors.ts` (`WalletNotFoundError`, `InsufficientBalanceError`), mapeados para 400/404 em `WithdrawalsService.create`. |
+| 5 | ✅ corrigida | `Wallet.lastTransactionId` agora tem FK para `transactions.id` (ON DELETE SET NULL), com limpeza de ponteiros órfãos na migration. |
+| 6 | ✅ corrigida | `@Throttle({ default: { ttl: 60000, limit: 30 } })` no endpoint de balances. |
+| 7 | ✅ corrigida | Índice composto `@@index([userId, createdAt])` em `transactions`. |
+| 8 | ✅ corrigida | Log de drift não inclui mais saldos (apenas userId + chainValid). |
+
 ## Ranking por Gravidade
 
 | # | Severidade | Vulnerabilidade |

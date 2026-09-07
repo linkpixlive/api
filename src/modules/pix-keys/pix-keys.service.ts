@@ -33,17 +33,6 @@ export class PixKeysService {
   async create(user: SafeUser, dto: CreatePixKeyDto): Promise<PixKeyEntity> {
     const keyType = this.detectKeyType(dto.key);
 
-    const count = await this.pixKeysRepository.countByUserId(user.id);
-
-    const maxKeys = this.configService.getOrThrow<number>(
-      'MAX_PIX_KEYS_PER_USER',
-    );
-    if (count >= maxKeys) {
-      throw new BadRequestException(
-        `Você pode registrar até ${maxKeys} chaves Pix.`,
-      );
-    }
-
     const keyHash = hashData(dto.key);
     const existing = await this.pixKeysRepository.findByUserIdAndKeyHash(
       user.id,
@@ -57,14 +46,21 @@ export class PixKeysService {
     const encryptedKey = encryptData(dto.key);
     const maskedKey = maskPixKey(keyType, dto.key);
 
-    const pixKey = await this.pixKeysRepository.create({
-      userId: user.id,
-      key: encryptedKey,
-      keyHashed: keyHash,
-      keyMasked: maskedKey,
-      keyType,
-      alias: dto.alias,
-    });
+    const maxKeys = this.configService.getOrThrow<number>(
+      'MAX_PIX_KEYS_PER_USER',
+    );
+
+    const pixKey = await this.pixKeysRepository.createWithLimit(
+      {
+        userId: user.id,
+        key: encryptedKey,
+        keyHashed: keyHash,
+        keyMasked: maskedKey,
+        keyType,
+        alias: dto.alias,
+      },
+      maxKeys,
+    );
 
     return this.mapToEntity(pixKey);
   }
@@ -93,12 +89,13 @@ export class PixKeysService {
   private detectKeyType(key: string): PixKeyType {
     if (PIX_RANDOM_REGEX.test(key)) return 'random';
     if (PIX_EMAIL_REGEX.test(key)) return 'email';
-    if (PIX_PHONE_REGEX.test(key)) return 'phone';
 
     const digits = key.replace(/\D/g, '');
 
     if (digits.length === 11 && cpf.isValid(digits)) return 'cpf';
     if (digits.length === 14 && cnpj.isValid(digits)) return 'cnpj';
+
+    if (PIX_PHONE_REGEX.test(key)) return 'phone';
 
     throw new BadRequestException('Formato de chave Pix inválido.');
   }

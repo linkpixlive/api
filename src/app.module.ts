@@ -47,6 +47,7 @@ import { HealthModule } from './modules/health/health.module';
         { name: 'burst', ttl: 1000, limit: 5 },
         { name: 'long_term', ttl: 3600000, limit: 500 },
       ],
+      errorMessage: 'Muitas solicitações. Tente novamente em alguns instantes.',
       storage: new ThrottlerStorageRedisService(process.env.REDIS_URL),
     }),
     AuthModule,

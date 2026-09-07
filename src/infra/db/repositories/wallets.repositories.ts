@@ -1,17 +1,19 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Donation, TransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { PrismaService } from '../prisma.service';
 import { FindWalletParams, ReconcileResult } from './dto/wallets.dto';
+import {
+  InsufficientBalanceError,
+  WalletNotFoundError,
+} from '../../../common/errors/wallets.errors';
 
 type Tx = Omit<
   PrismaService,
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$extends'
 >;
+
+const RECONCILE_PAGE_SIZE = 500;
 
 interface ApplyOpParams {
   userId: string;
@@ -105,7 +107,7 @@ export class WalletsRepository {
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet not found.');
+      throw new WalletNotFoundError();
     }
 
     const prevTx = wallet.lastTransactionId
@@ -118,7 +120,7 @@ export class WalletsRepository {
     const newBalance = prevBalance.plus(params.delta);
 
     if (newBalance.isNegative()) {
-      throw new BadRequestException('Saldo insuficiente.');
+      throw new InsufficientBalanceError();
     }
 
     const txRow = await tx.transaction.create({
@@ -148,34 +150,39 @@ export class WalletsRepository {
     return txRow;
   }
 
-  /**
-   * Recompute the balance from the ledger alone and compare to the wallet
-   * cache. Asserts the chain balanceAfter[i] == balanceAfter[i-1] + amount[i]
-   * holds for every entry.
-   */
-  async reconcile(userId: string): Promise<ReconcileResult> {
+  async reconcile(userId: string): Promise<ReconcileResult | null> {
     const wallet = await this.prismaService.wallet.findUnique({
       where: { userId },
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet not found.');
+      return null;
     }
-
-    const ledger = await this.prismaService.transaction.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'asc' },
-    });
 
     let running = new Decimal(0);
     let chainValid = true;
+    let cursor: string | undefined;
 
-    for (const entry of ledger) {
-      const expected = running.plus(entry.amount);
-      if (!expected.equals(entry.balanceAfter)) {
-        chainValid = false;
+    while (true) {
+      const ledger = await this.prismaService.transaction.findMany({
+        where: { userId },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: RECONCILE_PAGE_SIZE,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      });
+
+      if (ledger.length === 0) break;
+
+      for (const entry of ledger) {
+        const expected = running.plus(entry.amount);
+        if (!expected.equals(entry.balanceAfter)) {
+          chainValid = false;
+        }
+        running = entry.balanceAfter;
       }
-      running = entry.balanceAfter;
+
+      cursor = ledger[ledger.length - 1].id;
+      if (ledger.length < RECONCILE_PAGE_SIZE) break;
     }
 
     const match = chainValid && running.equals(wallet.currentBalance);

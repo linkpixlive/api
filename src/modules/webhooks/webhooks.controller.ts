@@ -6,12 +6,15 @@ import {
   HttpStatus,
   Post,
   Query,
+  Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { timingSafeEqual } from 'node:crypto';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Public } from 'src/common/decorators/isPublic';
 import { DonationsService } from '../donations/donations.service';
 import { WithdrawalsService } from '../withdrawals/withdrawals.service';
@@ -56,18 +59,10 @@ export class WebhooksController {
   async webhookPix(
     @Query('hmac') hmac: string,
     @Body() body: { pix: Record<string, unknown>[] },
+    @Req() req: RawBodyRequest<Request>,
   ) {
-    const secret = this.configService.getOrThrow<string>('EFI_WEBHOOK_SECRET');
-
-    const hmacBuffer = Buffer.from(hmac ?? '', 'utf8');
-    const secretBuffer = Buffer.from(secret, 'utf8');
-
-    const isValid =
-      hmacBuffer.length === secretBuffer.length &&
-      timingSafeEqual(hmacBuffer, secretBuffer);
-
-    if (!isValid) {
-      throw new UnauthorizedException('Segredo HMAC inválido');
+    if (!req.rawBody?.length || !this.isValidSignature(hmac, req.rawBody)) {
+      throw new UnauthorizedException('Assinatura HMAC inválida');
     }
 
     const transactions = body.pix || [];
@@ -89,5 +84,21 @@ export class WebhooksController {
     }
 
     return 'ok';
+  }
+
+  private isValidSignature(hmac: string, rawBody: Buffer): boolean {
+    if (!hmac) return false;
+
+    const secret = this.configService.getOrThrow<string>('EFI_WEBHOOK_SECRET');
+
+    const expected = Buffer.from(
+      createHmac('sha256', secret).update(rawBody).digest('hex'),
+      'utf8',
+    );
+    const received = Buffer.from(hmac.toLowerCase(), 'utf8');
+
+    return (
+      received.length === expected.length && timingSafeEqual(received, expected)
+    );
   }
 }

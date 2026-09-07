@@ -6,10 +6,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { verifySync } from 'otplib';
+import {
+  DUMMY_PASSWORD_HASH,
+  MAX_TOTP_ATTEMPTS,
+} from 'src/common/constants/auth.constants';
 import {
   decryptData,
   encryptData,
@@ -18,7 +21,7 @@ import {
 import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { EmailService } from 'src/infra/queues/email/email.service';
-import { RedisKeys, REDIS_TTL } from 'src/infra/redis/redis-keys';
+import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { ProfileService } from '../profile/profile.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -33,6 +36,11 @@ interface OtpData {
   otp: string;
   attempts: number;
   createdAt: Date;
+}
+
+interface Pending2fa {
+  userId: string;
+  attempts: number;
 }
 
 @Injectable()
@@ -82,13 +90,11 @@ export class AuthService {
     };
 
     if (emailUser) {
-      if (emailUser.verifiedEmail) {
-        throw new ConflictException('Email já está em uso');
+      if (!emailUser.verifiedEmail) {
+        await this.verificationService.sendVerificationOtp(email);
       }
 
-      await this.usersRepository.update(emailUser.id, userData);
-      await this.verificationService.sendVerificationOtp(email);
-      return 'Este email já está pendente de verificação. Um novo código foi enviado para seu email.';
+      return 'Verifique seu email e finalize o cadastro.';
     }
 
     await this.usersRepository.create(userData);
@@ -103,11 +109,12 @@ export class AuthService {
 
     const user = await this.usersRepository.findByEmail(email);
 
-    if (!user) throw new UnauthorizedException('Usuário não existe.');
+    const isPasswordValid = await this.comparePassword(
+      password,
+      user?.password ?? DUMMY_PASSWORD_HASH,
+    );
 
-    const isPasswordValid = await this.comparePassword(password, user.password);
-
-    if (!isPasswordValid)
+    if (!user || !isPasswordValid)
       throw new UnauthorizedException('Credenciais inválidas.');
 
     if (!user.active) {
@@ -126,12 +133,12 @@ export class AuthService {
       await this.redisService.setWithExpire(
         RedisKeys.authPending2fa(nonce),
         REDIS_TTL.authPending2fa,
-        user.id,
+        { userId: user.id, attempts: 0 } satisfies Pending2fa,
       );
       return { requires2fa: true, nonce };
     }
 
-    return await this.createSession(user.id, user.roles);
+    return await this.createSession(user.id);
   }
 
   async login2fa(login2faDto: Login2faDto) {
@@ -139,34 +146,54 @@ export class AuthService {
 
     const user = await this.usersRepository.findByEmail(email);
 
-    if (!user) throw new UnauthorizedException('Credenciais inválidas.');
+    const isPasswordValid = await this.comparePassword(
+      password,
+      user?.password ?? DUMMY_PASSWORD_HASH,
+    );
 
-    const isPasswordValid = await this.comparePassword(password, user.password);
-
-    if (!isPasswordValid)
+    if (!user || !isPasswordValid)
       throw new UnauthorizedException('Credenciais inválidas.');
 
-    const pendingUserId = await this.redisService.get<string>(
+    const pending = await this.redisService.get<Pending2fa>(
       RedisKeys.authPending2fa(nonce),
     );
 
-    if (!pendingUserId)
+    if (!pending)
       throw new UnauthorizedException('Sessão expirada. Faça login novamente.');
 
-    if (pendingUserId !== user.id) throw new UnauthorizedException();
+    if (pending.userId !== user.id) throw new UnauthorizedException();
 
     if (!user.totpEnabled || !user.totpSecret)
       throw new BadRequestException('2FA não ativo nesta conta');
+
+    if (pending.attempts >= MAX_TOTP_ATTEMPTS) {
+      await this.redisService.remove(RedisKeys.authPending2fa(nonce));
+      throw new UnauthorizedException(
+        'Muitas tentativas. Faça login novamente.',
+      );
+    }
 
     const secret = decryptData(user.totpSecret);
 
     const result = verifySync({ token: totp, secret });
 
-    if (!result.valid) throw new UnauthorizedException('Código inválido');
+    if (!result.valid) {
+      const updated = await this.redisService.update(
+        RedisKeys.authPending2fa(nonce),
+        { ...pending, attempts: pending.attempts + 1 },
+      );
+
+      if (!updated)
+        throw new UnauthorizedException(
+          'Sessão expirada. Faça login novamente.',
+        );
+
+      throw new UnauthorizedException('Código inválido');
+    }
 
     await this.redisService.remove(RedisKeys.authPending2fa(nonce));
 
-    return await this.createSession(user.id, user.roles);
+    return await this.createSession(user.id);
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
@@ -182,24 +209,24 @@ export class AuthService {
     const uuid = crypto.randomUUID();
     const hashedUUID = hashData(uuid);
 
-    const expeiresDate = new Date();
-    expeiresDate.setMinutes(expeiresDate.getMinutes() + 2);
+    const expiresDate = new Date();
+    expiresDate.setMinutes(expiresDate.getMinutes() + 15);
 
     await this.changePassRepository.create({
       token: hashedUUID,
-      expiresAt: expeiresDate,
+      expiresAt: expiresDate,
       userId: user.id,
     });
 
-    const sendEmail = await this.emailService.sendEmail({
+    await this.emailService.sendEmail({
       to: email,
       subject: 'Esqueci a Senha',
       templateName: 'forgot-password',
-      context: { link: `https://tipply.com.br/forgot-passowrd?token=${uuid}` },
+      context: { link: `https://tipply.com.br/forgot-password?token=${uuid}` },
       metadata: {},
     });
 
-    return { responseMsg, sendEmail };
+    return responseMsg;
   }
 
   async resetPassword(resetPassword: ResetPasswordDto) {
@@ -216,7 +243,7 @@ export class AuthService {
 
     if (nowDate > updatePassword.expiresAt) {
       throw new BadRequestException(
-        'tempo expirado, inicie o processo novamente',
+        'Tempo expirado, inicie o processo novamente',
       );
     }
 
@@ -226,7 +253,9 @@ export class AuthService {
       password: hashedNewPassword,
     });
 
-    await this.changePassRepository.deleteByToken(hashedToken);
+    await this.killAllSessions(updatePassword.userId);
+
+    await this.changePassRepository.deleteManyByUserId(updatePassword.userId);
 
     return 'senha alterada com sucesso';
   }
@@ -248,7 +277,13 @@ export class AuthService {
       );
     }
 
-    if (otpData.otp !== hashedOtp) {
+    const storedOtp = Buffer.from(otpData.otp, 'hex');
+    const computedOtp = Buffer.from(hashedOtp, 'hex');
+    const otpMatches =
+      storedOtp.length === computedOtp.length &&
+      crypto.timingSafeEqual(storedOtp, computedOtp);
+
+    if (!otpMatches) {
       const updated = await this.redisService.update(redisKey, {
         ...otpData,
         attempts: otpData.attempts + 1,
@@ -273,7 +308,7 @@ export class AuthService {
 
     await this.redisService.remove(redisKey);
 
-    return await this.createSession(updatedUser.id, updatedUser.roles);
+    return await this.createSession(updatedUser.id);
   }
 
   async logout(sid: string, userId: string) {
@@ -284,23 +319,10 @@ export class AuthService {
   }
 
   async logoutAll(userId: string, currentSid: string) {
-    const sessions = await this.redisService.getList(
-      RedisKeys.userSessions(userId),
-    );
-
-    const sessionsToLogout = sessions.filter((sid) => sid !== currentSid);
-
-    await Promise.all([
-      ...sessionsToLogout.map((sid) =>
-        this.redisService.remove(RedisKeys.session(sid)),
-      ),
-      ...sessionsToLogout.map((sid) =>
-        this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
-      ),
-    ]);
+    await this.killAllSessions(userId, currentSid);
   }
 
-  private async createSession(userId: string, roles: UserRole[]) {
+  private async createSession(userId: string) {
     const sid = crypto.randomUUID();
     const days = Number(this.configService.get('JWT_EXPIRES_IN_DAYS'));
     const expiresIn = days * 24 * 60 * 60;
@@ -318,8 +340,24 @@ export class AuthService {
     return await this.jwtService.signAsync({
       sub: userId,
       sid,
-      roles,
     });
+  }
+
+  private async killAllSessions(userId: string, exceptSid?: string) {
+    const sessions = await this.redisService.getList(
+      RedisKeys.userSessions(userId),
+    );
+
+    const sessionsToKill = sessions.filter((sid) => sid !== exceptSid);
+
+    await Promise.all([
+      ...sessionsToKill.map((sid) =>
+        this.redisService.remove(RedisKeys.session(sid)),
+      ),
+      ...sessionsToKill.map((sid) =>
+        this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
+      ),
+    ]);
   }
 
   private async generatePasswordHash(password: string) {

@@ -24,8 +24,6 @@ export class SafeUser {
   @Expose()
   profileImageUrl: string | null;
 
-  @ApiHideProperty()
-  @Expose()
   cpf: string | null;
 
   @ApiHideProperty()

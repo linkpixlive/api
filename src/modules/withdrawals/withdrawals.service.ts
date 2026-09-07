@@ -5,8 +5,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Withdrawal, WithdrawalStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/client';
 import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { WithdrawalClientKeyConflictError } from '../../common/errors/withdrawals.errors';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { WalletsRepository } from '../../infra/db/repositories/wallets.repositories';
 import { WithdrawalsRepository } from '../../infra/db/repositories/withdrawals.repositories';
@@ -68,19 +70,37 @@ export class WithdrawalsService {
     const feePercentage = this.configService.getOrThrow<number>(
       'WITHDRAWAL_FEE_PERCENTAGE',
     );
-    const feeAmount = +(dto.amount * (feePercentage / 100)).toFixed(2);
-    const netAmount = +(dto.amount - feeAmount).toFixed(2);
+    const grossAmount = new Decimal(dto.amount);
+    const feeAmount = grossAmount
+      .times(feePercentage)
+      .div(100)
+      .toDecimalPlaces(2);
+    const netAmount = grossAmount.minus(feeAmount).toDecimalPlaces(2);
 
-    const withdrawal = await this.withdrawalsRepository.processWithdrawal({
-      userId: user.id,
-      pixId: pix.id,
-      pixKey: pix.key,
-      keyMasked: pix.keyMasked,
-      clientKey: clientKey ?? null,
-      grossAmount: dto.amount,
-      netAmount,
-      feeAmount,
-    });
+    let withdrawal: Withdrawal;
+    try {
+      withdrawal = await this.withdrawalsRepository.processWithdrawal({
+        userId: user.id,
+        pixId: pix.id,
+        pixKey: pix.key,
+        keyMasked: pix.keyMasked,
+        clientKey: clientKey ?? null,
+        grossAmount: dto.amount,
+        netAmount,
+        feeAmount,
+      });
+    } catch (error) {
+      if (clientKey && error instanceof WithdrawalClientKeyConflictError) {
+        const existing = await this.withdrawalsRepository.findByClientKey(
+          user.id,
+          clientKey,
+        );
+        if (existing) {
+          return this.mapToEntity(existing);
+        }
+      }
+      throw error;
+    }
 
     return this.mapToEntity(withdrawal);
   }
@@ -109,9 +129,17 @@ export class WithdrawalsService {
   }
 
   async handleWebhookPixSend(id: string): Promise<void> {
+    if (!/^[0-9a-f]{32}$/i.test(id)) {
+      return;
+    }
+
     const uuid = `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
 
     const withdrawal = await this.withdrawalsRepository.findById(uuid);
+
+    if (!withdrawal) {
+      return;
+    }
 
     if (
       withdrawal.status !== WithdrawalStatus.pending &&

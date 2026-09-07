@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -17,6 +18,7 @@ export class WalletsController {
   constructor(private readonly walletsService: WalletsService) {}
 
   @Get('balances')
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @ApiOperation({ summary: 'Obter o resumo de saldo do usuário' })
   @ApiResponse({
     status: 200,

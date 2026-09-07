@@ -27,14 +27,14 @@ export class WalletsSchedulerService {
       for (const userId of userIds) {
         try {
           const result = await this.walletsRepository.reconcile(userId);
+          if (!result) continue;
           checked++;
 
           if (!result.match) {
             mismatches++;
             this.logger.error(
-              `Balance drift for user ${userId}: ` +
-                `wallet=${result.walletBalance.toString()} ledger=${result.ledgerBalance.toString()} ` +
-                `chainValid=${result.chainValid}`,
+              `Balance drift for user ${userId}: chainValid=${result.chainValid}. ` +
+                'Compare transactions-derived balance against wallets.current_balance.',
             );
           }
         } catch (error) {

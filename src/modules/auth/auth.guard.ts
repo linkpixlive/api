@@ -16,7 +16,6 @@ import { SafeUser } from './entities/safe-user.entity';
 export interface JwtPayload {
   sub: string;
   sid: string;
-  roles: string[];
 }
 
 @Injectable()
@@ -52,13 +51,13 @@ export class AuthGuard implements CanActivate {
         RedisKeys.session(payload.sid),
       );
 
-      if (!session) {
+      if (!session || session !== payload.sub) {
         throw new UnauthorizedException();
       }
 
       const user = await this.usersRepository.findById(payload.sub);
 
-      if (!user) {
+      if (!user || !user.active) {
         throw new UnauthorizedException();
       }
 

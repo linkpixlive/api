@@ -8,8 +8,10 @@ import {
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
+
 function getKey(): Buffer {
-  return Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
+  return Buffer.from(ENCRYPTION_KEY, 'hex');
 }
 
 export function encryptData(text: string): string {
@@ -42,6 +44,6 @@ export function decryptData(cipherText: string): string {
 
 export function hashData(value: string): string {
   return createHash('sha256')
-    .update(value + process.env.ENCRYPTION_KEY)
+    .update(value + ENCRYPTION_KEY)
     .digest('hex');
 }

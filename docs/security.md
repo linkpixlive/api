@@ -1,15 +1,15 @@
 # Segurança
 
-> Verificado contra o código em 2026-09-02.
+> Verificado contra o código em 2026-09-05.
 
 ## Variáveis de ambiente
 
 - Validadas em `common/config/env.validation.ts` (class-validator) — o app não sobe se faltar/malformado. Lista canônica: `.env.example`.
 - Acesso só via `ConfigService`; `process.env` apenas em bootstrap (`main.ts`, `app.module.ts`, PrismaService).
 - Variável nova: adicionar em `env.validation.ts` + `.env` + `.env.example`.
-- Formatos: `ENCRYPTION_KEY` 64 hex (AES-256); `EFI_CERTIFICATE_BASE64` base64; `JWT_EXPIRES_IN_DAYS` string numérica.
+- Formatos: `ENCRYPTION_KEY` 64 hex (AES-256); `JWT_SECRET` mínimo 32 caracteres; `EFI_CERTIFICATE_BASE64` base64; `JWT_EXPIRES_IN_DAYS` string numérica; `CORS_ORIGIN` origens separadas por vírgula (vazio = CORS desabilitado).
 
-## Criptografia (`common/security/security.service.ts`)
+## Criptografia (`common/utils/crypto.util.ts`)
 
 | Operação | Método | Uso |
 |---|---|---|
@@ -22,11 +22,12 @@
 
 ## Auth e sessões
 
-- JWT: payload `{ sub, sid, roles }`; secret `JWT_SECRET`; expiração `${JWT_EXPIRES_IN_DAYS}d`. `AuthGuard` global (APP_GUARD).
-- **Sessão revogável**: `sid` (uuid) → `auth:session:<sid>` (Redis, TTL = dias do JWT) + set `auth:user_sessions:<userId>`. Logout, troca de email/senha e desativação matam sessões (troca de senha preserva a atual via `@CurrentSid()`).
-- Conta inativa reativa no login com credenciais válidas; a ambiguidade "Usuário não existe" fica só para email inexistente.
-- **2FA**: login devolve `{ requires2fa: true, nonce }` (Redis 300s, one-shot); `POST /auth/login-2fa` revalida credenciais + TOTP (defesa contra nonce roubado). Setup: segredo fica no Redis (`totp:setup`, criptografado) até o primeiro código confirmar; issuer "LinkPix". Sem backup codes (decisão de design).
-- **OTP de email**: 6 dígitos, hash, 600s, cooldown 60s, ≥5 erros invalidam; cron `auth-cleanup` (30min) apaga contas não verificadas há >15min.
+- JWT: payload `{ sub, sid }` (sem claim de roles — autorização lê do banco via `AuthGuard`); secret `JWT_SECRET`; expiração `${JWT_EXPIRES_IN_DAYS}d`. `AuthGuard` global (APP_GUARD): valida o binding `session === payload.sub`, checa `user.active` e recarrega o usuário do banco a cada request.
+- **Sessão revogável**: `sid` (uuid) → `auth:session:<sid>` (Redis, TTL = dias do JWT) + set `auth:user_sessions:<userId>`. Logout, troca de email/senha, reset de senha (esqueci minha senha) e desativação matam sessões (troca de senha preserva a atual via `@CurrentSid()`).
+- **Reset de senha**: token hasheado, TTL de 15 min, resposta uniforme (não revela existência de cadastro, sem metadados internos); link do e-mail aponta para `/forgot-password`.
+- Conta inativa reativa no login com credenciais válidas. Login e register não revelam existência de cadastro: login tem mensagem única "Credenciais inválidas" com bcrypt sempre executado (hash dummy quando o usuário não existe); register responde genericamente para e-mail já existente (reenvia o código apenas se o registro estiver pendente, sem sobrescrever os dados pendentes).
+- **2FA**: login devolve `{ requires2fa: true, nonce }` (Redis 300s, one-shot); `POST /auth/login-2fa` revalida credenciais + TOTP (defesa contra nonce roubado). Setup: segredo fica no Redis (`totp:setup`, criptografado) até o primeiro código confirmar; issuer "LinkPix". Desativar 2FA exige senha **e** código TOTP. `login-2fa` e `enable-2fa` contam tentativas (máx. 5) e invalidam o nonce/setup ao exceder. Sem backup codes (decisão de design).
+- **OTP de email**: 6 dígitos, hash, 600s, cooldown 60s, comparação com `timingSafeEqual`, ≥5 erros invalidam; cron `auth-cleanup` (30min) apaga contas não verificadas há >15min.
 - Decorators `@CurrentUser()` e `@CurrentSid()` para acesso ao request.
 
 ## Rate limiting
@@ -53,4 +54,4 @@
 
 ## Dados sensíveis
 
-- Nunca logar ou retornar CPF, hash de senha, chaves ou tokens. `SafeUser` e as entities com `@Exclude` cuidam das respostas.
+- Nunca logar ou retornar CPF, hash de senha, chaves ou tokens. `SafeUser` e as entities com `@Exclude` cuidam das respostas (o `cpf` de `SafeUser` não tem `@Expose` — nunca é serializado).

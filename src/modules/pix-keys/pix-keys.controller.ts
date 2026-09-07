@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -71,7 +79,10 @@ export class PixKeysController {
     status: 404,
     description: 'Chave Pix não encontrada.',
   })
-  remove(@CurrentUser() user: SafeUser, @Param('id') id: string) {
+  remove(
+    @CurrentUser() user: SafeUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.pixKeysService.remove(user, id);
   }
 }

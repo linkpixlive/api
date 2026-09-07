@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Headers, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiHeader,
@@ -45,6 +53,11 @@ export class WithdrawalsController {
     @Body() createWithdrawalDto: CreateWithdrawalDto,
     @Headers('idempotency-key') clientKey?: string,
   ) {
+    if (clientKey && clientKey.length > 128) {
+      throw new BadRequestException(
+        'Idempotency-Key deve ter no máximo 128 caracteres.',
+      );
+    }
     return this.withdrawalsService.create(user, createWithdrawalDto, clientKey);
   }
 

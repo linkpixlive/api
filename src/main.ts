@@ -3,6 +3,7 @@ import {
   ClassSerializerInterceptor,
   ValidationPipe,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -11,9 +12,20 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
-  app.enableCors({ origin: '*' });
+  const corsOrigins = app
+    .get(ConfigService)
+    .get<string>('CORS_ORIGIN')
+    ?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: corsOrigins?.length ? corsOrigins : false,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
   app.use(helmet());
   app.useGlobalFilters(new GlobalExceptionFilter());
 

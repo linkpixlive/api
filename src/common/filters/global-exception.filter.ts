@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { DomainError } from '../errors/domain.error';
 
 interface NestErrorResponse {
   message: string | string[];
@@ -14,7 +15,7 @@ interface NestErrorResponse {
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  catch(exception: HttpException, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -22,12 +23,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : exception instanceof DomainError
+          ? exception.status
+          : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse =
       exception instanceof HttpException
         ? exception.getResponse()
-        : { message: 'Internal Server Error' };
+        : {
+            message:
+              exception instanceof DomainError
+                ? exception.message
+                : 'Internal Server Error',
+          };
 
     const message =
       typeof exceptionResponse === 'string'

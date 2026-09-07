@@ -1,4 +1,5 @@
 import { WithdrawalStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/client';
 
 export interface CreateWithdrawalParams {
   userId: string;
@@ -6,8 +7,8 @@ export interface CreateWithdrawalParams {
   pixKey: string;
   keyMasked: string;
   grossAmount: number;
-  netAmount: number;
-  feeAmount: number;
+  netAmount: number | Decimal;
+  feeAmount: number | Decimal;
   clientKey?: string | null;
 }
 

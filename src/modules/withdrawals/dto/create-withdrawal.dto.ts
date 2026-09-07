@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsPositive,
   IsString,
+  IsUUID,
   Max,
   Min,
 } from 'class-validator';
@@ -20,6 +21,7 @@ export class CreateWithdrawalDto {
   amount: number;
 
   @ApiProperty({ example: 'uuid-pix-key-123' })
+  @IsUUID(undefined, { message: 'pixId deve ser um UUID válido' })
   @IsString({ message: 'pixId deve ser uma string' })
   @IsNotEmpty({ message: 'pixId não pode estar vazio' })
   pixId: string;

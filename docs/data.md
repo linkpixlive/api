@@ -15,7 +15,7 @@
 |---|---|
 | `User` | streamer/admin; cpf + `cpfHash`; TOTP; roles `[streamer]` |
 | `UsernameBlacklist` | usernames de donos que trocaram (permanente se verificado, 60 dias senão) |
-| `Wallet` | 1:1 user; `currentBalance`/`pendingBalance`/`blockedBalance`; `lastTransactionId` (ponteiro do ledger) |
+| `Wallet` | 1:1 user; `currentBalance`/`pendingBalance`/`blockedBalance`; `lastTransactionId` (ponteiro do ledger, FK p/ `transactions.id`) |
 | `PixKey` | chave criptografada + `keyHashed` (única por user) + `keyMasked` |
 | `Voice` | catálogo TTS (admin) |
 | `Donation` | `messageRaw` vs `message`; `transactionId` único; `pix`; status |
@@ -34,10 +34,10 @@
 
 - **Ledger é a fonte da verdade**: `wallets.currentBalance` é cache derivado de `transactions`.
 - Trigger `wallets_balance_guard` (migration `20260811220000_wallet_balance_ledger_trigger`) rejeita UPDATE de `current_balance` que não avance `last_transaction_id`.
-- Toda movimentação passa por `WalletsRepository.applyOp`: `SELECT ... FOR UPDATE` → novo saldo derivado da **última entrada do ledger** (nunca do cache) → append no ledger → update do cache. Saldo negativo → 400.
-- Ops prontas: `creditDonation` (+gross) · `reserveForWithdrawal` (delta −gross, pending +gross) · `confirmWithdrawal` (delta 0, pending −gross) · `refundWithdrawal` (delta +gross, pending −gross).
+- Toda movimentação passa por `WalletsRepository.applyOp`: `SELECT ... FOR UPDATE` → novo saldo derivado da **última entrada do ledger** (nunca do cache) → append no ledger → update do cache. Saldo negativo → `InsufficientBalanceError` (erro de domínio, `wallets.errors.ts`), mapeado para 400 no service do domínio.
+- Ops prontas: `creditDonation` (+gross) · `reserveForWithdrawal` (delta −gross, pending +gross) · `confirmWithdrawal` (delta 0, pending −gross) · `refundWithdrawal` (delta +gross, pending −gross). Uma linha de ledger por (`withdrawalId`, `type`) — unique composta `transactions_withdrawal_id_type_key`.
 - Doação paga: `DonationsRepository.processDonation` em `$transaction` — guarda `updateMany` pending→paid + crédito no ledger.
-- Reconciliação: `reconcile(userId)` valida a cadeia `balanceAfter[i] == balanceAfter[i-1] + amount[i]`; cron diário 3h varre wallets em lotes de 100.
+- Reconciliação: `reconcile(userId)` valida a cadeia `balanceAfter[i] == balanceAfter[i-1] + amount[i]`, ordenando por `createdAt` + `id` (desempate determinístico) e paginando o ledger por cursor (500/chunk). Cron diário 3h varre wallets em lotes de 100 (instância única, sem lock distribuído).
 
 ## Redis
 

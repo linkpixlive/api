@@ -3,6 +3,29 @@
 > Escopo: `src/modules/auth/*`, `src/modules/dashboard/*`, `src/modules/account-settings/*`, `src/modules/profile/*`, `src/common/guards/roles.guard.ts`, `src/common/security/security.service.ts`, `src/main.ts`, `src/app.module.ts`, `prisma/schema.prisma` (model `User`)
 > Data: 2026-09-02
 
+## Resolução (2026-09-05)
+
+Correções em `src/modules/auth`, `src/modules/account-settings`, `src/modules/profile`, `src/main.ts`, `src/common/config`, `src/common/constants` e no frontend (`linkpix-frontend`). Item 9 não aplicado por decisão do time.
+
+| # | Status | Correção |
+|---|--------|----------|
+| 1 | ✅ corrigida | `resetPassword` chama `killAllSessions(userId)` após trocar a senha e invalida todos os tokens de reset pendentes (`deleteManyByUserId`). |
+| 2 | ✅ corrigida | `login`/`login2fa` usam mensagem única "Credenciais inválidas." e sempre executam `bcrypt.compare` (hash dummy `DUMMY_PASSWORD_HASH` quando o usuário não existe) — sem enumeração nem timing oracle. |
+| 3 | ✅ corrigida | `disable2fa` exige senha **e** código TOTP válido (`Disable2faDto.token`); frontend (`TwoFactorModal`) passa a pedir o código de 6 dígitos. |
+| 4 | ✅ corrigida | Register: e-mail já existente (verificado ou pendente) recebe resposta genérica de sucesso; código reenviado apenas para registro pendente. `forgotPassword` retorna sempre `responseMsg` (string), sem `sendEmail`. **Residual aceito:** conflitos de username/CPF continuam com mensagem específica (necessários ao UX do formulário; username é público e CPF exige posse prévia do número). |
+| 5 | ✅ corrigida | `login2fa`/`enable2fa` contam tentativas no próprio pending Redis (`attempts`); ao atingir 5, o nonce (`auth:pending_2fa`) ou o setup (`totp:setup`) é invalidado, forçando relogin/novo QR. |
+| 6 | ✅ corrigida | Register não sobrescreve mais a linha pendente (sem update de name/username/cpf/password). **Residual:** cenário attacker-first (atacante cadastra primeiro com o e-mail da vítima) permanece possível; mitigado pelo cleanup de contas não verificadas (>15 min) e pela revalidação de credenciais no login-2fa. |
+| 7 | ✅ corrigida | Já resolvida antes desta resolução: `GetHistoryQueryDto` com `limit` `@Min(1)/@Max(100)` e `page` `@Min(1)`, validados pelo `ValidationPipe` global. |
+| 8 | ✅ corrigida | CORS configurável via `CORS_ORIGIN` (lista separada por vírgula em `env.validation.ts` + `.env.example`); vazio = `origin: false`. `methods`/`allowedHeaders` explícitos. |
+| 9 | ⏭️ não aplicada | `trust proxy` adiado por decisão do time. |
+| 10 | ✅ corrigida | Claim `roles` removido do JWT (`createSession` e `JwtPayload`); autorização usa 100% o banco, via `AuthGuard` + `RolesGuard`. |
+| 11 | ✅ corrigida | `AuthGuard` verifica `session === payload.sub` (binding sid↔sub) e `user.active`. |
+| 12 | ✅ corrigida | `UpdateUsernameDto` com `@Matches(/^[a-zA-Z0-9_]+$/)` e `@MaxLength(30)`, alinhado ao register. |
+| 13 | ✅ corrigida | `JWT_SECRET` com `@MinLength(32)`; OTP de e-mail comparado com `crypto.timingSafeEqual` (com guarda de comprimento). |
+| 14 | ✅ corrigida | TTL do token de reset: 2 → 15 min; typo `forgot-passowrd` → `forgot-password` no link do e-mail; `cpf` sem `@Expose` em `SafeUser` (nunca serializado). |
+
+**Outros residuais conhecidos (fora do escopo dos itens):** a mensagem "Usuário não verificado" no login ainda indica existência de cadastro não verificado (necessária ao UX; contas pendentes são apagadas em 15 min pelo `AuthCleanupService`); WebSocket sem throttling; `verifyOtp` mantém "Usuário não encontrado" (exige OTP válido prévio, não é oráculo prático).
+
 ## Ranking por Gravidade
 
 | # | Severidade | Vulnerabilidade |

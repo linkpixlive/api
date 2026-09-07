@@ -16,7 +16,7 @@ Convenções de repository:
 
 - Arquivo no plural (`donations.repositories.ts`), classe singular (`DonationsRepository`). `DbModule` é `@Global()` — não reimportar.
 - Parâmetros: **interfaces TS** em `infra/db/repositories/dto/` (não class-validator — a validação já aconteceu no DTO do módulo).
-- Repos podem depender de outros e lançar `HttpException` em guardas (ex.: `WalletsRepository.applyOp`).
+- Repos podem depender de outros e lançar `HttpException` em guardas. **Exceção financeira**: `WalletsRepository.applyOp` lança erros de domínio (`WalletNotFoundError`, `InsufficientBalanceError` em `wallets.errors.ts`) — os erros só viram `HttpException` no service do domínio (ex.: `WithdrawalsService.create`).
 - Retornam tipos Prisma; transformação fica no Service/entities.
 
 Entities (`modules/<m>/entities/`): `@Exclude()` na classe, `@Expose()` por campo, factory `fromPrisma()`, `@Transform` Decimal→Number. Serializadas pelo `ClassSerializerInterceptor` global.

@@ -7,11 +7,13 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   IsUrl,
   Length,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 
@@ -39,7 +41,14 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(32, {
+    message: 'JWT_SECRET must be at least 32 characters long',
+  })
   JWT_SECRET: string;
+
+  @IsOptional()
+  @IsString()
+  CORS_ORIGIN?: string;
 
   @IsString()
   @IsNotEmpty()
