@@ -1,4 +1,8 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StorageContract } from '../contract/storage.contract';
@@ -19,13 +23,21 @@ export class R2Service extends StorageContract {
     });
   }
 
-  async uploadAudio(file: Buffer, key: string) {
+  async upload(file: Buffer, key: string, contentType: string) {
     const command = new PutObjectCommand({
       Bucket: 'tipply',
       Key: key,
       Body: file,
-      ContentEncoding: 'base64',
-      ContentType: 'audio/mp3',
+      ContentType: contentType,
+    });
+
+    await this.r2Client.send(command);
+  }
+
+  async deleteObject(key: string) {
+    const command = new DeleteObjectCommand({
+      Bucket: 'tipply',
+      Key: key,
     });
 
     await this.r2Client.send(command);

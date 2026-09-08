@@ -86,6 +86,7 @@ export class UsersRepository {
         password: data.password,
         cpf: data.cpf,
         cpfHash: data.cpfHash,
+        profileImageUrl: data.profileImageUrl,
         roles: data.roles,
         verifiedEmail: data.verifiedEmail,
         verified: data.verified,

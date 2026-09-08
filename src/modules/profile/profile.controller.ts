@@ -1,9 +1,32 @@
-import { Body, Controller, HttpCode, HttpStatus, Patch } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Put,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import type { UploadedFile as MulterUploadedFile } from 'src/common/interfaces/uploaded-file.interface';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { UpdateUsernameDto } from './dto/update-username.dto';
-import { ProfileService } from './profile.service';
+import { UploadProfilePhotoDto } from './dto/upload-profile-photo.dto';
+import {
+  MAX_PROFILE_PHOTO_SIZE_BYTES,
+  ProfileService,
+} from './profile.service';
 
 @ApiTags('Profile')
 @Controller('profile')
@@ -30,5 +53,50 @@ export class ProfileController {
     @Body() updateUsernameDto: UpdateUsernameDto,
   ) {
     return this.profileService.changeUsername(user.id, updateUsernameDto);
+  }
+
+  @Put('photo')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_PROFILE_PHOTO_SIZE_BYTES },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UploadProfilePhotoDto })
+  @ApiOperation({ summary: 'Enviar ou substituir a foto de perfil' })
+  @ApiResponse({
+    status: 200,
+    description: 'Foto de perfil atualizada com sucesso.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Arquivo ausente ou formato/tamanho inválidos.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Não autorizado.',
+  })
+  uploadProfilePhoto(
+    @CurrentUser() user: SafeUser,
+    @UploadedFile() file: MulterUploadedFile,
+  ) {
+    return this.profileService.uploadProfilePhoto(user.id, file);
+  }
+
+  @Delete('photo')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remover a foto de perfil' })
+  @ApiResponse({
+    status: 200,
+    description: 'Foto de perfil removida com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Não autorizado.',
+  })
+  removeProfilePhoto(@CurrentUser() user: SafeUser) {
+    return this.profileService.removeProfilePhoto(user.id);
   }
 }

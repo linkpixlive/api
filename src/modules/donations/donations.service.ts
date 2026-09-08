@@ -8,6 +8,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { DonationStatus, PaymentMethod } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
+import { getProfileImageUrl } from 'src/common/utils/profileImageUrl.util';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
@@ -53,7 +54,7 @@ export class DonationsService {
     const data = {
       name: user.name,
       username: user.username,
-      profileImageUrl: user.profileImageUrl,
+      profileImageUrl: getProfileImageUrl(user.profileImageUrl),
       overlayActive: !!overlayStatus,
       minAudioAmount: Number(settings.minAudioAmount),
       minTextAmount: Number(settings.minTextAmount),

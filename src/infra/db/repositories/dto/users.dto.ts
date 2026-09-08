@@ -20,6 +20,7 @@ export interface UpdateUserParams {
   password?: string;
   cpf?: string;
   cpfHash?: string;
+  profileImageUrl?: string | null;
   verifiedEmail?: boolean;
   verified?: boolean;
   usernameChangedAt?: Date;

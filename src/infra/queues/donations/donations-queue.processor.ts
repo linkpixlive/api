@@ -130,7 +130,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     });
     const ttsKey = `tts/${user.username}-${donation.id}.wav`;
 
-    await this.storage.uploadAudio(ttsBuffer, ttsKey);
+    await this.storage.upload(ttsBuffer, ttsKey, 'audio/wav');
     return ttsKey;
   }
 

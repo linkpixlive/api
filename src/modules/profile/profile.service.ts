@@ -1,13 +1,28 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import sharp from 'sharp';
+import { UploadedFile } from 'src/common/interfaces/uploaded-file.interface';
+import { getProfileImageUrl } from 'src/common/utils/profileImageUrl.util';
 import { UsernameBlacklistRepository } from 'src/infra/db/repositories/username-blacklist.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
+import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { UpdateUsernameDto } from './dto/update-username.dto';
+
+export const MAX_PROFILE_PHOTO_SIZE_BYTES = 2 * 1024 * 1024;
+
+const ALLOWED_PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+const PROFILE_PHOTO_MAX_DIMENSION = 512;
+const PROFILE_PHOTO_WEBP_QUALITY = 80;
 
 @Injectable()
 export class ProfileService {
+  private readonly logger = new Logger(ProfileService.name);
+
   constructor(
     private usersRepository: UsersRepository,
     private usernameBlacklistRepository: UsernameBlacklistRepository,
+    private storage: StorageContract,
   ) {}
 
   async validateUsernameAvailability(username: string) {
@@ -79,5 +94,96 @@ export class ProfileService {
     );
 
     return { username: newUsername };
+  }
+
+  async uploadProfilePhoto(userId: string, file?: UploadedFile) {
+    if (!file) {
+      throw new BadRequestException('Arquivo não enviado');
+    }
+
+    this.validateImageFile(file);
+
+    const user = await this.usersRepository.findById(userId);
+
+    if (!user) {
+      throw new BadRequestException('Usuário não encontrado');
+    }
+
+    const buffer = await this.convertToWebP(file.buffer);
+
+    const oldKey = user.profileImageUrl;
+    const key = `avatars/${userId}/${randomUUID()}.webp`;
+
+    await this.storage.upload(buffer, key, 'image/webp');
+    await this.usersRepository.update(userId, { profileImageUrl: key });
+
+    await this.deleteObjectBestEffort(oldKey, userId);
+
+    return { profileImageUrl: getProfileImageUrl(key) };
+  }
+
+  async removeProfilePhoto(userId: string) {
+    const user = await this.usersRepository.findById(userId);
+
+    if (!user) {
+      throw new BadRequestException('Usuário não encontrado');
+    }
+
+    const oldKey = user.profileImageUrl;
+
+    if (!oldKey) {
+      return { profileImageUrl: null };
+    }
+
+    await this.usersRepository.update(userId, { profileImageUrl: null });
+    await this.deleteObjectBestEffort(oldKey, userId);
+
+    return { profileImageUrl: null };
+  }
+
+  private validateImageFile(file: UploadedFile): void {
+    if (!ALLOWED_PROFILE_PHOTO_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Formato de imagem inválido. Formatos aceitos: JPEG, PNG e WebP.',
+      );
+    }
+
+    if (file.buffer.length > MAX_PROFILE_PHOTO_SIZE_BYTES) {
+      throw new BadRequestException('Imagem excede o tamanho máximo de 2 MB.');
+    }
+  }
+
+  private async convertToWebP(buffer: Buffer): Promise<Buffer> {
+    try {
+      return await sharp(buffer)
+        .rotate()
+        .resize(PROFILE_PHOTO_MAX_DIMENSION, PROFILE_PHOTO_MAX_DIMENSION, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: PROFILE_PHOTO_WEBP_QUALITY })
+        .toBuffer();
+    } catch {
+      throw new BadRequestException('Arquivo não é uma imagem válida.');
+    }
+  }
+
+  private async deleteObjectBestEffort(
+    key: string | null,
+    userId: string,
+  ): Promise<void> {
+    if (!key) {
+      return;
+    }
+
+    try {
+      await this.storage.deleteObject(key);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao remover objeto antigo ${key} do storage (usuário ${userId}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 }

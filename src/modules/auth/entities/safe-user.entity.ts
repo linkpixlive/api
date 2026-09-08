@@ -1,6 +1,7 @@
 import { ApiHideProperty } from '@nestjs/swagger';
 import { User, UserRole } from '@prisma/client';
 import { Exclude, Expose } from 'class-transformer';
+import { getProfileImageUrl } from 'src/common/utils/profileImageUrl.util';
 
 @Exclude()
 export class SafeUser {
@@ -68,7 +69,7 @@ export class SafeUser {
       name: user.name,
       email: user.email,
       username: user.username,
-      profileImageUrl: user.profileImageUrl,
+      profileImageUrl: getProfileImageUrl(user.profileImageUrl),
       cpf: user.cpf,
       createdAt: user.createdAt,
       active: user.active,

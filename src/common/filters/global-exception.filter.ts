@@ -37,6 +37,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 : 'Internal Server Error',
           };
 
+    console.error(exception);
+
     const message =
       typeof exceptionResponse === 'string'
         ? exceptionResponse

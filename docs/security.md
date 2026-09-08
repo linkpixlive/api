@@ -43,7 +43,9 @@
 
 ## Webhook Efí (`POST /webhook/pix`)
 
-- Auth: query param `?hmac=` comparado a `EFI_WEBHOOK_SECRET` com `timingSafeEqual` (segredo compartilhado, **não** HMAC do body).
+- Auth: query param `?hmac=` comparado a `EFI_WEBHOOK_SECRET` com `timingSafeEqual` (segredo compartilhado estático, **não** HMAC do body — é o formato que a Efí suporta: ela só ecoa a string cadastrada na URL).
+- Cadastro na Efí: registrar a URL **base** `https://<api>/webhook?hmac=<segredo>` via `PUT /v2/webhook` — a Efí anexa `/pix` sozinha e chama `POST .../webhook/pix?hmac=<segredo>`. Se cadastrar a URL cheia (`.../webhook/pix?hmac=...`), adicionar `&ignorar=` ao fim para não duplicar o `/pix`.
+- Segredo em query string pode vazar em logs/proxies — rotação manual; mTLS/IP allowlist como mitigação (follow-up de infra, ver auditorias de withdrawals).
 - Batch máximo 5; roteia: `gnExtras.idEnvio` → saque; senão `txid` → doação (só enfileira se ainda `pending`).
 
 ## Gateway Efí

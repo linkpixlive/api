@@ -1,3 +1,4 @@
+import { InternalServerErrorException } from '@nestjs/common';
 import {
   createCipheriv,
   createDecipheriv,
@@ -8,10 +9,20 @@ import {
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
+function getEncryptionKey(): string {
+  const key = process.env.ENCRYPTION_KEY;
+
+  if (!key || !/^[0-9a-fA-F]{64}$/.test(key)) {
+    throw new InternalServerErrorException(
+      'ENCRYPTION_KEY ausente ou inválida: deve ter 64 caracteres hexadecimais (256-bit).',
+    );
+  }
+
+  return key;
+}
 
 function getKey(): Buffer {
-  return Buffer.from(ENCRYPTION_KEY, 'hex');
+  return Buffer.from(getEncryptionKey(), 'hex');
 }
 
 export function encryptData(text: string): string {
@@ -44,6 +55,6 @@ export function decryptData(cipherText: string): string {
 
 export function hashData(value: string): string {
   return createHash('sha256')
-    .update(value + ENCRYPTION_KEY)
+    .update(value + getEncryptionKey())
     .digest('hex');
 }

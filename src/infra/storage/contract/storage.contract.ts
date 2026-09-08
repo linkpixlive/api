@@ -1,3 +1,9 @@
 export abstract class StorageContract {
-  abstract uploadAudio(file: Buffer, key: string): Promise<void>;
+  abstract upload(
+    file: Buffer,
+    key: string,
+    contentType: string,
+  ): Promise<void>;
+
+  abstract deleteObject(key: string): Promise<void>;
 }

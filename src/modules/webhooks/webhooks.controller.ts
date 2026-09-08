@@ -6,15 +6,12 @@ import {
   HttpStatus,
   Post,
   Query,
-  Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { RawBodyRequest } from '@nestjs/common';
-import type { Request } from 'express';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { Public } from 'src/common/decorators/isPublic';
 import { DonationsService } from '../donations/donations.service';
 import { WithdrawalsService } from '../withdrawals/withdrawals.service';
@@ -59,9 +56,8 @@ export class WebhooksController {
   async webhookPix(
     @Query('hmac') hmac: string,
     @Body() body: { pix: Record<string, unknown>[] },
-    @Req() req: RawBodyRequest<Request>,
   ) {
-    if (!req.rawBody?.length || !this.isValidSignature(hmac, req.rawBody)) {
+    if (!this.isValidSecret(hmac)) {
       throw new UnauthorizedException('Assinatura HMAC inválida');
     }
 
@@ -86,16 +82,13 @@ export class WebhooksController {
     return 'ok';
   }
 
-  private isValidSignature(hmac: string, rawBody: Buffer): boolean {
+  private isValidSecret(hmac: string): boolean {
     if (!hmac) return false;
 
     const secret = this.configService.getOrThrow<string>('EFI_WEBHOOK_SECRET');
 
-    const expected = Buffer.from(
-      createHmac('sha256', secret).update(rawBody).digest('hex'),
-      'utf8',
-    );
-    const received = Buffer.from(hmac.toLowerCase(), 'utf8');
+    const expected = Buffer.from(secret, 'utf8');
+    const received = Buffer.from(hmac, 'utf8');
 
     return (
       received.length === expected.length && timingSafeEqual(received, expected)
