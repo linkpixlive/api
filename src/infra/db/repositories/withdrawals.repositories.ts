@@ -108,18 +108,20 @@ export class WithdrawalsRepository {
         throw new WithdrawalNotFoundError();
       }
 
-      if (withdrawal.status !== WithdrawalStatus.pending) {
-        throw new WithdrawalInvalidStatusError('Withdrawal is not pending.');
-      }
-
-      return await tx.withdrawal.update({
-        where: { id },
+      const updateResult = await tx.withdrawal.updateMany({
+        where: { id, status: WithdrawalStatus.pending },
         data: {
           status: WithdrawalStatus.processing,
           transactionId,
           updatedAt: new Date(),
         },
       });
+
+      if (updateResult.count === 0) {
+        throw new WithdrawalInvalidStatusError('Withdrawal is not pending.');
+      }
+
+      return await tx.withdrawal.findUniqueOrThrow({ where: { id } });
     });
   }
 
@@ -173,12 +175,44 @@ export class WithdrawalsRepository {
       }
 
       const updateResult = await tx.withdrawal.updateMany({
-        where: {
-          id,
-          status: {
-            in: [WithdrawalStatus.pending, WithdrawalStatus.processing],
-          },
+        where: { id, status: WithdrawalStatus.pending },
+        data: {
+          status: WithdrawalStatus.failed,
+          updatedAt: new Date(),
+          ...(transactionId ? { transactionId } : {}),
         },
+      });
+
+      if (updateResult.count === 0) {
+        throw new WithdrawalInvalidStatusError('Withdrawal is not pending.');
+      }
+
+      const updatedWithdrawal = await tx.withdrawal.findUniqueOrThrow({
+        where: { id },
+      });
+
+      await this.walletsRepository.refundWithdrawal(
+        tx,
+        withdrawal,
+        transactionId ?? `refund:${withdrawal.id}`,
+      );
+
+      return updatedWithdrawal;
+    });
+  }
+
+  async failProcessingWithdrawal(id: string, transactionId?: string) {
+    return await this.prismaService.$transaction(async (tx) => {
+      const withdrawal = await tx.withdrawal.findUnique({
+        where: { id },
+      });
+
+      if (!withdrawal) {
+        throw new WithdrawalNotFoundError();
+      }
+
+      const updateResult = await tx.withdrawal.updateMany({
+        where: { id, status: WithdrawalStatus.processing },
         data: {
           status: WithdrawalStatus.failed,
           updatedAt: new Date(),
@@ -188,7 +222,7 @@ export class WithdrawalsRepository {
 
       if (updateResult.count === 0) {
         throw new WithdrawalInvalidStatusError(
-          'Withdrawal is not pending or processing.',
+          'Withdrawal is not processing or already processed.',
         );
       }
 

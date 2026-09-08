@@ -246,7 +246,8 @@ model Transaction {
   @@index([userId])
   
   @@index([type])
-  @@index([createdAt])@@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([userId, createdAt])
   @@index([donationId])
   @@index([withdrawalId])
   @@map("transactions")

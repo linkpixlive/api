@@ -3,6 +3,21 @@
 > Escopo: `src/modules/admin/*`, `src/infra/db/repositories/withdrawals.repositories.ts`, `src/modules/auth/auth.guard.ts`, `src/common/guards/roles.guard.ts`
 > Data: 2026-09-02
 
+## Resolução (2026-09-07)
+
+Princípio adotado nos itens 1–3: saque em `processing` = Pix em voo. Só o webhook Efi ou o cron de conciliação (5 min) resolvem `processing → success/failed` com o status real do gateway; desfecho desconhecido (timeout/erro) nunca reembolsa.
+
+| # | Status | Correção |
+|---|--------|----------|
+| 1 | ✅ corrigida | `rejectWithdrawal` aceita apenas `pending`. Novo `failProcessingWithdrawal` (processing → failed + reembolso) é o único caminho a partir de `processing` e exige confirmação de falha pelo gateway. Fluxo admin não rejeita mais em caso de erro. |
+| 2 | ✅ corrigida | `approve` ramifica pelo status do `sendPix`: SUCCESS → approve; FAILED → `failProcessingWithdrawal`; PROCESSING/erro/timeout → permanece `processing` para o webhook/cron resolver. |
+| 3 | ✅ corrigida | `processingWithdrawal` usa `updateMany` condicional (`where status = pending`), mesmo padrão atômico de `approveWithdrawal`/`rejectWithdrawal`. |
+| 4 | ⏸ adiada | Trilha de auditoria por admin pendente por decisão de escopo. |
+| 5 | ✅ corrigida | Redirect de pagamento por config explícita `PIX_REDIRECT_DESTINATION` (opcional; vazio = chave real do usuário) em vez de inferir de `NODE_ENV`. |
+| 6 | ✅ corrigida | (2026-09-07, refatoração prévia) `AuthGuard` checa `user.active` e binding sessão↔`sub` do JWT. |
+| 7 | ✅ corrigida | `@Throttle` (10 req/min) no controller admin + `ParseUUIDPipe` nos três params `id`. |
+| 8 | ✅ corrigida | (2026-09-07, refatoração prévia) CORS via `CORS_ORIGIN` (lista por vírgula; vazio = desabilitado). |
+
 ## Ranking por Gravidade
 
 | # | Severidade | Vulnerabilidade |

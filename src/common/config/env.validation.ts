@@ -106,6 +106,11 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   EFI_WEBHOOK_SECRET: string;
 
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  PIX_REDIRECT_DESTINATION?: string;
+
   // BUSINESS RULES
   @IsNumber()
   @Min(0)

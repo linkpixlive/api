@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Withdrawal } from '@prisma/client';
+import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
 import { decryptData } from 'src/common/utils/crypto.util';
 import { WithdrawalsRepository } from 'src/infra/db/repositories/withdrawals.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
@@ -8,6 +9,8 @@ import { WithdrawalEntity } from 'src/modules/withdrawals/entities/withdrawal.en
 
 @Injectable()
 export class AdminWithdrawalsService {
+  private readonly logger = new Logger(AdminWithdrawalsService.name);
+
   constructor(
     private withdrawalsRepository: WithdrawalsRepository,
     private configService: ConfigService,
@@ -24,27 +27,40 @@ export class AdminWithdrawalsService {
     const idempotencyId = transition.id.replace(/-/g, '');
 
     const pixDestination =
-      this.configService.get('NODE_ENV') === 'development'
-        ? 'efipay@sejaefi.com.br'
-        : pixKey;
+      this.configService.get<string>('PIX_REDIRECT_DESTINATION') ?? pixKey;
 
+    let result: { status: SentPixStatus; transactionId?: string };
     try {
-      const result = await this.gatewayContract.sendPix({
+      result = await this.gatewayContract.sendPix({
         idempotencyId,
         amount: Number(transition.netAmount),
         pixDestination,
       });
+    } catch (error) {
+      this.logger.error(
+        `sendPix falhou para o saque ${id}; aguardando conciliação do gateway`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      return this.mapToEntity(transition);
+    }
 
+    if (result.status === SentPixStatus.SUCCESS) {
       const updated = await this.withdrawalsRepository.approveWithdrawal(
         id,
         result.transactionId,
       );
-
       return this.mapToEntity(updated);
-    } catch (error) {
-      await this.withdrawalsRepository.rejectWithdrawal(id);
-      throw error;
     }
+
+    if (result.status === SentPixStatus.FAILED) {
+      const updated = await this.withdrawalsRepository.failProcessingWithdrawal(
+        id,
+        result.transactionId,
+      );
+      return this.mapToEntity(updated);
+    }
+
+    return this.mapToEntity(transition);
   }
 
   async reject(id: string): Promise<WithdrawalEntity> {

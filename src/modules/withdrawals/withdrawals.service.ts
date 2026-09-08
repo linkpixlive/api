@@ -164,10 +164,17 @@ export class WithdrawalsService {
         gatewayResult.transactionId,
       );
     } else if (gatewayResult.status === SentPixStatus.FAILED) {
-      await this.withdrawalsRepository.rejectWithdrawal(
-        uuid,
-        gatewayResult.transactionId,
-      );
+      if (withdrawal.status === WithdrawalStatus.processing) {
+        await this.withdrawalsRepository.failProcessingWithdrawal(
+          uuid,
+          gatewayResult.transactionId,
+        );
+      } else {
+        await this.withdrawalsRepository.rejectWithdrawal(
+          uuid,
+          gatewayResult.transactionId,
+        );
+      }
     }
   }
 

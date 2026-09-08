@@ -1,5 +1,6 @@
-import { Body, Controller, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { WithdrawalEntity } from 'src/modules/withdrawals/entities/withdrawal.entity';
@@ -9,6 +10,7 @@ import { AdminWithdrawalsService } from '../services/admin-withdrawals.service';
 
 @ApiTags('Admin')
 @Roles(UserRole.admin)
+@Throttle({ default: { ttl: 60000, limit: 10 } })
 @Controller('admin')
 export class AdminController {
   constructor(
@@ -17,15 +19,19 @@ export class AdminController {
   ) {}
 
   @Patch('withdrawals/:id/approve')
-  @ApiOperation({ summary: 'Aprovar um saque pendente' })
+  @ApiOperation({
+    summary:
+      'Aprovar um saque pendente (pode retornar ainda em processing, resolvido pelo gateway)',
+  })
   @ApiResponse({
     status: 200,
     type: WithdrawalEntity,
-    description: 'Saque aprovado com sucesso.',
+    description:
+      'Saque pago (success) ou aguardando confirmação do gateway (processing).',
   })
   @ApiResponse({ status: 400, description: 'O saque não está pendente.' })
   @ApiResponse({ status: 404, description: 'Saque não encontrado.' })
-  approveWithdrawal(@Param('id') id: string) {
+  approveWithdrawal(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminWithdrawalsService.approve(id);
   }
 
@@ -36,9 +42,13 @@ export class AdminController {
     type: WithdrawalEntity,
     description: 'Saque rejeitado com sucesso.',
   })
-  @ApiResponse({ status: 400, description: 'O saque não está pendente.' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'O saque não está pendente (saques em processing são resolvidos pelo gateway).',
+  })
   @ApiResponse({ status: 404, description: 'Saque não encontrado.' })
-  rejectWithdrawal(@Param('id') id: string) {
+  rejectWithdrawal(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminWithdrawalsService.reject(id);
   }
 
@@ -51,7 +61,10 @@ export class AdminController {
   @ApiResponse({ status: 400, description: 'Usuário não encontrado.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   @ApiResponse({ status: 403, description: 'Sem permissão.' })
-  verifyUser(@Param('id') id: string, @Body() verifyUserDto: VerifyUserDto) {
+  verifyUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() verifyUserDto: VerifyUserDto,
+  ) {
     return this.adminUsersService.verifyUser(id, verifyUserDto);
   }
 }
