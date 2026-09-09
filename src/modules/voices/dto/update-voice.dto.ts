@@ -1,5 +1,6 @@
 import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class UpdateVoiceDto {
   @ApiPropertyOptional({ example: 'Google Feminina PT-BR', maxLength: 100 })
@@ -22,27 +23,25 @@ export class UpdateVoiceDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
   @IsBoolean({ message: 'isActive deve ser um valor booleano' })
   isActive?: boolean;
 
   @ApiPropertyOptional({
-    example: 'https://cdn.example.com/voices/foto.png',
-    maxLength: 500,
+    type: 'string',
+    format: 'binary',
+    description: 'Arquivo de imagem da voz (JPEG, PNG ou WebP, máx. 2 MB)',
   })
   @IsOptional()
-  @IsString({ message: 'A foto deve ser uma string' })
-  @MaxLength(500, { message: 'A foto deve ter no máximo 500 caracteres' })
-  photoUri?: string;
+  photo?: string;
 
   @ApiPropertyOptional({
-    example: 'https://cdn.example.com/voices/amostra.wav',
-    maxLength: 500,
+    type: 'string',
+    format: 'binary',
     description: 'Áudio de exemplo reproduzido no formulário de doação',
   })
   @IsOptional()
-  @IsString({ message: 'A amostra de áudio deve ser uma string' })
-  @MaxLength(500, {
-    message: 'A amostra de áudio deve ter no máximo 500 caracteres',
-  })
-  sampleUrl?: string;
+  audio?: string;
 }

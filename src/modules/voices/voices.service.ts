@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { getStorageUrl } from 'src/common/utils/storageUrl.util';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { PublicVoiceEntity } from './entities/public-voice.entity';
 import { VoiceEntity } from './entities/voice.entity';
@@ -15,8 +16,8 @@ export class VoicesService {
           id: v.id,
           name: v.name,
           provider: v.provider,
-          photoUrl: v.photoUri,
-          sampleUrl: v.sampleUrl,
+          photoUrl: getStorageUrl(v.photoUri),
+          sampleUrl: getStorageUrl(v.sampleUrl),
         }),
     );
   }
