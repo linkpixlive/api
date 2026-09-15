@@ -1,16 +1,12 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
-import { SafeUser } from '../auth/entities/safe-user.entity';
 import { WidgetSettingsMap } from './dto/widget-settings.map';
 import { WidgetEntity } from './entities/widget.entity';
+import { getWidgetDefaults } from './widget-defaults';
 
 @Injectable()
 export class WidgetsService {
@@ -31,45 +27,17 @@ export class WidgetsService {
     return WidgetEntity.fromPrisma<T>(widget);
   }
 
-  async createWidgetSettings<T extends WidgetType>(
+  async upsertWidgetSettings<T extends WidgetType>(
     userId: string,
     type: T,
     settings?: WidgetSettingsMap[T],
   ): Promise<WidgetEntity<T>> {
-    const existingWidget = await this.widgetRepository.findByUserAndType(
-      userId,
+    const widget = await this.widgetRepository.upsert(userId, {
       type,
-    );
-
-    if (existingWidget) {
-      throw new ConflictException('Configurações do widget já existem');
-    }
-
-    const widget = await this.widgetRepository.create(userId, {
-      type,
-      settings: settings ?? this.getDefaultSettings(type),
-    });
-
-    return WidgetEntity.fromPrisma<T>(widget);
-  }
-
-  async updateWidgetSettings<T extends WidgetType>(
-    user: SafeUser,
-    type: T,
-    settings: WidgetSettingsMap[T],
-  ): Promise<WidgetEntity<T>> {
-    const existingWidget = await this.widgetRepository.findByUserAndType(
-      user.id,
-      type,
-    );
-
-    if (!existingWidget) {
-      throw new NotFoundException('Configurações do widget não encontradas');
-    }
-
-    const widget = await this.widgetRepository.update(user.id, {
-      type,
-      settings,
+      settings: (settings ?? getWidgetDefaults(type)) as unknown as Record<
+        string,
+        any
+      >,
     });
 
     return WidgetEntity.fromPrisma<T>(widget);
@@ -112,24 +80,5 @@ export class WidgetsService {
     }
 
     return WidgetEntity.fromPrisma(widget);
-  }
-
-  private getDefaultSettings(type: WidgetType): Record<string, any> {
-    switch (type) {
-      case WidgetType.overlay:
-        return {
-          volume: 100,
-          speakNameAmount: true,
-          defaultNarrator: 'Ricardo',
-          isPaused: false,
-        };
-      case WidgetType.qrcode:
-        return {
-          color: '#000000',
-          size: 256,
-        };
-      default:
-        return {};
-    }
   }
 }

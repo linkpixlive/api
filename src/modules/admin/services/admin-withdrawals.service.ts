@@ -68,15 +68,30 @@ export class AdminWithdrawalsService {
     return this.mapToEntity(withdrawal);
   }
 
-  private mapToEntity(withdrawal: Withdrawal): WithdrawalEntity {
+  private mapToEntity(
+    withdrawal: Withdrawal & { pixKey?: { keyType: string } | null },
+  ): WithdrawalEntity {
     return new WithdrawalEntity({
       id: withdrawal.id,
       pixId: withdrawal.pixId,
+      key: this.decryptPixValue(withdrawal.pixValue),
+      keyType: withdrawal.pixKey?.keyType,
       keyMasked: withdrawal.keyMasked,
       amount: Number(withdrawal.grossAmount),
       netAmount: Number(withdrawal.netAmount),
       feeAmount: Number(withdrawal.feeAmount),
       status: withdrawal.status,
     });
+  }
+
+  private decryptPixValue(
+    pixValue: string | null | undefined,
+  ): string | undefined {
+    if (!pixValue) return undefined;
+    try {
+      return decryptData(pixValue);
+    } catch {
+      return pixValue;
+    }
   }
 }

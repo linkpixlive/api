@@ -12,6 +12,7 @@ import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { DashboardGateway } from 'src/infra/websocket/dashboard.gateway';
 import { DonationHistoryEntity } from 'src/modules/dashboard/entities/donation-history.entity';
+import { VoiceEntity } from 'src/modules/voices/entities/voice.entity';
 import { VoicesService } from 'src/modules/voices/voices.service';
 import { OverlayWidgetSettingsDto } from 'src/modules/widgets/dto/overlay-settings.dto';
 import { OverlayService } from 'src/modules/widgets/overlay.service';
@@ -113,25 +114,53 @@ export class DonationsQueueProcessor extends WorkerHost {
     user: User;
     message: string;
     speakNameAmount: boolean;
-  }) {
+  }): Promise<string | null> {
     const nameAmountPrefix = speakNameAmount
       ? `${donation.name} mandou R$${String(donation.amount)}: `
       : '';
 
     const fullMessage = `${nameAmountPrefix}${message}`.trim();
 
-    const voice = donation.voiceId
-      ? await this.voiceService.findById(donation.voiceId)
-      : null;
+    if (!fullMessage) {
+      this.logger.warn(
+        `Doação ${donation.id} sem texto para TTS; creditando sem áudio`,
+      );
+      return null;
+    }
 
-    const ttsBuffer = await this.speech.generateTTS({
-      message: fullMessage,
-      voice: voice?.voiceId,
-    });
-    const ttsKey = `tts/${user.username}-${donation.id}.wav`;
+    let voice: VoiceEntity | null = null;
+    try {
+      voice = donation.voiceId
+        ? await this.voiceService.findById(donation.voiceId)
+        : null;
+    } catch (error) {
+      this.logger.warn(
+        `Voz ${String(donation.voiceId)} indisponível para doação ${donation.id}; usando voz padrão. ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
 
-    await this.storage.upload(ttsBuffer, ttsKey, 'audio/wav');
-    return ttsKey;
+    try {
+      const ttsBuffer = await this.speech.generateTTS({
+        message: fullMessage,
+        voice: voice?.voiceId,
+        provider: voice?.provider,
+      });
+
+      const isGoogle = (voice?.provider ?? '').toLowerCase() === 'google';
+      const ttsKey = `tts/${user.username}-${donation.id}.${isGoogle ? 'mp3' : 'wav'}`;
+
+      await this.storage.upload(
+        ttsBuffer,
+        ttsKey,
+        isGoogle ? 'audio/mpeg' : 'audio/wav',
+      );
+      return ttsKey;
+    } catch (error) {
+      this.logger.warn(
+        `TTS indisponível para doação ${donation.id} (provider ${voice?.provider ?? 'gradium'}); creditando sem áudio. ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
   }
 
   private async getDonation(id: string) {

@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  StreamableFile,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { map, Observable } from 'rxjs';
@@ -20,12 +21,17 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     const request = context.switchToHttp().getRequest<Request>();
 
     return next.handle().pipe(
-      map((data: T) => ({
-        success: true,
-        data,
-        timestamp: new Date().toISOString(),
-        path: request.url,
-      })),
+      map((data: T) => {
+        if (data instanceof StreamableFile) {
+          return data as unknown as ApiResponse<T>;
+        }
+        return {
+          success: true,
+          data,
+          timestamp: new Date().toISOString(),
+          path: request.url,
+        };
+      }),
     );
   }
 }

@@ -9,6 +9,7 @@ import { Decimal } from '@prisma/client/runtime/client';
 import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { WithdrawalClientKeyConflictError } from '../../common/errors/withdrawals.errors';
+import { decryptData } from '../../common/utils/crypto.util';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
 import { WalletsRepository } from '../../infra/db/repositories/wallets.repositories';
 import { WithdrawalsRepository } from '../../infra/db/repositories/withdrawals.repositories';
@@ -102,7 +103,7 @@ export class WithdrawalsService {
       throw error;
     }
 
-    return this.mapToEntity(withdrawal);
+    return this.mapToEntity(withdrawal, pix.keyType);
   }
 
   async findAll(
@@ -178,15 +179,32 @@ export class WithdrawalsService {
     }
   }
 
-  private mapToEntity(withdrawal: Withdrawal): WithdrawalEntity {
+  private mapToEntity(
+    withdrawal: Withdrawal & { pixKey?: { keyType: string } | null },
+    keyTypeOverride?: string,
+  ): WithdrawalEntity {
     return new WithdrawalEntity({
       id: withdrawal.id,
       pixId: withdrawal.pixId,
+      key: this.decryptPixValue(withdrawal.pixValue),
+      keyType: keyTypeOverride ?? withdrawal.pixKey?.keyType,
       keyMasked: withdrawal.keyMasked,
       amount: Number(withdrawal.grossAmount),
       netAmount: Number(withdrawal.netAmount),
       feeAmount: Number(withdrawal.feeAmount),
       status: withdrawal.status,
+      createdAt: withdrawal.createdAt,
     });
+  }
+
+  private decryptPixValue(
+    pixValue: string | null | undefined,
+  ): string | undefined {
+    if (!pixValue) return undefined;
+    try {
+      return decryptData(pixValue);
+    } catch {
+      return pixValue;
+    }
   }
 }

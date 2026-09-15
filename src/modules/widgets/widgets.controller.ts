@@ -20,6 +20,16 @@ import { WidgetsService } from './widgets.service';
 export class WidgetsController {
   constructor(private readonly widgetsService: WidgetsService) {}
 
+  @Public()
+  @Get('public/:token')
+  @ApiOperation({
+    summary: 'Obter configurações públicas do widget para OBS/Uso externo',
+  })
+  @ApiResponse({ status: 200 })
+  async getPublicSettings(@Param() { token }: PublicWidgetParams) {
+    return this.widgetsService.getPublicWidgetSettings(token);
+  }
+
   @Get(':type')
   @ApiOperation({ summary: 'Obter configurações de um tipo de widget' })
   @ApiResponse({ status: 200, type: WidgetEntity })
@@ -30,36 +40,17 @@ export class WidgetsController {
     return this.widgetsService.getWidgetSettings(user.id, type);
   }
 
-  @Post(':type')
-  @ApiOperation({ summary: 'Criar configurações para um tipo de widget' })
-  @ApiResponse({ status: 201, type: WidgetEntity })
-  async createSettings(
-    @CurrentUser() user: SafeUser,
-    @Param() { type }: WidgetTypeParams,
-    @Body(WidgetSettingsPipe) settings: AnyWidgetSettings,
-  ) {
-    return this.widgetsService.createWidgetSettings(user.id, type, settings);
-  }
-
   @Put(':type')
-  @ApiOperation({ summary: 'Atualizar configurações de um tipo de widget' })
+  @ApiOperation({
+    summary: 'Criar ou atualizar configurações de um tipo de widget',
+  })
   @ApiResponse({ status: 200, type: WidgetEntity })
-  async updateSettings(
+  async upsertSettings(
     @CurrentUser() user: SafeUser,
     @Param() { type }: WidgetTypeParams,
-    @Body(WidgetSettingsPipe) settings: AnyWidgetSettings,
+    @Body(WidgetSettingsPipe) settings?: AnyWidgetSettings,
   ) {
-    return this.widgetsService.updateWidgetSettings(user, type, settings);
-  }
-
-  @Public()
-  @Get('public/:type/:token')
-  @ApiOperation({
-    summary: 'Obter configurações públicas do widget para OBS/Uso externo',
-  })
-  @ApiResponse({ status: 200 })
-  async getPublicSettings(@Param() { token }: PublicWidgetParams) {
-    return this.widgetsService.getPublicWidgetSettings(token);
+    return this.widgetsService.upsertWidgetSettings(user.id, type, settings);
   }
 
   @Post(':type/reset-token')

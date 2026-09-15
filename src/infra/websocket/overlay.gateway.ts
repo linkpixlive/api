@@ -33,11 +33,12 @@ export class OverlayGateway
     const token = client.handshake.query.token as string;
     if (!token) return client.disconnect();
 
+    await client.join(token);
+
     const registered = await this.overlayService.registerConnection(token);
     if (!registered) return client.disconnect();
 
     client['token'] = token;
-    await client.join(token);
   }
 
   async handleDisconnect(client: Socket) {

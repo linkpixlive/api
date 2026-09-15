@@ -20,6 +20,7 @@ import { DonationDto } from './dto/donation.dto';
 import { DonationStatusEntity } from './entities/donation-status.entity';
 import { DonationEntity } from './entities/donation.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
+import * as xss from 'xss';
 
 const EXPIRY_MARGIN_MS = 5 * 60 * 1000;
 const HARD_EXPIRY_MS = 48 * 60 * 60 * 1000;
@@ -54,6 +55,7 @@ export class DonationsService {
     const data = {
       name: user.name,
       username: user.username,
+      verified: user.verified,
       profileImageUrl: getProfileImageUrl(user.profileImageUrl),
       overlayActive: !!overlayStatus,
       minAudioAmount: Number(settings.minAudioAmount),
@@ -133,16 +135,22 @@ export class DonationsService {
   }
 
   async getDonation(id: string): Promise<DonationStatusEntity> {
-    const donation = await this.donationsRepository.findById(id);
+    const donation = await this.donationsRepository.findByIdWithUser(id);
 
     if (!donation) {
       throw new NotFoundException('Doação não encontrada');
     }
 
+    const rawMessage = donation.message ?? donation.messageRaw;
+
     return new DonationStatusEntity({
       id: donation.id,
       status: donation.status,
       expiredAt: donation.expiredAt,
+      streamerUsername: donation.user.username,
+      streamerName: donation.user.name,
+      message: rawMessage ? xss.filterXSS(rawMessage) : null,
+      amount: Number(donation.amount),
     });
   }
 

@@ -1,10 +1,19 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Res,
+  StreamableFile,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { DashboardService } from './dashboard.service';
@@ -46,5 +55,26 @@ export class DashboardController {
     @Query() query: GetHistoryQueryDto,
   ) {
     return this.dashboardService.getHistory(user.id, query);
+  }
+
+  @Get('history/:id/audio')
+  @ApiOperation({ summary: 'Baixar áudio da doação como anexo' })
+  @ApiResponse({ status: 200, description: 'Arquivo de áudio.' })
+  @ApiResponse({ status: 404, description: 'Áudio não disponível.' })
+  @ApiResponse({ status: 401, description: 'Não autorizado.' })
+  async downloadAudio(
+    @CurrentUser() user: SafeUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const audio = await this.dashboardService.getDonationAudio(user.id, id);
+    res.set({
+      'Content-Type': audio.contentType,
+      'Content-Disposition': `attachment; filename="${audio.filename}"`,
+      ...(audio.contentLength !== undefined
+        ? { 'Content-Length': String(audio.contentLength) }
+        : {}),
+    });
+    return new StreamableFile(audio.stream);
   }
 }

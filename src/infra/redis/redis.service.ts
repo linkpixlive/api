@@ -76,6 +76,10 @@ export class RedisService {
     await this.redis.lrem(key, 0, value);
   }
 
+  async removeListValueOnce(key: string, value: string) {
+    await this.redis.lrem(key, 1, value);
+  }
+
   async getListLength(key: string): Promise<number> {
     return await this.redis.llen(key);
   }

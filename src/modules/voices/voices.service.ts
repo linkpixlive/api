@@ -15,7 +15,6 @@ export class VoicesService {
         new PublicVoiceEntity({
           id: v.id,
           name: v.name,
-          provider: v.provider,
           photoUrl: getStorageUrl(v.photoUri),
           sampleUrl: getStorageUrl(v.sampleUrl),
         }),

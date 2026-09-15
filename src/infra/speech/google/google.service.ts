@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { SpeechContract } from '../contract/speech.contract';
@@ -7,6 +7,8 @@ import { GoogleTTSResponse } from './google.type';
 
 @Injectable()
 export class GoogleService extends SpeechContract {
+  private readonly logger = new Logger(GoogleService.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
@@ -35,7 +37,20 @@ export class GoogleService extends SpeechContract {
       },
     );
 
-    const { data } = await firstValueFrom(response);
+    const { data } = await firstValueFrom(response).catch((error: unknown) => {
+      const axiosResponse = (
+        error as { response?: { status?: unknown; data?: unknown } }
+      )?.response;
+      const status = axiosResponse?.status;
+      const statusText =
+        typeof status === 'number' || typeof status === 'string'
+          ? String(status)
+          : '?';
+      this.logger.error(
+        `Google TTS falhou (status ${statusText}): ${JSON.stringify(axiosResponse?.data ?? 'sem corpo de resposta').slice(0, 500)}`,
+      );
+      throw error;
+    });
 
     if (!data.audioContent) throw new BadRequestException('Error Google TTS');
 

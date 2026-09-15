@@ -32,8 +32,9 @@ export class PixKeysService {
 
   async create(user: SafeUser, dto: CreatePixKeyDto): Promise<PixKeyEntity> {
     const keyType = this.detectKeyType(dto.key);
+    const rawKey = this.stripPhoneDdi(keyType, dto.key);
 
-    const keyHash = hashData(dto.key);
+    const keyHash = hashData(rawKey);
     const existing = await this.pixKeysRepository.findByUserIdAndKeyHash(
       user.id,
       keyHash,
@@ -43,8 +44,8 @@ export class PixKeysService {
       throw new ConflictException('Esta chave Pix já está registrada.');
     }
 
-    const encryptedKey = encryptData(dto.key);
-    const maskedKey = maskPixKey(keyType, dto.key);
+    const encryptedKey = encryptData(rawKey);
+    const maskedKey = maskPixKey(keyType, rawKey);
 
     const maxKeys = this.configService.getOrThrow<number>(
       'MAX_PIX_KEYS_PER_USER',
@@ -104,5 +105,14 @@ export class PixKeysService {
     const decryptedKey = decryptData(pixKey.key);
 
     return new PixKeyEntity({ ...pixKey, key: decryptedKey });
+  }
+
+  private stripPhoneDdi(keyType: PixKeyType, key: string): string {
+    if (keyType !== 'phone') return key;
+    const digits = key.replace(/\D/g, '');
+    if (digits.length > 11 && digits.startsWith('55')) {
+      return digits.substring(2);
+    }
+    return key;
   }
 }

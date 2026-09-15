@@ -18,15 +18,12 @@ export function maskPixKey(keyType: string, key: string): string {
 
     case 'phone': {
       const clean = key.replace(/\D/g, '');
-      // Handle "+5511999999999" (13 digits) or "11999999999" (11 digits)
+      // Usa os últimos 11 dígitos (DDD + número), sem DDI (+55):
+      // "+5511999999999" ou "11999999999" -> "(11) 9****-9999"
       if (clean.length >= 11) {
-        const hasDDI = clean.length > 11;
-        const number = hasDDI ? clean.substring(clean.length - 11) : clean;
-        const ddi = hasDDI
-          ? `+${clean.substring(0, clean.length - 11)} `
-          : '+55 ';
+        const number = clean.substring(clean.length - 11);
 
-        return `${ddi}(${number.substring(0, 2)}) 9****-${number.substring(7)}`;
+        return `(${number.substring(0, 2)}) 9****-${number.substring(7)}`;
       }
       return key;
     }

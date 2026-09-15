@@ -16,6 +16,7 @@ import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 import { DonationHistoryEntity } from '../dashboard/entities/donation-history.entity';
 import { OverlayWidgetSettingsDto } from './dto/overlay-settings.dto';
+import { getWidgetDefaults } from './widget-defaults';
 
 const TEST_ID_PREFIX = 'test-';
 
@@ -46,6 +47,7 @@ export class OverlayService {
       settings.isPaused,
     );
     await this.resendCurrentAlert(token);
+    await this.dispatchIfReady(token);
     await this.syncDashboardQueue(widget.userId, token);
     return true;
   }
@@ -116,7 +118,7 @@ export class OverlayService {
   // ─── Dashboard Actions (called from OverlayController via HTTP) ───────────────
 
   async togglePause(userId: string) {
-    const widget = await this.getActiveOverlay(userId);
+    const widget = await this.getOrCreateActiveOverlay(userId);
 
     const settings = widget.settings as unknown as OverlayWidgetSettingsDto;
     settings.isPaused = !settings.isPaused;
@@ -150,7 +152,7 @@ export class OverlayService {
   }
 
   async skipCurrent(userId: string) {
-    const widget = await this.getActiveOverlay(userId);
+    const widget = await this.getOrCreateActiveOverlay(userId);
     this.overlayGateway.emitSkipAlert(widget.token);
     await this.redisService.remove(RedisKeys.overlayCurrent(widget.token));
 
@@ -167,7 +169,7 @@ export class OverlayService {
   }
 
   async clearQueue(userId: string) {
-    const widget = await this.getActiveOverlay(userId);
+    const widget = await this.getOrCreateActiveOverlay(userId);
     await this.redisService.remove(RedisKeys.overlayQueue(widget.token));
     await this.redisService.remove(RedisKeys.overlayCurrent(widget.token));
     this.overlayGateway.emitClearAlerts(widget.token);
@@ -175,7 +177,7 @@ export class OverlayService {
   }
 
   async removeFromQueue(userId: string, donationId: string) {
-    const widget = await this.getActiveOverlay(userId);
+    const widget = await this.getOrCreateActiveOverlay(userId);
     const queueKey = RedisKeys.overlayQueue(widget.token);
     const currentKey = RedisKeys.overlayCurrent(widget.token);
 
@@ -193,19 +195,18 @@ export class OverlayService {
       return;
     }
 
-    await this.redisService.removeListValue(queueKey, donationId);
+    await this.redisService.removeListValueOnce(queueKey, donationId);
     await this.syncDashboardQueue(userId, widget.token);
   }
 
   async replayDonation(userId: string, donationId: string) {
-    const [widget, donation] = await Promise.all([
-      this.getActiveOverlay(userId),
-      this.donationsRepository.findById(donationId),
-    ]);
+    const donation = await this.donationsRepository.findById(donationId);
 
     if (!donation || donation.userId !== userId) {
       throw new NotFoundException('Doação não encontrada');
     }
+
+    const widget = await this.getOrCreateActiveOverlay(userId);
 
     await this.redisService.addToListEnd(
       RedisKeys.overlayQueue(widget.token),
@@ -217,7 +218,7 @@ export class OverlayService {
   }
 
   async testOverlay(userId: string) {
-    const widget = await this.getActiveOverlay(userId);
+    const widget = await this.getOrCreateActiveOverlay(userId);
 
     await this.redisService.addToListEnd(
       RedisKeys.overlayQueue(widget.token),
@@ -230,14 +231,23 @@ export class OverlayService {
 
   // ─── Private Helpers ─────────────────────────────────────────────────────────
 
-  private async getActiveOverlay(userId: string) {
+  private async getOrCreateActiveOverlay(userId: string) {
     const widget = await this.widgetRepository.findByUserAndType(
       userId,
       WidgetType.overlay,
     );
-    if (!widget || !widget.active)
-      throw new NotFoundException('Overlay ativo não encontrado');
-    return widget;
+    if (widget) {
+      if (!widget.active)
+        throw new NotFoundException('Overlay ativo não encontrado');
+      return widget;
+    }
+    return await this.widgetRepository.upsert(userId, {
+      type: WidgetType.overlay,
+      settings: getWidgetDefaults(WidgetType.overlay) as unknown as Record<
+        string,
+        any
+      >,
+    });
   }
 
   private async dispatchIfReady(token: string) {

@@ -86,6 +86,13 @@ export class DonationsRepository {
     return await this.prismaService.donation.findUnique({ where: { id } });
   }
 
+  async findByIdWithUser(id: string) {
+    return await this.prismaService.donation.findUnique({
+      where: { id },
+      include: { user: { select: { username: true, name: true } } },
+    });
+  }
+
   async findOverdue(
     expiredBefore: Date,
     limit: number,

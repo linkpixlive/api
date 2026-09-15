@@ -169,4 +169,14 @@ export class DashboardRepository {
 
     return { donations, total };
   }
+
+  async findDonationAudioMeta(
+    donationId: string,
+    userId: string,
+  ): Promise<Pick<Donation, 'voiceUrl' | 'name' | 'approvedAt'> | null> {
+    return this.prismaService.donation.findFirst({
+      where: { id: donationId, userId },
+      select: { voiceUrl: true, name: true, approvedAt: true },
+    });
+  }
 }

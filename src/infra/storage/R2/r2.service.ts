@@ -1,11 +1,16 @@
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageContract } from '../contract/storage.contract';
+import type { Readable } from 'node:stream';
+import {
+  StorageContract,
+  type StoredObject,
+} from '../contract/storage.contract';
 
 @Injectable()
 export class R2Service extends StorageContract {
@@ -32,6 +37,21 @@ export class R2Service extends StorageContract {
     });
 
     await this.r2Client.send(command);
+  }
+
+  async getObject(key: string): Promise<StoredObject> {
+    const res = await this.r2Client.send(
+      new GetObjectCommand({
+        Bucket: 'tipply',
+        Key: key,
+      }),
+    );
+
+    return {
+      body: res.Body as Readable,
+      contentType: res.ContentType,
+      contentLength: res.ContentLength,
+    };
   }
 
   async deleteObject(key: string) {

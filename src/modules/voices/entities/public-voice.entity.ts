@@ -11,10 +11,6 @@ export class PublicVoiceEntity {
   @Expose()
   name: string;
 
-  @ApiProperty({ example: 'google' })
-  @Expose()
-  provider: string;
-
   @ApiProperty({
     example: 'https://cdn.example.com/voices/foto.jpg',
     nullable: true,

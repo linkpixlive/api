@@ -55,6 +55,25 @@ export class WidgetRepository {
     });
   }
 
+  async upsert(userId: string, data: CreateWidgetParams) {
+    return await this.prisma.widget.upsert({
+      where: {
+        userId_type: {
+          userId,
+          type: data.type,
+        },
+      },
+      create: {
+        userId,
+        type: data.type,
+        settings: data.settings,
+      },
+      update: {
+        settings: data.settings,
+      },
+    });
+  }
+
   async updateToken(userId: string, type: WidgetType, token: string) {
     return await this.prisma.widget.update({
       where: {

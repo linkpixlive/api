@@ -86,6 +86,7 @@ export class WithdrawalsRepository {
         skip,
         take: params.limit,
         orderBy: { createdAt: 'desc' },
+        include: { pixKey: { select: { keyType: true } } },
       }),
     ]);
 
@@ -247,6 +248,7 @@ export class WithdrawalsRepository {
         clientKey,
       },
       orderBy: { createdAt: 'desc' },
+      include: { pixKey: { select: { keyType: true } } },
     });
   }
 

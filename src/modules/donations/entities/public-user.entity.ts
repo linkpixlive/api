@@ -7,6 +7,9 @@ export class PublicUserEntity {
   @ApiProperty({ example: 'johndoe' })
   username: string;
 
+  @ApiProperty({ example: false, description: 'Se o streamer é verificado' })
+  verified: boolean;
+
   @ApiProperty({ example: 'https://example.com/avatar.jpg', nullable: true })
   profileImageUrl: string | null;
 

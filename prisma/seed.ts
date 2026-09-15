@@ -15,8 +15,9 @@ import { Decimal } from '@prisma/client/runtime/client';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { SecurityService } from '../src/common/security/security.service';
+import { encryptData, hashData } from 'src/common/utils/crypto.util';
 import { maskPixKey } from '../src/common/utils/mask.util';
+import { WIDGET_DEFAULTS } from '../src/modules/widgets/widget-defaults';
 
 const SEED = {
   admin: {
@@ -68,19 +69,9 @@ const VOICES = [
 
 const DEFAULT_VOICE_NAME = 'Ricardo';
 
-// Espelha WidgetsService.getDefaultSettings — defaultNarrator deve existir no catálogo acima.
-const WIDGET_DEFAULTS: Record<WidgetType, Prisma.InputJsonObject> = {
-  [WidgetType.overlay]: {
-    volume: 100,
-    speakNameAmount: true,
-    defaultNarrator: DEFAULT_VOICE_NAME,
-    isPaused: false,
-  },
-  [WidgetType.qrcode]: {
-    color: '#000000',
-    size: 256,
-  },
-};
+// Defaults canônicos vivem em WidgetsService/widget-defaults — o seed só
+// referencia para não divergir (settings é Json, aceita o objeto tipado).
+// Nota: defaultNarrator ('Ricardo') deve existir no catálogo VOICES acima.
 
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -309,7 +300,11 @@ async function ensureWidgets(tx: Tx, userId: string) {
   for (const type of [WidgetType.overlay, WidgetType.qrcode]) {
     await tx.widget.upsert({
       where: { userId_type: { userId, type } },
-      create: { userId, type, settings: WIDGET_DEFAULTS[type] },
+      create: {
+        userId,
+        type,
+        settings: WIDGET_DEFAULTS[type] as unknown as Prisma.InputJsonObject,
+      },
       update: {},
     });
   }
@@ -330,7 +325,7 @@ async function main() {
       connectionString: process.env.DATABASE_URL,
     }),
   });
-  const securityService = new SecurityService();
+  // const securityService = new SecurityService();
 
   try {
     const passwordHash = await bcrypt.hash(SEED.password, 12);
@@ -372,8 +367,8 @@ async function main() {
           pixKey = await tx.pixKey.create({
             data: {
               userId: admin.user.id,
-              key: securityService.encryptData(admin.user.email),
-              keyHashed: securityService.hashData(admin.user.email),
+              key: encryptData(admin.user.email),
+              keyHashed: hashData(admin.user.email),
               keyMasked: maskPixKey('email', admin.user.email),
               keyType: PixKeyType.email,
               alias: 'Principal',

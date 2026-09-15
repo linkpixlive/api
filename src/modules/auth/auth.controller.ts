@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentSid } from 'src/common/decorators/current-sid.decorator';
@@ -170,6 +177,17 @@ export class AuthController {
   })
   verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto);
+  }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Dados do usuário autenticado' })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuário autenticado recuperado com sucesso.',
+    type: SafeUser,
+  })
+  me(@CurrentUser() user: SafeUser) {
+    return user;
   }
 
   @Post('logout')
