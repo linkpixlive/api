@@ -2,8 +2,10 @@ export interface UpdateDonationSettingsParams {
   maxLength?: number;
   minAudioAmount?: number;
   minTextAmount?: number;
+  aiModeration?: boolean;
   filterProfanity?: boolean;
   filterSpam?: boolean;
-  blockedWords?: string[];
+  filterHateSpeech?: boolean;
+  customRules?: string;
   defaultVoiceId?: string | null;
 }

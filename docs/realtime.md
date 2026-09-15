@@ -19,11 +19,20 @@
 1. Carrega doação — aceita `pending` ou `expired`; inexistente falha; já `paid`/`displayed` loga e **conclui com sucesso** (idempotência de retry).
 2. `gateway.getPixStatus` — exige `PAID` e valor igual (compara com `Decimal`).
 3. Carrega user + donationSettings + widget overlay ativo (`UsersRepository.findByIdWithConfig`) — overlay é **opcional**: streamer sem widget ativo segue o pipeline (o TTS usa `speakNameAmount: true` como padrão).
-4. Moderação IA (`AiContract.cleanMessage`): **chamada comentada** no processor — hoje `message = messageRaw`. `filterProfanity`/`filterSpam`/`blockedWords` só surtem efeito quando reativada.
-5. TTS (best-effort): prefixo opcional `"<nome> mandou R$<valor>: "` (se `speakNameAmount` do widget); voz do `voiceId` da doação roteada por `voice.provider` (`SpeechService`: `google` → Google/MP3, demais → Gradium/WAV; texto vazio pula o TTS). Falha de TTS/upload gera `warn` e credita **sem áudio** (`voiceUrl` null) — pagamento confirmado nunca fica sem crédito por falha de áudio.
-6. Upload R2 com chave `tts/<username>-<donationId>.wav` — no DB vai só a chave; URL = `BUCKET_URL/<key>` montada em runtime.
-7. `DonationsRepository.processDonation` (tx: `paid` + crédito no ledger).
-8. Dashboard gateway emite `donation:created`; `OverlayService.handleNewDonation` enfileira o alerta — sem widget configurado ou com overlay offline, a doação segue paga/creditada e a etapa é apenas pulada.
+4. TTS (best-effort): usa `donation.message` (texto final, já moderado na submissão) com prefixo opcional `"<nome> mandou R$<valor>: "` (se `speakNameAmount` do widget); voz do `voiceId` da doação roteada por `voice.provider` (`SpeechService`: `google` → Google/MP3, demais → Gradium/WAV; texto vazio pula o TTS). Falha de TTS/upload gera `warn` e credita **sem áudio** (`voiceUrl` null) — pagamento confirmado nunca fica sem crédito por falha de áudio.
+5. Upload R2 com chave `tts/<username>-<donationId>.wav` — no DB vai só a chave; URL = `BUCKET_URL/<key>` montada em runtime.
+6. `DonationsRepository.processDonation` (tx: `paid` + crédito no ledger — a mensagem já nasce preenchida na criação).
+7. Dashboard gateway emite `donation:created`; `OverlayService.handleNewDonation` enfileira o alerta — sem widget configurado ou com overlay offline, a doação segue paga/creditada e a etapa é apenas pulada.
+
+## Moderação de mensagens (submissão da doação)
+
+Acontece **antes de gerar o QRCode** (`DonationsService.donation()`), não na fila — rejeição nunca cria cobrança Efí e o texto gravado já é o final (TTS/overlay não re-moderam). Detalhes e decisões em `docs/plans/2026-09-15-ai-moderation-filters.md`.
+
+- Toggle mestre `aiModeration` em `DonationSettings` (**default off**): off = fluxo sem IA.
+- `filterSpam` (não-bloqueante): sanitização determinística (`src/common/utils/spam-sanitizer.util.ts`) — runs de caractere >5→5, fragmento repetido 3+×→2×, mash de teclado truncado; aplica em `name` e `message`.
+- Palavras isoladas de `customRules`: match determinístico com normalização (acento, leet, letras repetidas, separadores — `src/common/utils/custom-rules.util.ts`); hit bloqueia sem chamar a IA.
+- `filterProfanity`/`filterHateSpeech`/regras contextuais de `customRules`: `AiContract.moderate()` (Gemini 2.5 Flash, temp 0, resposta JSON, timeout 3s) avalia nome+mensagem juntos, tolerando palavrão leve/zoeira de live.
+- Bloqueio: `BadRequestException` **genérica** (sem revelar categoria/palavra) + log estruturado. Falha/timeout da IA: **fail-open** (doação passa) + log.
 
 ## Cron de expiração (`DonationsService.expireOverdueDonations`, 5min)
 

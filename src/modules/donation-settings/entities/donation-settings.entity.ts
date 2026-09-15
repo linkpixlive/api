@@ -26,6 +26,10 @@ export class DonationSettingsEntity implements DonationSettings {
   @Transform(({ value }) => Number(value))
   minTextAmount: Decimal;
 
+  @ApiProperty({ example: false })
+  @Expose()
+  aiModeration: boolean;
+
   @ApiProperty({ example: true })
   @Expose()
   filterProfanity: boolean;
@@ -34,9 +38,13 @@ export class DonationSettingsEntity implements DonationSettings {
   @Expose()
   filterSpam: boolean;
 
-  @ApiProperty({ example: ['badword1', 'badword2'] })
+  @ApiProperty({ example: false })
   @Expose()
-  blockedWords: string[];
+  filterHateSpeech: boolean;
+
+  @ApiProperty({ example: 'casino\nSem divulgação de outros canais' })
+  @Expose()
+  customRules: string;
 
   @ApiProperty({ example: 'uuid-voice-id', nullable: true })
   @Expose()

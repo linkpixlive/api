@@ -18,11 +18,7 @@ export class DonationsRepository {
     private walletsRepository: WalletsRepository,
   ) {}
 
-  async processDonation({
-    donationId,
-    message,
-    voiceUri,
-  }: ProcessDonationParams) {
+  async processDonation({ donationId, voiceUri }: ProcessDonationParams) {
     return await this.prismaService.$transaction(async (tx) => {
       const donation = await tx.donation.findUnique({
         where: { id: donationId },
@@ -40,7 +36,6 @@ export class DonationsRepository {
         where: { id: donationId, status: { in: ['pending', 'expired'] } },
         data: {
           status: 'paid',
-          message: message,
           approvedAt: new Date(),
           voiceUrl: voiceUri,
         },
@@ -69,7 +64,6 @@ export class DonationsRepository {
         transactionId: data.transactionId,
         paymentMethod: data.paymentMethod,
         ip: data.ip,
-        messageRaw: data.messageRaw,
         voiceId: data.voiceId,
         pix: data.pix,
         status: data.status,
@@ -133,7 +127,6 @@ export class DonationsRepository {
         name: data.name,
         amount: data.amount,
         ip: data.ip,
-        messageRaw: data.messageRaw,
         voiceId: data.voiceId,
         pix: data.pix,
         status: data.status,

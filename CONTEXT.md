@@ -43,7 +43,7 @@
 
 - **Overlay**: página do OBS que exibe alertas; identificada pelo `token` do widget (UUID).
 - **Ledger**: tabela `transactions` (append-only); saldo do wallet é cache derivado dela.
-- **`messageRaw` vs `message`**: texto original do doador vs texto tratado (hoje cópia direta — moderação IA desativada).
+- **Moderação IA**: ativável por streamer (`aiModeration`, default off); bloqueia a doação **antes do QRCode** com erro genérico; só o filtro de spam modifica o texto (sanitização determinística). Decisões em `docs/plans/2026-09-15-ai-moderation-filters.md`.
 - **Test alert**: `test-<uuid>` na fila; payload sintético em memória, nunca persistido.
 - **MED**: disputa de Pix (plano em `docs/plans/2026-08-12-med-and-fee-ledger.md`).
 

@@ -1,6 +1,5 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { AiModule } from 'src/infra/ai/ai.module';
 import { GatewayModule } from 'src/infra/gateway/gateway.module';
 import { SpeechModule } from 'src/infra/speech/speech.module';
 import { StorageModule } from 'src/infra/storage/storage.module';
@@ -13,7 +12,6 @@ import { DonationsQueueService } from './donations-queue.service';
 @Module({
   imports: [
     GatewayModule,
-    AiModule,
     StorageModule,
     SpeechModule,
     WebsocketModule,

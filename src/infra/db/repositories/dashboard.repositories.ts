@@ -116,7 +116,6 @@ export class DashboardRepository {
           message,
           message_type AS "messageType",
           status,
-          message_raw AS "messageRaw",
           voice_url AS "voiceUrl",
           approved_at AS "approvedAt"
         FROM donations

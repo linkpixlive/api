@@ -31,13 +31,6 @@ export class DonationHistoryEntity {
   status: DonationStatus;
 
   @ApiProperty({
-    example: 'Keep up the good work!',
-    description: 'Mensagem original antes da moderação',
-    nullable: true,
-  })
-  messageRaw: string | null;
-
-  @ApiProperty({
     example: 'https://cdn.tipply.live/tts/johndoe-uuid-123.wav',
     description: 'URL pública do áudio',
     nullable: true,
@@ -59,7 +52,6 @@ export class DonationHistoryEntity {
       message: donation.message,
       messageType: donation.messageType,
       status: donation.status,
-      messageRaw: donation.messageRaw,
       voiceUrl: getAudioUrl(donation.voiceUrl),
       approvedAt: donation.approvedAt,
     });

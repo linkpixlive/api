@@ -347,9 +347,12 @@ async function main() {
         const streamer = await ensureUser(tx, SEED.streamer, passwordHash);
 
         await ensureDonationSettings(tx, admin.user.id, {
+          aiModeration: true,
           filterProfanity: true,
           filterSpam: true,
-          blockedWords: ['casino', 'spam', 'http://'],
+          filterHateSpeech: true,
+          customRules:
+            'casino\nspam\nhttp://\nSem divulgação de outros canais ou apostas',
           defaultVoiceId: defaultVoice?.id,
         });
         await ensureDonationSettings(tx, streamer.user.id, {
@@ -414,8 +417,7 @@ async function main() {
                 userId: admin.user.id,
                 name: scenario.name,
                 amount: new Decimal(scenario.amount),
-                messageRaw: scenario.message,
-                message: confirmed ? scenario.message : null,
+                message: scenario.message,
                 messageType: scenario.messageType,
                 voiceId: scenario.voiceName
                   ? voiceByName.get(scenario.voiceName)?.id

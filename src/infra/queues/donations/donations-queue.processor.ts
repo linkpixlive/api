@@ -1,10 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException, Logger } from '@nestjs/common';
-import { Donation, DonationSettings, User } from '@prisma/client';
+import { Donation, User } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { Job } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
-import { AiContract } from 'src/infra/ai/contract/ai.contract';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
@@ -25,7 +24,6 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly donationsRepository: DonationsRepository,
     private readonly gateway: GatewayContract,
     private readonly usersRepository: UsersRepository,
-    private readonly aiService: AiContract,
     private readonly storage: StorageContract,
     private readonly speech: SpeechContract,
     private readonly overlayService: OverlayService,
@@ -48,21 +46,15 @@ export class DonationsQueueProcessor extends WorkerHost {
         donation.userId,
       );
 
-      // const cleanMessage = await this.getCleanMessage(
-      //   donation.messageRaw,
-      //   donationSettings,
-      // );
-
       const ttsKey = await this.generateAndUploadAudio({
         donation,
         user,
-        message: donation.messageRaw ?? '',
+        message: donation.message ?? '',
         speakNameAmount: overlaySettings?.speakNameAmount ?? true,
       });
 
       const updatedDonation = await this.donationsRepository.processDonation({
         donationId: donation.id,
-        message: donation.messageRaw ?? '',
         voiceUri: ttsKey,
       });
 
@@ -198,24 +190,10 @@ export class DonationsQueueProcessor extends WorkerHost {
 
     return {
       user: userWithConfig,
-      donationSettings,
       overlay,
       overlaySettings: overlay
         ? (overlay.settings as unknown as OverlayWidgetSettingsDto)
         : null,
     };
-  }
-
-  private async getCleanMessage(
-    rawMessage: string | null,
-    settings: DonationSettings,
-  ) {
-    if (!rawMessage) return '';
-
-    return await this.aiService.cleanMessage(rawMessage, {
-      filterProfanity: settings.filterProfanity,
-      filterSpam: settings.filterSpam,
-      blockedWords: settings.blockedWords,
-    });
   }
 }

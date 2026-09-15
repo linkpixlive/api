@@ -25,7 +25,7 @@ Entities (`modules/<m>/entities/`): `@Exclude()` na classe, `@Expose()` por camp
 
 | Contract | Provider | Módulo | Uso |
 |---|---|---|---|
-| `AiContract.cleanMessage` | `GeminiService` | `AiModule` | moderação de mensagens |
+| `AiContract.moderate` | `GeminiService` | `AiModule` | moderação de doações (veredito na submissão) |
 | `SpeechContract.generateTTS` | `SpeechService` roteia por `voice.provider` (`GradiumService` default, `GoogleService` p/ `google`) | `SpeechModule` | áudio TTS |
 | `StorageContract.uploadAudio` | `R2Service` (Cloudflare R2) | `StorageModule` | upload de áudio |
 | `GatewayContract` (`generatePix`, `getPixStatus`, `sendPix`, `getSentPixStatus`) | `EfiService` (Efí/Pix, mTLS, token cache) | `GatewayModule` | Pix |

@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpdateDonationSettingsDto {
   @ApiPropertyOptional({ example: 250 })
@@ -20,6 +28,15 @@ export class UpdateDonationSettingsDto {
   @Min(1, { message: 'O valor mínimo de texto é 1' })
   minTextAmount?: number;
 
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Toggle mestre da moderação IA — off desativa todos os filtros',
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'Moderação de IA deve ser um valor booleano' })
+  aiModeration?: boolean;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean({ message: 'Filtrar profanidade deve ser um valor booleano' })
@@ -27,8 +44,26 @@ export class UpdateDonationSettingsDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
-  @IsBoolean({ message: 'Moderação de IA deve ser um valor booleano' })
-  aiModeration?: boolean;
+  @IsBoolean({ message: 'Filtrar spam deve ser um valor booleano' })
+  filterSpam?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean({ message: 'Filtrar discurso de ódio deve ser um valor booleano' })
+  filterHateSpeech?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'casino\nSem divulgação de outros canais',
+    description:
+      'Regras customizadas em texto único: palavras (uma por linha) e/ou instruções livres de contexto',
+    maxLength: 1000,
+  })
+  @IsOptional()
+  @IsString({ message: 'As regras customizadas devem ser um texto' })
+  @MaxLength(1000, {
+    message: 'As regras customizadas devem ter no máximo 1000 caracteres',
+  })
+  customRules?: string;
 
   @ApiPropertyOptional({ example: 'uuid-voice-id' })
   @IsOptional()

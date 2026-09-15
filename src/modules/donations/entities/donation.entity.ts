@@ -58,10 +58,6 @@ export class DonationEntity {
 
   @Exclude()
   @ApiHideProperty()
-  messageRaw: string | null;
-
-  @Exclude()
-  @ApiHideProperty()
   voiceUrl: string | null;
 
   @Exclude()

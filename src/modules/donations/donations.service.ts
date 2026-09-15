@@ -5,10 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { DonationStatus, PaymentMethod } from '@prisma/client';
+import {
+  DonationSettings,
+  DonationStatus,
+  PaymentMethod,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
+import { findBlockedCustomWord } from 'src/common/utils/custom-rules.util';
 import { getProfileImageUrl } from 'src/common/utils/profileImageUrl.util';
+import { sanitizeSpamText } from 'src/common/utils/spam-sanitizer.util';
+import { AiContract } from 'src/infra/ai/contract/ai.contract';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
@@ -25,6 +32,9 @@ import * as xss from 'xss';
 const EXPIRY_MARGIN_MS = 5 * 60 * 1000;
 const HARD_EXPIRY_MS = 48 * 60 * 60 * 1000;
 const OVERDUE_BATCH_LIMIT = 50;
+const BLOCKED_MESSAGE =
+  'Mensagem não permitida pelas regras do streamer. Edite e tente novamente.';
+const LOG_EXCERPT_LENGTH = 80;
 
 @Injectable()
 export class DonationsService {
@@ -37,6 +47,7 @@ export class DonationsService {
     private readonly donationsQueue: DonationsQueueService,
     private readonly redisService: RedisService,
     private readonly voicesRepository: VoicesRepository,
+    private readonly ai: AiContract,
   ) {}
 
   async getUser(username: string) {
@@ -106,6 +117,13 @@ export class DonationsService {
       );
     }
 
+    const moderated = await this.applyModeration(
+      user.username,
+      settings,
+      name,
+      message,
+    );
+
     const transaction = await this.gateway.generatePix({
       amount,
     });
@@ -117,8 +135,8 @@ export class DonationsService {
     }
 
     const donation = await this.donationsRepository.create({
-      name,
-      messageRaw: message,
+      name: moderated.name,
+      message: moderated.message,
       amount,
       voiceId,
       userId: user.id,
@@ -141,7 +159,7 @@ export class DonationsService {
       throw new NotFoundException('Doação não encontrada');
     }
 
-    const rawMessage = donation.message ?? donation.messageRaw;
+    const message = donation.message;
 
     return new DonationStatusEntity({
       id: donation.id,
@@ -149,7 +167,7 @@ export class DonationsService {
       expiredAt: donation.expiredAt,
       streamerUsername: donation.user.username,
       streamerName: donation.user.name,
-      message: rawMessage ? xss.filterXSS(rawMessage) : null,
+      message: message ? xss.filterXSS(message) : null,
       amount: Number(donation.amount),
     });
   }
@@ -210,5 +228,71 @@ export class DonationsService {
         `Expiração de doações: ${hardExpired} expiradas direto (+48h), ${expired} expiradas, ${requeued} pagas reenfileiradas`,
       );
     }
+  }
+
+  private async applyModeration(
+    username: string,
+    settings: DonationSettings,
+    name: string,
+    message: string,
+  ): Promise<{ name: string; message: string }> {
+    if (!settings.aiModeration) {
+      return { name, message };
+    }
+
+    let finalName = name;
+    let finalMessage = message;
+
+    if (settings.filterSpam) {
+      finalName = sanitizeSpamText(finalName);
+      finalMessage = sanitizeSpamText(finalMessage);
+    }
+
+    const customWord = findBlockedCustomWord(
+      finalName,
+      finalMessage,
+      settings.customRules,
+    );
+
+    if (customWord) {
+      this.logger.warn(
+        `Doação bloqueada por regra custom do streamer ${username}: palavra "${customWord}"`,
+      );
+      throw new BadRequestException(BLOCKED_MESSAGE);
+    }
+
+    const hasAiFilter =
+      settings.filterProfanity ||
+      settings.filterHateSpeech ||
+      settings.customRules.trim().length > 0;
+
+    if (hasAiFilter && (finalName.trim() || finalMessage.trim())) {
+      const verdict = await this.ai.moderate({
+        name: finalName,
+        message: finalMessage,
+        rules: {
+          filterProfanity: settings.filterProfanity,
+          filterHateSpeech: settings.filterHateSpeech,
+          customRules: settings.customRules,
+        },
+      });
+
+      if (verdict.blocked) {
+        this.logger.warn(
+          `Doação bloqueada pela moderação IA do streamer ${username}: categorias [${verdict.categories.join(', ')}], texto "${this.excerpt(finalName, finalMessage)}"`,
+        );
+        throw new BadRequestException(BLOCKED_MESSAGE);
+      }
+    }
+
+    return { name: finalName, message: finalMessage };
+  }
+
+  private excerpt(name: string, message: string | null): string {
+    const text = [name, message].filter(Boolean).join(' | ');
+
+    return text.length > LOG_EXCERPT_LENGTH
+      ? `${text.slice(0, LOG_EXCERPT_LENGTH)}...`
+      : text;
   }
 }

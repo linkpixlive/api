@@ -18,12 +18,12 @@
 | `Wallet` | 1:1 user; `currentBalance`/`pendingBalance`/`blockedBalance`; `lastTransactionId` (ponteiro do ledger, FK p/ `transactions.id`) |
 | `PixKey` | chave criptografada + `keyHashed` (única por user) + `keyMasked` |
 | `Voice` | catálogo TTS (admin) |
-| `Donation` | `messageRaw` vs `message`; `transactionId` único; `pix`; status |
+| `Donation` | `message` único (texto final — moderação na submissão); `transactionId` único; `pix`; status |
 | `Withdrawal` | gross/net/fee; `clientKey` (idempotência, único por user); `pixValue` |
 | `Transaction` | ledger append-only; `balanceAfter` derivado da entrada anterior |
 | `ChangePassword` | tokens de reset hasheados com expiração |
 | `GatewayResponse` | auditoria de toda chamada Efí |
-| `DonationSettings` | `maxLength`, mínimos, filtros, `blockedWords`, `defaultVoiceId` |
+| `DonationSettings` | `maxLength`, mínimos, moderação IA (`aiModeration`, filtros, `customRules`), `defaultVoiceId` |
 | `Widget` | overlay/qrcode; `settings` Json; `token` UUID único |
 
 ### Enums (10)
