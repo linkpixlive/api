@@ -1,27 +1,33 @@
 import {
+  GoneException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
 import { Donation, Widget, WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { getAudioUrl } from 'src/common/utils/audioUrl.util';
+import { isOlderThanRetention } from 'src/common/utils/history-retention.util';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
+import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { DashboardGateway } from 'src/infra/websocket/dashboard.gateway';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 import { DonationHistoryEntity } from '../dashboard/entities/donation-history.entity';
-import { OverlayWidgetSettingsDto } from './dto/overlay-settings.dto';
+import { PersistedOverlaySettings } from './dto/overlay-settings.dto';
 import { getWidgetDefaults } from './widget-defaults';
 
 const TEST_ID_PREFIX = 'test-';
 
 @Injectable()
 export class OverlayService {
+  private readonly logger = new Logger(OverlayService.name);
+
   constructor(
     private readonly redisService: RedisService,
     @Inject(forwardRef(() => OverlayGateway))
@@ -30,6 +36,7 @@ export class OverlayService {
     private readonly dashboardGateway: DashboardGateway,
     private readonly widgetRepository: WidgetRepository,
     private readonly donationsRepository: DonationsRepository,
+    private readonly storage: StorageContract,
   ) {}
 
   // ─── Overlay Connection ──────────────────────────────────────────────────────
@@ -38,7 +45,7 @@ export class OverlayService {
     const widget = await this.widgetRepository.findByToken(token);
     if (!widget || !widget.active) return false;
 
-    const settings = widget.settings as unknown as OverlayWidgetSettingsDto;
+    const settings = widget.settings as unknown as PersistedOverlaySettings;
 
     await this.updateOnlineStatus(token);
     this.dashboardGateway.emitOverlayStatus(
@@ -59,7 +66,7 @@ export class OverlayService {
     );
     if (!widget || !widget.active) return;
 
-    const settings = widget.settings as unknown as OverlayWidgetSettingsDto;
+    const settings = widget.settings as unknown as PersistedOverlaySettings;
     const isOnline = await this.redisService.get<string>(
       RedisKeys.overlayOnline(widget.token),
     );
@@ -84,6 +91,10 @@ export class OverlayService {
       REDIS_TTL.overlayOnline,
       'true',
     );
+  }
+
+  notifySettingsUpdated(token: string) {
+    this.overlayGateway.emitSettingsUpdated(token);
   }
 
   // ─── Queue Orchestration ─────────────────────────────────────────────────────
@@ -120,7 +131,7 @@ export class OverlayService {
   async togglePause(userId: string) {
     const widget = await this.getOrCreateActiveOverlay(userId);
 
-    const settings = widget.settings as unknown as OverlayWidgetSettingsDto;
+    const settings = widget.settings as unknown as PersistedOverlaySettings;
     settings.isPaused = !settings.isPaused;
 
     const updated = await this.widgetRepository.update(userId, {
@@ -156,7 +167,7 @@ export class OverlayService {
     this.overlayGateway.emitSkipAlert(widget.token);
     await this.redisService.remove(RedisKeys.overlayCurrent(widget.token));
 
-    const settings = widget.settings as unknown as OverlayWidgetSettingsDto;
+    const settings = widget.settings as unknown as PersistedOverlaySettings;
     if (settings.isPaused) {
       await this.redisService.removeFromListStart(
         RedisKeys.overlayQueue(widget.token),
@@ -186,7 +197,7 @@ export class OverlayService {
     if (current && current.id === donationId) {
       this.overlayGateway.emitSkipAlert(widget.token);
       await this.redisService.remove(currentKey);
-      const settings = widget.settings as unknown as OverlayWidgetSettingsDto;
+      const settings = widget.settings as unknown as PersistedOverlaySettings;
       if (settings.isPaused) {
         await this.syncDashboardQueue(userId, widget.token);
       } else {
@@ -204,6 +215,12 @@ export class OverlayService {
 
     if (!donation || donation.userId !== userId) {
       throw new NotFoundException('Doação não encontrada');
+    }
+
+    if (isOlderThanRetention(donation.createdAt)) {
+      throw new GoneException(
+        'Doação expirada. Doações ficam disponíveis por 30 dias.',
+      );
     }
 
     const widget = await this.getOrCreateActiveOverlay(userId);
@@ -254,7 +271,7 @@ export class OverlayService {
     const widget = await this.widgetRepository.findByToken(token);
     if (!widget || !widget.active) return;
 
-    const settings = widget.settings as unknown as OverlayWidgetSettingsDto;
+    const settings = widget.settings as unknown as PersistedOverlaySettings;
     if (settings.isPaused) {
       await this.syncDashboardQueue(widget.userId, token);
       return;
@@ -281,11 +298,34 @@ export class OverlayService {
     });
   }
 
-  private toOverlayPayload(donation: Donation): OverlayDonationEntity {
+  private async toOverlayPayload(
+    donation: Donation,
+  ): Promise<OverlayDonationEntity> {
     return OverlayDonationEntity.toResponse(
       donation,
-      getAudioUrl(donation.voiceUrl),
+      await this.resolveAudioUrl(donation.voiceUrl),
     );
+  }
+
+  private async resolveAudioUrl(
+    voiceUrl: string | null,
+  ): Promise<string | null> {
+    if (!voiceUrl) return null;
+    try {
+      const exists = await this.storage.exists(voiceUrl);
+      if (!exists) {
+        this.logger.warn(
+          `Áudio ${voiceUrl} ausente no storage; exibindo alerta sem som`,
+        );
+        return null;
+      }
+      return getAudioUrl(voiceUrl);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao verificar áudio ${voiceUrl}; mantendo URL. ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return getAudioUrl(voiceUrl);
+    }
   }
 
   private async resolvePayload(
@@ -364,9 +404,11 @@ export class OverlayService {
     }
 
     const pending: OverlayDonationEntity[] = [
-      ...donationIds
-        .filter((id) => donationMap.has(id))
-        .map((id) => this.toOverlayPayload(donationMap.get(id)!)),
+      ...(await Promise.all(
+        donationIds
+          .filter((id) => donationMap.has(id))
+          .map((id) => this.toOverlayPayload(donationMap.get(id)!)),
+      )),
       ...testIds.map((id) => this.buildTestDonation(id)),
     ];
 

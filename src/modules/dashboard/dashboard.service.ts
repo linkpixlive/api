@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { GoneException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Readable } from 'node:stream';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
+import { isOlderThanRetention } from 'src/common/utils/history-retention.util';
 import { DashboardRepository } from 'src/infra/db/repositories/dashboard.repositories';
 import { GetDonationHistoryParams } from 'src/infra/db/repositories/dto/dashboard.dto';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
+import type { StoredObject } from 'src/infra/storage/contract/storage.contract';
 import { GetHistoryQueryDto } from './dto/get-history-query.dto';
 import { DashboardStatsEntity } from './entities/dashboard-stats.entity';
 import { DonationHistoryEntity } from './entities/donation-history.entity';
@@ -22,9 +24,53 @@ export class DashboardService {
     private readonly storage: StorageContract,
   ) {}
 
-  async getStats(userId: string): Promise<DashboardStatsEntity> {
-    const stats = await this.dashboardRepository.getDashboardStats(userId);
-    return new DashboardStatsEntity(stats);
+  async getStats(
+    userId: string,
+    range: '7' | '15' | '30' = '7',
+  ): Promise<DashboardStatsEntity> {
+    const stats = await this.dashboardRepository.getDashboardStats(
+      userId,
+      range,
+    );
+
+    const average =
+      stats.totalCount > 0 ? stats.totalAmount / stats.totalCount : 0;
+
+    const deltaAmountPct =
+      stats.previousAmount > 0
+        ? Math.round(
+            ((stats.totalAmount - stats.previousAmount) /
+              stats.previousAmount) *
+              1000,
+          ) / 10
+        : null;
+    const deltaCountPct =
+      stats.previousCount > 0
+        ? Math.round(
+            ((stats.totalCount - stats.previousCount) / stats.previousCount) *
+              1000,
+          ) / 10
+        : null;
+
+    return new DashboardStatsEntity({
+      range,
+      start: stats.start.toISOString(),
+      end: stats.end.toISOString(),
+      totalAmount: stats.totalAmount,
+      totalCount: stats.totalCount,
+      average: Math.round(average * 100) / 100,
+      largest: stats.largest,
+      previous: {
+        amount: stats.previousAmount,
+        count: stats.previousCount,
+      },
+      deltaAmountPct,
+      deltaCountPct,
+      series: stats.series,
+      peakDay: stats.peakDay,
+      peakHour: stats.peakHour,
+      modeAmount: stats.modeAmount,
+    });
   }
 
   async getHistory(
@@ -36,7 +82,12 @@ export class DashboardService {
       page: query.page ?? 1,
       limit: query.limit ?? 20,
       status: query.status,
-      days: query.days ? (Number(query.days) as 7 | 15 | 30) : undefined,
+      days:
+        query.days === 'today'
+          ? 'today'
+          : query.days
+            ? (Number(query.days) as 7 | 15 | 30)
+            : undefined,
       search: query.search,
       searchBy: query.searchBy,
     };
@@ -62,11 +113,22 @@ export class DashboardService {
       userId,
     );
 
+    if (!donation) {
+      throw new NotFoundException('Áudio não disponível para esta doação.');
+    }
+
+    // Retenção de exibição: o áudio expira em 30 dias junto ao lifecycle do R2.
+    if (isOlderThanRetention(donation.createdAt)) {
+      throw new GoneException(
+        'Áudio expirado. Doações ficam disponíveis por 30 dias.',
+      );
+    }
+
     if (!donation?.voiceUrl) {
       throw new NotFoundException('Áudio não disponível para esta doação.');
     }
 
-    let stored;
+    let stored: StoredObject;
     try {
       stored = await this.storage.getObject(donation.voiceUrl);
     } catch {

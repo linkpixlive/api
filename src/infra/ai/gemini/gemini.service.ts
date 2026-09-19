@@ -35,7 +35,7 @@ export class GeminiService implements AiContract {
 
     try {
       const response = await this.gemini.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: [
           {
             role: 'user',

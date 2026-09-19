@@ -4,8 +4,13 @@ import { randomUUID } from 'crypto';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
+import {
+  OverlayWidgetSettingsDto,
+  PersistedOverlaySettings,
+} from './dto/overlay-settings.dto';
 import { WidgetSettingsMap } from './dto/widget-settings.map';
 import { WidgetEntity } from './entities/widget.entity';
+import { OverlayService } from './overlay.service';
 import { getWidgetDefaults } from './widget-defaults';
 
 @Injectable()
@@ -13,6 +18,7 @@ export class WidgetsService {
   constructor(
     private readonly widgetRepository: WidgetRepository,
     private readonly redisService: RedisService,
+    private readonly overlayService: OverlayService,
   ) {}
 
   async getWidgetSettings<T extends WidgetType>(
@@ -32,13 +38,33 @@ export class WidgetsService {
     type: T,
     settings?: WidgetSettingsMap[T],
   ): Promise<WidgetEntity<T>> {
+    let merged = settings;
+
+    if (type === WidgetType.overlay && settings) {
+      const existing = await this.widgetRepository.findByUserAndType(
+        userId,
+        type,
+      );
+      const prevPaused =
+        (existing?.settings as unknown as PersistedOverlaySettings | undefined)
+          ?.isPaused ?? false;
+      merged = {
+        ...(settings as unknown as OverlayWidgetSettingsDto),
+        isPaused: prevPaused,
+      } as unknown as WidgetSettingsMap[T];
+    }
+
     const widget = await this.widgetRepository.upsert(userId, {
       type,
-      settings: (settings ?? getWidgetDefaults(type)) as unknown as Record<
+      settings: (merged ?? getWidgetDefaults(type)) as unknown as Record<
         string,
         any
       >,
     });
+
+    if (type === WidgetType.overlay) {
+      this.overlayService.notifySettingsUpdated(widget.token);
+    }
 
     return WidgetEntity.fromPrisma<T>(widget);
   }

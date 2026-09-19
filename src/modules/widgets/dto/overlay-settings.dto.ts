@@ -19,12 +19,20 @@ export class OverlayWidgetSettingsDto {
   @IsBoolean({ message: 'speakNameAmount deve ser um valor booleano' })
   speakNameAmount: boolean;
 
-  @ApiProperty({ example: 'Ricardo' })
+  @ApiProperty({
+    example: 'uuid-voice-id',
+    description:
+      'ID da voz padrão (GET /voices) usada quando a doação vem sem voiceId ("Voz padrão do streamer")',
+  })
   @IsString({ message: 'defaultNarrator deve ser uma string' })
   @IsNotEmpty({ message: 'defaultNarrator não pode estar vazio' })
   defaultNarrator: string;
 
   @ApiProperty({ example: false })
-  @IsBoolean({ message: 'isPaused deve ser um valor booleano' })
+  @IsBoolean({ message: 'audioOnly deve ser um valor booleano' })
+  audioOnly: boolean;
+}
+
+export interface PersistedOverlaySettings extends OverlayWidgetSettingsDto {
   isPaused: boolean;
 }

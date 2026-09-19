@@ -63,6 +63,7 @@ Emitir de processors/serviços de domínio — nunca de controllers HTTP. Evento
 - **`dispatchNextAlert`**: `LPOP`; `test-<uuid>` vira payload sintético em memória (nome LinkPix, R$8,43); id sem doação no DB é descartado silenciosamente (self-healing).
 - **`alert_finished`**: marca `displayed` (exceto test), apaga `overlay:current`, `dispatchIfReady` — é o único avanço normal da fila.
 - **Pausa** (`POST /overlay/toggle-pause`): persiste `settings.isPaused`, emite `pause_alerts`, limpa `overlay:current`. Retomar: `resume_alerts` + `dispatchIfReady`.
+- **PUT `/widgets/overlay`**: substitui o objeto inteiro, mas preserva `isPaused` (pausa é só via `toggle-pause`; o pipe rejeita o campo com 400) e emite `settings_updated` para o OBS aplicar volume/audioOnly/narrador sem reconnect.
 - **Skip**: emite `skip_alert`, limpa `overlay:current`; pausado → descarta o próximo da cabeça; ativo → `dispatchNextAlert`. Skip nunca despausa.
 - **Extras**: `DELETE /overlay/queue` (limpa tudo), `DELETE /overlay/queue/:donationId`, `POST /overlay/replay/:donationId` (RPUSH + dispatch), `POST /overlay/test` (enfileira `test-<uuid>`).
 - **Reconexão**: revalida token, liga online flag, socket dá `join` na sala **antes** de qualquer emit, reemite payload de `overlay:current`, dispara `dispatchIfReady` (autoplay da fila pendente se despausado e sem current) e `queue_sync`.

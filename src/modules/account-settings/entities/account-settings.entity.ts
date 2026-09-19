@@ -25,6 +25,10 @@ export class AccountSettingsEntity {
   @Expose()
   usernameChangedAt: Date | null;
 
+  @ApiProperty({ example: true, description: 'Email verificado' })
+  @Expose()
+  verifiedEmail: boolean;
+
   constructor(partial: Partial<AccountSettingsEntity>) {
     Object.assign(this, partial);
   }
@@ -36,6 +40,7 @@ export class AccountSettingsEntity {
       has2fa: user.totpEnabled,
       active: user.active,
       usernameChangedAt: user.usernameChangedAt,
+      verifiedEmail: user.verifiedEmail,
     });
   }
 }

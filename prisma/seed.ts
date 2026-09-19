@@ -71,7 +71,6 @@ const DEFAULT_VOICE_NAME = 'Ricardo';
 
 // Defaults canônicos vivem em WidgetsService/widget-defaults — o seed só
 // referencia para não divergir (settings é Json, aceita o objeto tipado).
-// Nota: defaultNarrator ('Ricardo') deve existir no catálogo VOICES acima.
 
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000);

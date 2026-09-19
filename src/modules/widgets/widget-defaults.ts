@@ -1,13 +1,18 @@
 import { WidgetType } from '@prisma/client';
+import { PersistedOverlaySettings } from './dto/overlay-settings.dto';
 import { WidgetSettingsMap } from './dto/widget-settings.map';
 
-export const WIDGET_DEFAULTS: {
-  [K in WidgetType]: WidgetSettingsMap[K];
-} = {
+type WidgetDefaultsMap = {
+  overlay: PersistedOverlaySettings;
+  qrcode: WidgetSettingsMap['qrcode'];
+};
+
+export const WIDGET_DEFAULTS: WidgetDefaultsMap = {
   [WidgetType.overlay]: {
     volume: 100,
     speakNameAmount: true,
-    defaultNarrator: 'Ricardo',
+    defaultNarrator: '',
+    audioOnly: false,
     isPaused: false,
   },
   [WidgetType.qrcode]: {
@@ -18,6 +23,6 @@ export const WIDGET_DEFAULTS: {
 
 export function getWidgetDefaults<T extends WidgetType>(
   type: T,
-): WidgetSettingsMap[T] {
+): WidgetDefaultsMap[T] {
   return { ...WIDGET_DEFAULTS[type] };
 }

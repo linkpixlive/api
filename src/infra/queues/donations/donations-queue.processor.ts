@@ -51,6 +51,7 @@ export class DonationsQueueProcessor extends WorkerHost {
         user,
         message: donation.message ?? '',
         speakNameAmount: overlaySettings?.speakNameAmount ?? true,
+        defaultVoiceId: overlaySettings?.defaultNarrator ?? null,
       });
 
       const updatedDonation = await this.donationsRepository.processDonation({
@@ -101,11 +102,13 @@ export class DonationsQueueProcessor extends WorkerHost {
     user,
     message,
     speakNameAmount,
+    defaultVoiceId,
   }: {
     donation: Donation;
     user: User;
     message: string;
     speakNameAmount: boolean;
+    defaultVoiceId?: string | null;
   }): Promise<string | null> {
     const nameAmountPrefix = speakNameAmount
       ? `${donation.name} mandou R$${String(donation.amount)}: `
@@ -129,6 +132,16 @@ export class DonationsQueueProcessor extends WorkerHost {
       this.logger.warn(
         `Voz ${String(donation.voiceId)} indisponível para doação ${donation.id}; usando voz padrão. ${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+
+    if (!voice && defaultVoiceId) {
+      try {
+        voice = await this.voiceService.findById(defaultVoiceId);
+      } catch (error) {
+        this.logger.warn(
+          `Voz padrão ${defaultVoiceId} do overlay indisponível para doação ${donation.id}; usando voz padrão do provedor. ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
 
     try {

@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -54,6 +55,21 @@ export class R2Service extends StorageContract {
     };
   }
 
+  async exists(key: string): Promise<boolean> {
+    try {
+      await this.r2Client.send(
+        new HeadObjectCommand({
+          Bucket: 'tipply',
+          Key: key,
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (isNotFoundError(error)) return false;
+      throw error;
+    }
+  }
+
   async deleteObject(key: string) {
     const command = new DeleteObjectCommand({
       Bucket: 'tipply',
@@ -62,4 +78,17 @@ export class R2Service extends StorageContract {
 
     await this.r2Client.send(command);
   }
+}
+
+function isNotFoundError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const err = error as {
+    name?: unknown;
+    $metadata?: { httpStatusCode?: unknown };
+  };
+  return (
+    err.name === 'NotFound' ||
+    err.name === 'NoSuchKey' ||
+    err.$metadata?.httpStatusCode === 404
+  );
 }

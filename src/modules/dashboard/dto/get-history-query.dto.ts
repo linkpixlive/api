@@ -12,13 +12,10 @@ import {
 } from 'class-validator';
 import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 
-// Query strings vazias ("days=") são tratadas como ausência do filtro.
 const toUndefinedIfBlank = ({ value }: { value: unknown }) =>
   typeof value === 'string' && value.trim() === '' ? undefined : value;
 
 export class GetHistoryQueryDto extends PaginationQueryDto {
-  // Mantém o default histórico do dashboard (PaginationQueryDto usa 10),
-  // redeclarando os decorators para não depender da herança de metadados.
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -33,11 +30,13 @@ export class GetHistoryQueryDto extends PaginationQueryDto {
   })
   status?: 'paid' | 'displayed';
 
-  @ApiProperty({ required: false, enum: ['7', '15', '30'] })
+  @ApiProperty({ required: false, enum: ['today', '7', '15', '30'] })
   @Transform(toUndefinedIfBlank)
   @IsOptional()
-  @IsIn(['7', '15', '30'], { message: 'days deve ser 7, 15 ou 30' })
-  days?: '7' | '15' | '30';
+  @IsIn(['today', '7', '15', '30'], {
+    message: 'days deve ser today, 7, 15 ou 30',
+  })
+  days?: 'today' | '7' | '15' | '30';
 
   @ApiProperty({ required: false, example: 'oi' })
   @Transform(({ value }: { value: unknown }) =>

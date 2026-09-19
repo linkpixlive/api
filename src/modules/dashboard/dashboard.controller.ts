@@ -18,6 +18,7 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { DashboardService } from './dashboard.service';
 import { GetHistoryQueryDto } from './dto/get-history-query.dto';
+import { GetStatsQueryDto } from './dto/get-stats-query.dto';
 import { DashboardStatsEntity } from './entities/dashboard-stats.entity';
 import { DonationHistoryEntity } from './entities/donation-history.entity';
 
@@ -29,16 +30,17 @@ export class DashboardController {
 
   @Get('stats')
   @ApiOperation({
-    summary: 'Obter estatísticas de doações dos últimos 30 dias',
+    summary: 'Obter estatísticas de doações do período (padrão 7 dias)',
   })
   @ApiResponse({
     status: 200,
     type: DashboardStatsEntity,
     description: 'Estatísticas retornadas com sucesso.',
   })
+  @ApiResponse({ status: 400, description: 'Parâmetros de query inválidos.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  getStats(@CurrentUser() user: SafeUser) {
-    return this.dashboardService.getStats(user.id);
+  getStats(@CurrentUser() user: SafeUser, @Query() query: GetStatsQueryDto) {
+    return this.dashboardService.getStats(user.id, query.range ?? '7');
   }
 
   @Get('history')

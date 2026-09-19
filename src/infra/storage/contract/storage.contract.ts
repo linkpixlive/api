@@ -15,5 +15,7 @@ export abstract class StorageContract {
 
   abstract getObject(key: string): Promise<StoredObject>;
 
+  abstract exists(key: string): Promise<boolean>;
+
   abstract deleteObject(key: string): Promise<void>;
 }

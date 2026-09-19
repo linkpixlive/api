@@ -283,6 +283,10 @@ export class DonationsService {
         );
         throw new BadRequestException(BLOCKED_MESSAGE);
       }
+
+      this.logger.debug(
+        `Doação permitida pela moderação IA do streamer ${username}: texto "${this.excerpt(finalName, finalMessage)}"`,
+      );
     }
 
     return { name: finalName, message: finalMessage };
