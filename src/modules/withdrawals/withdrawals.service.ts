@@ -32,17 +32,18 @@ export class WithdrawalsService {
   async create(
     user: SafeUser,
     dto: CreateWithdrawalDto,
-    clientKey?: string,
+    clientKey: string,
   ): Promise<WithdrawalEntity> {
-    if (clientKey) {
-      const existing = await this.withdrawalsRepository.findByClientKey(
-        user.id,
-        clientKey,
-      );
+    const existing = await this.withdrawalsRepository.findByClientKey(
+      user.id,
+      clientKey,
+    );
 
-      if (existing) {
-        return this.mapToEntity(existing);
+    if (existing) {
+      if (!this.isSameRequest(existing, dto)) {
+        throw new WithdrawalClientKeyConflictError();
       }
+      return this.mapToEntity(existing);
     }
 
     const minAmount = this.configService.getOrThrow<number>(
@@ -85,18 +86,18 @@ export class WithdrawalsService {
         pixId: pix.id,
         pixKey: pix.key,
         keyMasked: pix.keyMasked,
-        clientKey: clientKey ?? null,
+        clientKey,
         grossAmount: dto.amount,
         netAmount,
         feeAmount,
       });
     } catch (error) {
-      if (clientKey && error instanceof WithdrawalClientKeyConflictError) {
+      if (error instanceof WithdrawalClientKeyConflictError) {
         const existing = await this.withdrawalsRepository.findByClientKey(
           user.id,
           clientKey,
         );
-        if (existing) {
+        if (existing && this.isSameRequest(existing, dto)) {
           return this.mapToEntity(existing);
         }
       }
@@ -177,6 +178,16 @@ export class WithdrawalsService {
         );
       }
     }
+  }
+
+  private isSameRequest(
+    existing: { grossAmount: Decimal; pixId: string | null },
+    dto: CreateWithdrawalDto,
+  ): boolean {
+    return (
+      existing.pixId === dto.pixId &&
+      new Decimal(dto.amount).equals(existing.grossAmount)
+    );
   }
 
   private mapToEntity(

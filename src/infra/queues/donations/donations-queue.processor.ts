@@ -1,5 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Donation, User } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { Job } from 'bullmq';
@@ -10,7 +11,7 @@ import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { DashboardGateway } from 'src/infra/websocket/dashboard.gateway';
-import { DonationHistoryEntity } from 'src/modules/dashboard/entities/donation-history.entity';
+import { DonationHistoryEntity } from 'src/modules/donations/entities/donation-history.entity';
 import { VoiceEntity } from 'src/modules/voices/entities/voice.entity';
 import { VoicesService } from 'src/modules/voices/voices.service';
 import { OverlayWidgetSettingsDto } from 'src/modules/widgets/dto/overlay-settings.dto';
@@ -29,6 +30,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly overlayService: OverlayService,
     private readonly voiceService: VoicesService,
     private readonly dashboardGateway: DashboardGateway,
+    private readonly configService: ConfigService,
   ) {
     super();
   }
@@ -111,7 +113,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     defaultVoiceId?: string | null;
   }): Promise<string | null> {
     const nameAmountPrefix = speakNameAmount
-      ? `${donation.name} mandou R$${String(donation.amount)}: `
+      ? `${donation.name.trim() || 'Anonimo'} mandou R$${String(donation.amount)}: `
       : '';
 
     const fullMessage = `${nameAmountPrefix}${message}`.trim();
@@ -139,8 +141,21 @@ export class DonationsQueueProcessor extends WorkerHost {
         voice = await this.voiceService.findById(defaultVoiceId);
       } catch (error) {
         this.logger.warn(
-          `Voz padrão ${defaultVoiceId} do overlay indisponível para doação ${donation.id}; usando voz padrão do provedor. ${error instanceof Error ? error.message : String(error)}`,
+          `Voz padrão ${defaultVoiceId} do overlay indisponível para doação ${donation.id}; tentando voz padrão do sistema. ${error instanceof Error ? error.message : String(error)}`,
         );
+      }
+    }
+
+    if (!voice) {
+      const systemVoiceId = this.configService.get<string>('DEFAULT_VOICE_ID');
+      if (systemVoiceId) {
+        try {
+          voice = await this.voiceService.findById(systemVoiceId);
+        } catch (error) {
+          this.logger.warn(
+            `Voz padrão do sistema ${systemVoiceId} indisponível para doação ${donation.id}; usando voz padrão do provedor. ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       }
     }
 

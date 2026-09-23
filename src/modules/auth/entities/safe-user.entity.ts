@@ -1,61 +1,69 @@
-import { ApiHideProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { User, UserRole } from '@prisma/client';
 import { Exclude, Expose } from 'class-transformer';
-import { getProfileImageUrl } from 'src/common/utils/profileImageUrl.util';
+import { getStorageUrl } from 'src/common/utils/storageUrl.util';
 
 @Exclude()
 export class SafeUser {
-  @ApiHideProperty()
+  @ApiProperty({
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    format: 'uuid',
+  })
   @Expose()
   id: string;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: 'John Doe' })
   @Expose()
   name: string;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: 'johndoe@email.com', format: 'email' })
   @Expose()
   email: string;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: 'johndoe' })
   @Expose()
   username: string;
 
-  @ApiHideProperty()
+  @ApiProperty({
+    example: 'https://cdn.linkpix.com.br/avatars/uuid.webp',
+    nullable: true,
+  })
   @Expose()
   profileImageUrl: string | null;
 
+  @ApiProperty({ example: null, nullable: true })
   cpf: string | null;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: '2026-04-16T12:00:00.000Z' })
   @Expose()
   createdAt: Date;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: true })
   @Expose()
   active: boolean;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: true })
   @Expose()
   verifiedEmail: boolean;
 
-  @ApiHideProperty()
+  @ApiProperty({
+    example: '2026-08-04T21:50:00.000Z',
+    nullable: true,
+  })
   @Expose()
   usernameChangedAt: Date | null;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: ['streamer'], isArray: true })
   @Expose()
   roles: UserRole[];
 
-  @ApiHideProperty()
   @Exclude()
   password: string;
 
-  @ApiHideProperty()
   @Exclude()
   totpSecret: string | null;
 
-  @ApiHideProperty()
+  @ApiProperty({ example: false })
   @Expose()
   totpEnabled: boolean;
 
@@ -69,7 +77,7 @@ export class SafeUser {
       name: user.name,
       email: user.email,
       username: user.username,
-      profileImageUrl: getProfileImageUrl(user.profileImageUrl),
+      profileImageUrl: getStorageUrl(user.profileImageUrl),
       cpf: user.cpf,
       createdAt: user.createdAt,
       active: user.active,

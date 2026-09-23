@@ -7,7 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
-import { DonationHistoryEntity } from 'src/modules/dashboard/entities/donation-history.entity';
+import { DonationHistoryEntity } from 'src/modules/donations/entities/donation-history.entity';
 import { OverlayService } from 'src/modules/widgets/overlay.service';
 
 @Injectable()

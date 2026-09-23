@@ -1,19 +1,22 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
 
 export class UpdateDonationSettingsDto {
-  @ApiPropertyOptional({ example: 250 })
+  @ApiPropertyOptional({ example: 250, minimum: 0, maximum: 250 })
   @IsOptional()
   @IsNumber({}, { message: 'O tamanho máximo deve ser um número' })
+  @IsInt({ message: 'O tamanho máximo deve ser um número inteiro' })
   @Min(0, { message: 'O tamanho máximo não pode ser negativo' })
+  @Max(250, { message: 'O tamanho máximo não pode ser maior que 250' })
   maxLength?: number;
 
   @ApiPropertyOptional({ example: 5.0 })
@@ -64,9 +67,4 @@ export class UpdateDonationSettingsDto {
     message: 'As regras customizadas devem ter no máximo 1000 caracteres',
   })
   customRules?: string;
-
-  @ApiPropertyOptional({ example: 'uuid-voice-id' })
-  @IsOptional()
-  @IsUUID('4', { message: 'O ID da voz padrão deve ser um UUID válido' })
-  defaultVoiceId?: string;
 }

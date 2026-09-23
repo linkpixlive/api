@@ -4,55 +4,70 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentSid } from 'src/common/decorators/current-sid.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { SafeUser } from '../auth/entities/safe-user.entity';
-import { AccountSettingsService } from './account-settings.service';
+import { AccountService } from './account.service';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeactivateAccountDto } from './dto/deactivate-account.dto';
 import { Disable2faDto } from './dto/disable-2fa.dto';
 import { Enable2faDto } from './dto/enable-2fa.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateProfileResponseDto } from './dto/update-profile-response.dto';
+import { MessageDto } from 'src/common/dto/message.dto';
+import { AccountEntity } from './entities/account.entity';
+import { Setup2faEntity } from './entities/setup-2fa.entity';
 
-@ApiTags('Account Settings')
-@Controller('account-settings')
-export class AccountSettingsController {
-  constructor(
-    private readonly accountSettingsService: AccountSettingsService,
-  ) {}
+@ApiTags('Account')
+@Controller('account')
+export class AccountController {
+  constructor(private readonly accountService: AccountService) {}
 
   @Get()
   @ApiOperation({ summary: 'Obter configurações da conta' })
   @ApiResponse({
     status: 200,
+    type: AccountEntity,
     description: 'Configurações da conta retornadas com sucesso.',
   })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   getSettings(@CurrentUser() user: SafeUser) {
-    return this.accountSettingsService.getSettings(user);
+    return this.accountService.getSettings(user);
   }
 
   @Patch('profile')
   @ApiOperation({ summary: 'Atualizar perfil (nome e campos simples)' })
-  @ApiResponse({ status: 200, description: 'Perfil atualizado com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    type: UpdateProfileResponseDto,
+    description: 'Perfil atualizado com sucesso.',
+  })
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   updateProfile(@CurrentUser() user: SafeUser, @Body() dto: UpdateProfileDto) {
-    return this.accountSettingsService.updateProfile(user.id, dto);
+    return this.accountService.updateProfile(user.id, dto);
   }
 
   @Patch('email')
   @ApiOperation({ summary: 'Atualizar email' })
-  @ApiResponse({ status: 200, description: 'Email atualizado com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageDto,
+    description: 'Email atualizado com sucesso.',
+  })
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @ApiResponse({ status: 409, description: 'Email já está em uso.' })
   @Throttle({ default: { limit: 3, ttl: 900000 } })
   changeEmail(@CurrentUser() user: SafeUser, @Body() dto: ChangeEmailDto) {
-    return this.accountSettingsService.changeEmail(user, dto);
+    return this.accountService.changeEmail(user, dto);
   }
 
   @Patch('password')
   @ApiOperation({ summary: 'Atualizar senha' })
-  @ApiResponse({ status: 200, description: 'Senha alterada com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageDto,
+    description: 'Senha alterada com sucesso.',
+  })
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @Throttle({ default: { limit: 3, ttl: 900000 } })
@@ -61,25 +76,30 @@ export class AccountSettingsController {
     @CurrentSid() sid: string,
     @Body() dto: ChangePasswordDto,
   ) {
-    return this.accountSettingsService.changePassword(user, dto, sid);
+    return this.accountService.changePassword(user, dto, sid);
   }
 
   @Patch('deactivate')
   @ApiOperation({ summary: 'Desativar conta' })
-  @ApiResponse({ status: 200, description: 'Conta desativada com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageDto,
+    description: 'Conta desativada com sucesso.',
+  })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @Throttle({ default: { limit: 3, ttl: 900000 } })
   deactivateAccount(
     @CurrentUser() user: SafeUser,
     @Body() dto: DeactivateAccountDto,
   ) {
-    return this.accountSettingsService.deactivateAccount(user, dto);
+    return this.accountService.deactivateAccount(user, dto);
   }
 
   @Post('2fa/setup')
   @ApiOperation({ summary: 'Iniciar configuração do 2FA (TOTP)' })
   @ApiResponse({
     status: 200,
+    type: Setup2faEntity,
     description:
       'Secret e otpauthUrl retornados para o frontend renderizar o QR.',
   })
@@ -87,12 +107,16 @@ export class AccountSettingsController {
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   @Throttle({ default: { limit: 5, ttl: 300000 } })
   setup2fa(@CurrentUser() user: SafeUser) {
-    return this.accountSettingsService.setup2fa(user);
+    return this.accountService.setup2fa(user);
   }
 
   @Post('2fa/enable')
   @ApiOperation({ summary: 'Ativar 2FA validando o primeiro código TOTP' })
-  @ApiResponse({ status: 200, description: '2FA ativado com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageDto,
+    description: '2FA ativado com sucesso.',
+  })
   @ApiResponse({
     status: 400,
     description: 'Código inválido ou setup expirado.',
@@ -100,15 +124,19 @@ export class AccountSettingsController {
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   @Throttle({ default: { limit: 5, ttl: 300000 } })
   enable2fa(@CurrentUser() user: SafeUser, @Body() dto: Enable2faDto) {
-    return this.accountSettingsService.enable2fa(user.id, dto);
+    return this.accountService.enable2fa(user.id, dto);
   }
 
   @Post('2fa/disable')
   @ApiOperation({ summary: 'Desativar 2FA' })
-  @ApiResponse({ status: 200, description: '2FA desativado.' })
+  @ApiResponse({
+    status: 200,
+    type: MessageDto,
+    description: '2FA desativado.',
+  })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @Throttle({ default: { limit: 5, ttl: 300000 } })
   disable2fa(@CurrentUser() user: SafeUser, @Body() dto: Disable2faDto) {
-    return this.accountSettingsService.disable2fa(user, dto);
+    return this.accountService.disable2fa(user, dto);
   }
 }

@@ -8,6 +8,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validate } from './common/config/env.validation';
 import { RolesGuard } from './common/guards/roles.guard';
+import { LoggingModule } from './common/logging/logging.module';
 import { AiModule } from './infra/ai/ai.module';
 import { DbModule } from './infra/db/db.module';
 import { GatewayModule } from './infra/gateway/gateway.module';
@@ -26,12 +27,13 @@ import { DonationSettingsModule } from './modules/donation-settings/donation-set
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { VoicesModule } from './modules/voices/voices.module';
-import { AccountSettingsModule } from './modules/account-settings/account-settings.module';
+import { AccountModule } from './modules/account/account.module';
 import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    LoggingModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
@@ -68,7 +70,7 @@ import { HealthModule } from './modules/health/health.module';
     WebhooksModule,
     ProfileModule,
     VoicesModule,
-    AccountSettingsModule,
+    AccountModule,
     HealthModule,
   ],
   controllers: [],

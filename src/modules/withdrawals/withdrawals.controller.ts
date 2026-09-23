@@ -19,6 +19,7 @@ import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
 import { WithdrawalEntity } from './entities/withdrawal.entity';
+import { PaginatedWithdrawalResponse } from './entities/paginated-withdrawal.entity';
 import { WithdrawalsService } from './withdrawals.service';
 
 @ApiTags('Withdrawals')
@@ -31,9 +32,9 @@ export class WithdrawalsController {
   @ApiOperation({ summary: 'Solicitar um novo saque' })
   @ApiHeader({
     name: 'Idempotency-Key',
-    required: false,
+    required: true,
     description:
-      'Chave de idempotência gerada pelo cliente para evitar saques duplicados',
+      'Chave de idempotência gerada pelo cliente (ex.: UUID por clique) para evitar saques duplicados',
   })
   @ApiResponse({
     status: 201,
@@ -42,18 +43,28 @@ export class WithdrawalsController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Saldo insuficiente ou valor inválido.',
+    description:
+      'Saldo insuficiente, valor inválido ou Idempotency-Key ausente.',
   })
   @ApiResponse({
     status: 404,
     description: 'Chave Pix não encontrada.',
   })
+  @ApiResponse({
+    status: 409,
+    description: 'Idempotency-Key já utilizada com outro valor ou chave Pix.',
+  })
   create(
     @CurrentUser() user: SafeUser,
     @Body() createWithdrawalDto: CreateWithdrawalDto,
-    @Headers('idempotency-key') clientKey?: string,
+    @Headers('idempotency-key') clientKey: string,
   ) {
-    if (clientKey && clientKey.length > 128) {
+    if (!clientKey) {
+      throw new BadRequestException(
+        'Idempotency-Key é obrigatório para solicitar um saque.',
+      );
+    }
+    if (clientKey.length > 128) {
       throw new BadRequestException(
         'Idempotency-Key deve ter no máximo 128 caracteres.',
       );
@@ -65,7 +76,7 @@ export class WithdrawalsController {
   @ApiOperation({ summary: 'Listar histórico de saques com filtros' })
   @ApiResponse({
     status: 200,
-    type: WithdrawalEntity,
+    type: PaginatedWithdrawalResponse,
     description: 'Lista de saques retornada com sucesso.',
   })
   findAll(

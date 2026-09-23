@@ -20,7 +20,7 @@ import { DeactivateAccountDto } from './dto/deactivate-account.dto';
 import { Disable2faDto } from './dto/disable-2fa.dto';
 import { Enable2faDto } from './dto/enable-2fa.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { AccountSettingsEntity } from './entities/account-settings.entity';
+import { AccountEntity } from './entities/account.entity';
 
 interface Pending2faSetup {
   encryptedSecret: string;
@@ -28,8 +28,8 @@ interface Pending2faSetup {
 }
 
 @Injectable()
-export class AccountSettingsService {
-  private readonly logger = new Logger(AccountSettingsService.name);
+export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
 
   constructor(
     private readonly usersRepository: UsersRepository,
@@ -38,7 +38,7 @@ export class AccountSettingsService {
   ) {}
 
   getSettings(user: SafeUser) {
-    return AccountSettingsEntity.fromSafeUser(user);
+    return AccountEntity.fromSafeUser(user);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -50,7 +50,7 @@ export class AccountSettingsService {
       throw new BadRequestException('Nenhum campo para atualizar');
 
     await this.usersRepository.update(userId, update);
-    return update;
+    return { name: update.name };
   }
 
   async changeEmail(user: SafeUser, dto: ChangeEmailDto) {

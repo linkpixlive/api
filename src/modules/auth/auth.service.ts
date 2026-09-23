@@ -222,7 +222,7 @@ export class AuthService {
       to: email,
       subject: 'Esqueci a Senha',
       templateName: 'forgot-password',
-      context: { link: `https://tipply.com.br/forgot-password?token=${uuid}` },
+      context: { link: `https://linkpix.com.br/forgot-password?token=${uuid}` },
       metadata: {},
     });
 

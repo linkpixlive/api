@@ -12,7 +12,7 @@
 | Fila | Job | Produtor |
 |---|---|---|
 | `donations-queue` | `send-donation` | webhook Efí (doação `pending`) e cron de expiração (vencida que a Efí confirma paga). Options próprias: `attempts: 4`, backoff exponencial 30s |
-| email | `send-email` | auth/account-settings (verificação, reset) |
+| email | `send-email` | auth/account (verificação, reset) |
 
 ## Pipeline `donations-queue` (processor)
 

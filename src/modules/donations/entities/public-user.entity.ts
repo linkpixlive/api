@@ -25,7 +25,7 @@ export class PublicUserEntity {
   @ApiProperty({ example: 1.0 })
   minTextAmount: number;
 
-  @ApiProperty({ example: 250 })
+  @ApiProperty({ example: 250, maximum: 250 })
   maxLength: number;
 
   constructor(partial: Partial<PublicUserEntity>) {

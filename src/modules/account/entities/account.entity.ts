@@ -3,7 +3,7 @@ import { Exclude, Expose } from 'class-transformer';
 import { SafeUser } from '../../auth/entities/safe-user.entity';
 
 @Exclude()
-export class AccountSettingsEntity {
+export class AccountEntity {
   @ApiHideProperty() @Expose() id: string;
 
   @ApiProperty({ example: 'j***@email.com' })
@@ -29,12 +29,12 @@ export class AccountSettingsEntity {
   @Expose()
   verifiedEmail: boolean;
 
-  constructor(partial: Partial<AccountSettingsEntity>) {
+  constructor(partial: Partial<AccountEntity>) {
     Object.assign(this, partial);
   }
 
-  static fromSafeUser(user: SafeUser): AccountSettingsEntity {
-    return new AccountSettingsEntity({
+  static fromSafeUser(user: SafeUser): AccountEntity {
+    return new AccountEntity({
       id: user.id,
       email: maskEmail(user.email),
       has2fa: user.totpEnabled,

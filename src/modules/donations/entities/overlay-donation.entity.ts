@@ -22,7 +22,7 @@ export class OverlayDonationEntity {
   ): OverlayDonationEntity {
     return new OverlayDonationEntity({
       id: donation.id,
-      name: donation.name,
+      name: donation.name || 'Anônimo',
       amount: Number(donation.amount),
       message: donation.message ? xss.filterXSS(donation.message) : null,
       audioUrl,

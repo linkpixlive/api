@@ -24,25 +24,15 @@ export function buildModerationPrompt(input: AiModerationInput): string {
   const name = input.name?.trim() ?? '';
   const message = input.message?.trim() ?? '';
   const rules = input.rules;
-  const activeFilters: string[] = [];
 
-  if (rules.filterProfanity) {
-    activeFilters.push(
+  const activeFilters = [
+    rules.filterProfanity &&
       '- profanity: bloquear qualquer palavrão ou expressão chula explícita (ex.: caralho, porra, puta, foda-se, tomar no cu, arrombado), com ou sem alvo, incluindo variações com acentos, letras trocadas por números/símbolos, espaçamento ou letras repetidas. Só NÃO bloqueia quando não há termo ofensivo literal (zoeira limpa, eufemismos como "caramba", "que droga").',
-    );
-  }
-
-  if (rules.filterHateSpeech) {
-    activeFilters.push(
+    rules.filterHateSpeech &&
       '- hate_speech: bloquear discurso de ódio — racismo, homofobia, xenofobia, misoginia, intolerância religiosa, nazismo ou violência contra grupos.',
-    );
-  }
-
-  if (rules.customRules.trim()) {
-    activeFilters.push(
+    rules.customRules.trim() &&
       '- custom_rule: aplicar LITERALMENTE as regras do streamer abaixo, reconhecendo variações das palavras (acentos, letras trocadas por números/símbolos, espaçamento, letras repetidas).',
-    );
-  }
+  ].filter((line): line is string => line !== false && line !== '');
 
   return [
     'Avalie a doação abaixo — nome e mensagem são lidos juntos na live; considere o conjunto.',

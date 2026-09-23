@@ -1,5 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Inject } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import Handlebars from 'handlebars';
@@ -10,6 +10,8 @@ import { Email } from './email.type';
 
 @Processor('email-queue')
 export class EmailProcessor extends WorkerHost {
+  private readonly logger = new Logger(EmailProcessor.name);
+
   constructor(
     @Inject('RESEND_CLIENT') private resend: Resend,
     private configService: ConfigService,
@@ -39,7 +41,10 @@ export class EmailProcessor extends WorkerHost {
         html,
       });
     } catch (error) {
-      console.error(error);
+      this.logger.error(
+        'Falha ao enviar email',
+        error instanceof Error ? error.stack : undefined,
+      );
       throw error;
     }
   }

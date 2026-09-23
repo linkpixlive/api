@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Donation, DonationStatus, MessageType } from '@prisma/client';
-import { getAudioUrl } from 'src/common/utils/audioUrl.util';
+import { getStorageUrl } from 'src/common/utils/storageUrl.util';
 
 export class DonationHistoryEntity {
   @ApiProperty({ example: 'uuid-123', description: 'ID da transação' })
@@ -31,7 +31,7 @@ export class DonationHistoryEntity {
   status: DonationStatus;
 
   @ApiProperty({
-    example: 'https://cdn.tipply.live/tts/johndoe-uuid-123.wav',
+    example: 'https://cdn.linkpix.com.br/tts/johndoe-uuid-123.wav',
     description: 'URL pública do áudio',
     nullable: true,
   })
@@ -47,12 +47,12 @@ export class DonationHistoryEntity {
   static fromDonation(donation: Donation): DonationHistoryEntity {
     return new DonationHistoryEntity({
       id: donation.id,
-      name: donation.name,
+      name: donation.name || 'Anônimo',
       amount: Number(donation.amount),
       message: donation.message,
       messageType: donation.messageType,
       status: donation.status,
-      voiceUrl: getAudioUrl(donation.voiceUrl),
+      voiceUrl: getStorageUrl(donation.voiceUrl),
       approvedAt: donation.approvedAt,
     });
   }

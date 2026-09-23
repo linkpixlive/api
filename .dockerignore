@@ -27,6 +27,9 @@ test
 eslint.config.mjs
 .prettierrc
 
+# Logs locais
+logs
+
 # Infra local
 Dockerfile
 docker-compose.yml

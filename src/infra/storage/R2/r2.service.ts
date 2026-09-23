@@ -16,6 +16,7 @@ import {
 @Injectable()
 export class R2Service extends StorageContract {
   private r2Client: S3Client;
+  private readonly bucket: string;
 
   constructor(private readonly configService: ConfigService) {
     super();
@@ -27,11 +28,12 @@ export class R2Service extends StorageContract {
         secretAccessKey: this.configService.get<string>('R2_SECRET_KEY')!,
       },
     });
+    this.bucket = this.configService.get<string>('R2_BUCKET_NAME')!;
   }
 
   async upload(file: Buffer, key: string, contentType: string) {
     const command = new PutObjectCommand({
-      Bucket: 'tipply',
+      Bucket: this.bucket,
       Key: key,
       Body: file,
       ContentType: contentType,
@@ -43,7 +45,7 @@ export class R2Service extends StorageContract {
   async getObject(key: string): Promise<StoredObject> {
     const res = await this.r2Client.send(
       new GetObjectCommand({
-        Bucket: 'tipply',
+        Bucket: this.bucket,
         Key: key,
       }),
     );
@@ -59,7 +61,7 @@ export class R2Service extends StorageContract {
     try {
       await this.r2Client.send(
         new HeadObjectCommand({
-          Bucket: 'tipply',
+          Bucket: this.bucket,
           Key: key,
         }),
       );
@@ -72,7 +74,7 @@ export class R2Service extends StorageContract {
 
   async deleteObject(key: string) {
     const command = new DeleteObjectCommand({
-      Bucket: 'tipply',
+      Bucket: this.bucket,
       Key: key,
     });
 

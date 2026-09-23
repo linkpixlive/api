@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
@@ -19,6 +24,7 @@ export class WidgetsService {
     private readonly widgetRepository: WidgetRepository,
     private readonly redisService: RedisService,
     private readonly overlayService: OverlayService,
+    private readonly voicesRepository: VoicesRepository,
   ) {}
 
   async getWidgetSettings<T extends WidgetType>(
@@ -41,6 +47,18 @@ export class WidgetsService {
     let merged = settings;
 
     if (type === WidgetType.overlay && settings) {
+      const overlaySettings = settings as unknown as OverlayWidgetSettingsDto;
+      if (overlaySettings.defaultNarrator?.trim()) {
+        const voice = await this.voicesRepository.findById(
+          overlaySettings.defaultNarrator,
+        );
+        if (!voice || !voice.isActive) {
+          throw new BadRequestException(
+            'Voz padrão não encontrada ou indisponível',
+          );
+        }
+      }
+
       const existing = await this.widgetRepository.findByUserAndType(
         userId,
         type,

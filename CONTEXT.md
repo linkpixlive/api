@@ -4,7 +4,7 @@
 
 ## Produto
 
-**LinkPix** (nome legado: **Tipply** — ambos aparecem no código/docs) é uma plataforma brasileira de doações para lives: o streamer se cadastra, configura overlay e chaves Pix; o espectador doa via Pix com mensagem opcional, transformada em áudio TTS; o alerta aparece no overlay em tempo real e o valor cai na carteira do streamer, sacável via Pix com taxa e aprovação administrativa.
+**LinkPix** é uma plataforma brasileira de doações para lives: o streamer se cadastra, configura overlay e chaves Pix; o espectador doa via Pix com mensagem opcional, transformada em áudio TTS; o alerta aparece no overlay em tempo real e o valor cai na carteira do streamer, sacável via Pix com taxa e aprovação administrativa.
 
 **Stack:** NestJS 11 (Express) · Prisma 7 + PostgreSQL (driver adapter) · Redis (ioredis) · BullMQ · Socket.IO · Swagger em `/api/docs` (fora de produção). Docker local: Postgres **5433**, Redis **6380**.
 
@@ -13,23 +13,23 @@
 | Módulo | Responsabilidade |
 |---|---|
 | `auth` | registro/login (JWT + sessão Redis), verificação por OTP, reset de senha, 2FA, cleanup de contas não verificadas (cron 30min) |
-| `account-settings` | troca de email/senha/nome, desativação, setup/enable/disable de 2FA |
+| `account` | troca de email/senha/nome, desativação, setup/enable/disable de 2FA |
 | `profile` | troca de username (cooldown 15 dias; blacklist permanente se verificado, senão 60 dias) |
 | `pix-keys` | CRUD de chaves Pix (criptografadas, dedupe por hash, limite por env) |
 | `wallets` | saldo (disponível/pendente/bloqueado); reconciliação diária 3h |
 | `withdrawals` | solicitação de saque (idempotência via `clientKey`, taxa), listagem paginada |
-| `donations` | lookup público do streamer (`GET /user/:username`) e criação de doação com Pix (`POST /donation`) |
-| `donation-settings` | regras por streamer: `maxLength`, mínimos audio/texto, filtros, palavras bloqueadas, voz padrão |
+| `donations` | `GET /donations/history` + áudio, lookup público do streamer (`GET /donations/user/:username`), criação com Pix (`POST /donations/donation`) |
+| `donation-settings` | regras por streamer: `maxLength`, mínimos audio/texto, filtros, palavras bloqueadas |
 | `widgets` | CRUD de widgets overlay/qrcode + token; **motor da fila de alertas** (`overlay.service`) |
 | `webhooks` | `POST /webhook/pix` (Efí) — roteia doações e saques |
-| `dashboard` | estatísticas 30 dias + histórico paginado (busca por nome/mensagem) |
+| `dashboard` | estatísticas 30 dias (`GET /dashboard/stats`) |
 | `admin` | `@Roles(admin)`: verificar usuários, aprovar/rejeitar saques; CRUD de vozes (`admin/voices` — controller e `AdminVoicesService` próprios) |
 | `voices` | catálogo de vozes TTS: listagem pública (`GET /voices`) e resolução de voz para o TTS; o CRUD admin vive no módulo `admin` |
 | `health` | `GET /health` (liveness simples) |
 
 ## Fluxo da doação (ponta a ponta)
 
-1. Espectador: `GET /user/:username` (público) → dados do streamer + mínimos; `POST /donation` (público, throttled) → valida voz/mínimos/comprimento → `gateway.generatePix` → doação `pending` com código Pix.
+1. Espectador: `GET /donations/user/:username` (público) → dados do streamer + mínimos; `POST /donations/donation` (público, throttled) → valida voz/mínimos/comprimento → `gateway.generatePix` → doação `pending` com código Pix.
 2. Efí confirma → `POST /webhook/pix` → enfileira `{donation_id}` em `donations-queue`.
 3. Processor (ver `docs/realtime.md`): verifica pagamento → TTS → upload R2 → doação `paid` + crédito no ledger → WS `donation:created` → enfileira alerta no overlay.
 4. Overlay exibe; cliente emite `alert_finished` → status `displayed` → próxima da fila.

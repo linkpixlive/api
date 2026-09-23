@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  GoneException,
   Injectable,
   Logger,
   NotFoundException,
@@ -11,19 +12,27 @@ import {
   PaymentMethod,
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
+import type { Readable } from 'node:stream';
+import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { findBlockedCustomWord } from 'src/common/utils/custom-rules.util';
-import { getProfileImageUrl } from 'src/common/utils/profileImageUrl.util';
+import { isOlderThanRetention } from 'src/common/utils/history-retention.util';
 import { sanitizeSpamText } from 'src/common/utils/spam-sanitizer.util';
+import { getStorageUrl } from 'src/common/utils/storageUrl.util';
 import { AiContract } from 'src/infra/ai/contract/ai.contract';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
+import { GetDonationHistoryParams } from 'src/infra/db/repositories/dto/donations.dto';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
 import { RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
+import { StorageContract } from 'src/infra/storage/contract/storage.contract';
+import type { StoredObject } from 'src/infra/storage/contract/storage.contract';
 import { DonationDto } from './dto/donation.dto';
+import { GetHistoryQueryDto } from './dto/get-history-query.dto';
+import { DonationHistoryEntity } from './entities/donation-history.entity';
 import { DonationStatusEntity } from './entities/donation-status.entity';
 import { DonationEntity } from './entities/donation.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
@@ -35,6 +44,13 @@ const OVERDUE_BATCH_LIMIT = 50;
 const BLOCKED_MESSAGE =
   'Mensagem não permitida pelas regras do streamer. Edite e tente novamente.';
 const LOG_EXCERPT_LENGTH = 80;
+
+export interface DonationAudioDownload {
+  stream: Readable;
+  contentType: string;
+  contentLength?: number;
+  filename: string;
+}
 
 @Injectable()
 export class DonationsService {
@@ -48,6 +64,7 @@ export class DonationsService {
     private readonly redisService: RedisService,
     private readonly voicesRepository: VoicesRepository,
     private readonly ai: AiContract,
+    private readonly storage: StorageContract,
   ) {}
 
   async getUser(username: string) {
@@ -67,11 +84,11 @@ export class DonationsService {
       name: user.name,
       username: user.username,
       verified: user.verified,
-      profileImageUrl: getProfileImageUrl(user.profileImageUrl),
+      profileImageUrl: getStorageUrl(user.profileImageUrl),
       overlayActive: !!overlayStatus,
       minAudioAmount: Number(settings.minAudioAmount),
       minTextAmount: Number(settings.minTextAmount),
-      maxLength: settings.maxLength,
+      maxLength: Math.min(settings.maxLength, 250),
     };
 
     return new PublicUserEntity(data);
@@ -81,7 +98,14 @@ export class DonationsService {
     donationDto: DonationDto,
     ip: string,
   ): Promise<DonationEntity> {
-    const { name, message, amount, voiceId, username } = donationDto;
+    const {
+      name: providedName,
+      message,
+      amount,
+      voiceId,
+      username,
+    } = donationDto;
+    const name = providedName?.trim() ?? '';
 
     if (voiceId) {
       const voice = await this.voicesRepository.findById(voiceId);
@@ -103,9 +127,11 @@ export class DonationsService {
       throw new BadRequestException('Configurações de doação não encontradas');
     }
 
-    if (message && message.length > settings.maxLength) {
+    const maxMessageLength = Math.min(settings.maxLength, 250);
+
+    if (message && message.length > maxMessageLength) {
       throw new BadRequestException(
-        `Mensagem excede o tamanho máximo de ${settings.maxLength} caracteres`,
+        `Mensagem excede o tamanho máximo de ${maxMessageLength} caracteres`,
       );
     }
 
@@ -169,7 +195,95 @@ export class DonationsService {
       streamerName: donation.user.name,
       message: message ? xss.filterXSS(message) : null,
       amount: Number(donation.amount),
+      donorName: donation.name || 'Anônimo',
+      voiceName: donation.voice?.name ?? null,
+      createdAt: donation.createdAt,
     });
+  }
+
+  async getHistory(
+    userId: string,
+    query: GetHistoryQueryDto,
+  ): Promise<PaginatedResponseDto<DonationHistoryEntity>> {
+    const params: GetDonationHistoryParams = {
+      userId,
+      page: query.page ?? 1,
+      limit: query.limit ?? 20,
+      status: query.status,
+      days:
+        query.days === 'today'
+          ? 'today'
+          : query.days
+            ? (Number(query.days) as 7 | 15 | 30)
+            : undefined,
+      search: query.search,
+      searchBy: query.searchBy,
+    };
+
+    const { donations, total } =
+      await this.donationsRepository.getDonationHistory(params);
+
+    const history = donations.map((d) => DonationHistoryEntity.fromDonation(d));
+
+    return new PaginatedResponseDto(history, {
+      total,
+      page: params.page,
+      limit: params.limit,
+    });
+  }
+
+  async getDonationAudio(
+    userId: string,
+    donationId: string,
+  ): Promise<DonationAudioDownload> {
+    const donation = await this.donationsRepository.findDonationAudioMeta(
+      donationId,
+      userId,
+    );
+
+    if (!donation) {
+      throw new NotFoundException('Áudio não disponível para esta doação.');
+    }
+
+    // Retenção de exibição: o áudio expira em 30 dias junto ao lifecycle do R2.
+    if (isOlderThanRetention(donation.createdAt)) {
+      throw new GoneException(
+        'Áudio expirado. Doações ficam disponíveis por 30 dias.',
+      );
+    }
+
+    if (!donation?.voiceUrl) {
+      throw new NotFoundException('Áudio não disponível para esta doação.');
+    }
+
+    let stored: StoredObject;
+    try {
+      stored = await this.storage.getObject(donation.voiceUrl);
+    } catch {
+      throw new NotFoundException('Áudio não disponível para esta doação.');
+    }
+
+    const ext = donation.voiceUrl.toLowerCase().endsWith('.mp3')
+      ? 'mp3'
+      : 'wav';
+    const slug =
+      donation.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') || 'doacao';
+    const stamp = donation.approvedAt
+      ? new Date(donation.approvedAt).getTime()
+      : donationId;
+
+    return {
+      stream: stored.body,
+      contentType:
+        stored.contentType ?? (ext === 'mp3' ? 'audio/mpeg' : 'audio/wav'),
+      contentLength: stored.contentLength,
+      filename: `doacao-${slug}-${stamp}.${ext}`,
+    };
   }
 
   async webhookPix(transactionId: string): Promise<void> {

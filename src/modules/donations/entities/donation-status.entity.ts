@@ -27,6 +27,22 @@ export class DonationStatusEntity {
   @Expose()
   message: string | null;
 
+  @ApiProperty({ example: 'John Doe', description: 'Nome do doador' })
+  @Expose()
+  donorName: string;
+
+  @ApiProperty({
+    example: 'Google Feminina PT-BR',
+    description: 'Voz usada na doação',
+    nullable: true,
+  })
+  @Expose()
+  voiceName: string | null;
+
+  @ApiProperty({ example: '2026-04-16T12:00:00.000Z' })
+  @Expose()
+  createdAt: Date;
+
   @ApiProperty({ example: 10 })
   @Expose()
   @Transform(({ value }) => Number(value))

@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsNotEmpty,
-  IsNumber,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsBoolean, IsNumber, IsString, Max, Min } from 'class-validator';
 
 export class OverlayWidgetSettingsDto {
   @ApiProperty({ example: 100 })
@@ -22,10 +15,9 @@ export class OverlayWidgetSettingsDto {
   @ApiProperty({
     example: 'uuid-voice-id',
     description:
-      'ID da voz padrão (GET /voices) usada quando a doação vem sem voiceId ("Voz padrão do streamer")',
+      'ID da voz padrão (GET /voices) usada quando a doação vem sem voiceId. Vazio = voz padrão do sistema ("Voz padrão").',
   })
   @IsString({ message: 'defaultNarrator deve ser uma string' })
-  @IsNotEmpty({ message: 'defaultNarrator não pode estar vazio' })
   defaultNarrator: string;
 
   @ApiProperty({ example: false })

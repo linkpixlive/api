@@ -1,6 +1,6 @@
 # LinkPix API — Guia para agentes
 
-Backend da plataforma **LinkPix** (nome legado: Tipply): doações em lives via Pix, overlay de alertas com TTS, carteira e saques. NestJS 11 · Prisma 7 + Postgres · Redis · BullMQ · Socket.IO.
+Backend da plataforma **LinkPix**: doações em lives via Pix, overlay de alertas com TTS, carteira e saques. NestJS 11 · Prisma 7 + Postgres · Redis · BullMQ · Socket.IO.
 
 ## Invariantes (valem para qualquer tarefa)
 

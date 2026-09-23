@@ -6,27 +6,32 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Donation, Widget, WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { getAudioUrl } from 'src/common/utils/audioUrl.util';
+import { getStorageUrl } from 'src/common/utils/storageUrl.util';
 import { isOlderThanRetention } from 'src/common/utils/history-retention.util';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
+import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { WidgetRepository } from 'src/infra/db/repositories/widget.repositories';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
+import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { DashboardGateway } from 'src/infra/websocket/dashboard.gateway';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
-import { DonationHistoryEntity } from '../dashboard/entities/donation-history.entity';
+import { DonationHistoryEntity } from '../donations/entities/donation-history.entity';
 import { PersistedOverlaySettings } from './dto/overlay-settings.dto';
 import { getWidgetDefaults } from './widget-defaults';
 
 const TEST_ID_PREFIX = 'test-';
+const TEST_TTS_MESSAGE = 'Esta é uma notificação de teste!';
 
 @Injectable()
 export class OverlayService {
   private readonly logger = new Logger(OverlayService.name);
+  private readonly testAudioUrlCache = new Map<string, string>();
 
   constructor(
     private readonly redisService: RedisService,
@@ -37,6 +42,9 @@ export class OverlayService {
     private readonly widgetRepository: WidgetRepository,
     private readonly donationsRepository: DonationsRepository,
     private readonly storage: StorageContract,
+    private readonly speech: SpeechContract,
+    private readonly voicesRepository: VoicesRepository,
+    private readonly configService: ConfigService,
   ) {}
 
   // ─── Overlay Connection ──────────────────────────────────────────────────────
@@ -285,17 +293,51 @@ export class OverlayService {
     await this.dispatchNextAlert(token);
   }
 
-  private buildTestDonation(id: string): OverlayDonationEntity {
+  private async buildTestDonation(id: string): Promise<OverlayDonationEntity> {
     return new OverlayDonationEntity({
       id,
       name: 'LinkPix',
       amount: 8.43,
-      message: 'Esta é uma notificação de teste!',
-      audioUrl: null,
+      message: TEST_TTS_MESSAGE,
+      audioUrl: await this.resolveTestAudioUrl(),
       messageType: null,
       createdAt: new Date(),
       isTest: true,
     });
+  }
+
+  private async resolveTestAudioUrl(): Promise<string | null> {
+    const systemVoiceId = this.configService.get<string>('DEFAULT_VOICE_ID');
+    if (!systemVoiceId) return null;
+
+    const cached = this.testAudioUrlCache.get(systemVoiceId);
+    if (cached) return cached;
+
+    try {
+      const voice = await this.voicesRepository.findById(systemVoiceId);
+      const isGoogle = (voice?.provider ?? '').toLowerCase() === 'google';
+      const key = `tts/test-${systemVoiceId}.${isGoogle ? 'mp3' : 'wav'}`;
+      if (!(await this.storage.exists(key))) {
+        const tts = await this.speech.generateTTS({
+          message: TEST_TTS_MESSAGE,
+          voice: voice?.voiceId ?? null,
+          provider: voice?.provider ?? null,
+        });
+        await this.storage.upload(
+          tts,
+          key,
+          isGoogle ? 'audio/mpeg' : 'audio/wav',
+        );
+      }
+      const url = getStorageUrl(key);
+      if (url) this.testAudioUrlCache.set(systemVoiceId, url);
+      return url;
+    } catch (error) {
+      this.logger.warn(
+        `Áudio de teste indisponível; exibindo teste sem som. ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
   }
 
   private async toOverlayPayload(
@@ -319,12 +361,12 @@ export class OverlayService {
         );
         return null;
       }
-      return getAudioUrl(voiceUrl);
+      return getStorageUrl(voiceUrl);
     } catch (error) {
       this.logger.warn(
         `Falha ao verificar áudio ${voiceUrl}; mantendo URL. ${error instanceof Error ? error.message : String(error)}`,
       );
-      return getAudioUrl(voiceUrl);
+      return getStorageUrl(voiceUrl);
     }
   }
 
@@ -409,7 +451,7 @@ export class OverlayService {
           .filter((id) => donationMap.has(id))
           .map((id) => this.toOverlayPayload(donationMap.get(id)!)),
       )),
-      ...testIds.map((id) => this.buildTestDonation(id)),
+      ...(await Promise.all(testIds.map((id) => this.buildTestDonation(id)))),
     ];
 
     let queue = pending;

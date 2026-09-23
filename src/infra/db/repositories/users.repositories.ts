@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole, WidgetType } from '@prisma/client';
+import { Prisma, UserRole, WidgetType } from '@prisma/client';
+import { getWidgetDefaults } from 'src/modules/widgets/widget-defaults';
 import { PrismaService } from '../prisma.service';
 import { CreateUserParams, UpdateUserParams } from './dto/users.dto';
 
@@ -22,6 +23,14 @@ export class UsersRepository {
         usernameChangedAt: data.usernameChangedAt,
         wallet: { create: {} },
         donationSettings: { create: {} },
+        widgets: {
+          create: [WidgetType.overlay, WidgetType.qrcode].map((type) => ({
+            type,
+            settings: getWidgetDefaults(
+              type,
+            ) as unknown as Prisma.InputJsonValue,
+          })),
+        },
       },
     });
   }

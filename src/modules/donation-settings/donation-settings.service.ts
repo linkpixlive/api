@@ -1,10 +1,5 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DonationSettingsRepository } from 'src/infra/db/repositories/donation-settings.repositories';
-import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { UpdateDonationSettingsDto } from './dto/update-donation-settings.dto';
 import { DonationSettingsEntity } from './entities/donation-settings.entity';
 
@@ -12,7 +7,6 @@ import { DonationSettingsEntity } from './entities/donation-settings.entity';
 export class DonationSettingsService {
   constructor(
     private readonly donationSettingsRepository: DonationSettingsRepository,
-    private readonly voicesRepository: VoicesRepository,
   ) {}
 
   async getSettings(userId: string): Promise<DonationSettingsEntity> {
@@ -28,13 +22,6 @@ export class DonationSettingsService {
   }
 
   async updateSettings(userId: string, data: UpdateDonationSettingsDto) {
-    if (data.defaultVoiceId) {
-      const voice = await this.voicesRepository.findById(data.defaultVoiceId);
-      if (!voice) {
-        throw new BadRequestException('Voz padrão não encontrada');
-      }
-    }
-
     const settings = await this.donationSettingsRepository.update(userId, data);
 
     return new DonationSettingsEntity(settings);

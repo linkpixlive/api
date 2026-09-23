@@ -16,12 +16,12 @@ export class DonationSettingsEntity implements DonationSettings {
   @Expose()
   maxLength: number;
 
-  @ApiProperty({ example: 5.0 })
+  @ApiProperty({ example: 5.0, type: Number })
   @Expose()
   @Transform(({ value }) => Number(value))
   minAudioAmount: Decimal;
 
-  @ApiProperty({ example: 1.0 })
+  @ApiProperty({ example: 1.0, type: Number })
   @Expose()
   @Transform(({ value }) => Number(value))
   minTextAmount: Decimal;
@@ -45,10 +45,6 @@ export class DonationSettingsEntity implements DonationSettings {
   @ApiProperty({ example: 'casino\nSem divulgação de outros canais' })
   @Expose()
   customRules: string;
-
-  @ApiProperty({ example: 'uuid-voice-id', nullable: true })
-  @Expose()
-  defaultVoiceId: string | null;
 
   @ApiProperty({ example: '2026-04-16T12:00:00.000Z' })
   @Expose()

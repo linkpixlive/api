@@ -6,7 +6,13 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentSid } from 'src/common/decorators/current-sid.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -15,12 +21,14 @@ import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
+import { Pending2faDto } from './dto/pending-2fa.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SafeUser } from './entities/safe-user.entity';
 
 @ApiTags('Auth')
+@ApiExtraModels(Pending2faDto)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -30,6 +38,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Registrar um novo usuário' })
   @ApiResponse({
     status: 201,
+    type: String,
     description: 'Usuário registrado com sucesso.',
   })
   @ApiResponse({
@@ -53,7 +62,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Autenticar usuário' })
   @ApiResponse({
     status: 200,
-    description: 'Usuário autenticado com sucesso.',
+    description:
+      'Usuário autenticado com sucesso. Retorna o JWT da sessão ou { requires2fa, nonce } quando a conta tem 2FA.',
+    schema: {
+      oneOf: [{ type: 'string' }, { $ref: getSchemaPath(Pending2faDto) }],
+    },
   })
   @ApiResponse({
     status: 401,
@@ -76,6 +89,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Autenticar usuário com segundo fator (2FA)' })
   @ApiResponse({
     status: 200,
+    type: String,
     description: 'Usuário autenticado com sucesso.',
   })
   @ApiResponse({
@@ -104,6 +118,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Esqueci a senha' })
   @ApiResponse({
     status: 200,
+    type: String,
     description: 'Email com link de redefinição de senha enviado com sucesso.',
   })
   @ApiResponse({
@@ -131,6 +146,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Alterar senha' })
   @ApiResponse({
     status: 200,
+    type: String,
     description: 'Senha alterada com sucesso.',
   })
   @ApiResponse({
@@ -158,7 +174,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Verificar OTP' })
   @ApiResponse({
     status: 200,
-    description: 'OTP verificado com sucesso.',
+    type: String,
+    description: 'OTP verificado com sucesso. Retorna o JWT da sessão.',
   })
   @ApiResponse({
     status: 400,

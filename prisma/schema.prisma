@@ -162,7 +162,6 @@ model Voice {
   sampleUrl String?  @map("sample_url") @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at")
 
-  donationSettings DonationSettings[]
   donations        Donation[]
 
   @@map("voices")
@@ -288,11 +287,9 @@ model DonationSettings {
   filterSpam      Boolean  @default(false) @map("filter_spam")
   filterHateSpeech Boolean @default(false) @map("filter_hate_speech")
   customRules     String   @default("") @map("custom_rules")
-  defaultVoiceId  String?  @map("default_voice_id") @db.VarChar(36)
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  defaultVoice    Voice?   @relation(fields: [defaultVoiceId], references: [id], onDelete: SetNull)
 
   @@map("donation_settings")
 }

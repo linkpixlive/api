@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import { UploadedFile } from 'src/common/interfaces/uploaded-file.interface';
-import { getProfileImageUrl } from 'src/common/utils/profileImageUrl.util';
+import { getStorageUrl } from 'src/common/utils/storageUrl.util';
 import { UsernameBlacklistRepository } from 'src/infra/db/repositories/username-blacklist.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
@@ -119,7 +119,7 @@ export class ProfileService {
 
     await this.deleteObjectBestEffort(oldKey, userId);
 
-    return { profileImageUrl: getProfileImageUrl(key) };
+    return { profileImageUrl: getStorageUrl(key) };
   }
 
   async removeProfilePhoto(userId: string) {

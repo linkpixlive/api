@@ -7,14 +7,16 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SanitizeHTML } from 'src/common/decorators/sanitize.decorator';
 
 export class DonationDto {
-  @ApiProperty({ example: 'John Doe', maxLength: 100 })
+  @ApiPropertyOptional({ example: 'John Doe', maxLength: 100 })
+  @IsOptional()
+  @IsString({ message: 'O nome deve ser uma string' })
   @MaxLength(100, { message: 'O nome deve ter no máximo 100 caracteres' })
   @SanitizeHTML()
-  name: string;
+  name?: string;
 
   @ApiProperty({ example: 'Keep up the good work!', maxLength: 250 })
   @IsString({ message: 'A mensagem deve ser uma string' })

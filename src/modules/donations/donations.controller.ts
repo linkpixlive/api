@@ -6,23 +6,36 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/isPublic';
+import { SafeUser } from '../auth/entities/safe-user.entity';
 import { DonationsService } from './donations.service';
 import { DonationDto } from './dto/donation.dto';
+import { GetHistoryQueryDto } from './dto/get-history-query.dto';
 import { DonationStatusEntity } from './entities/donation-status.entity';
 import { DonationEntity } from './entities/donation.entity';
+import { PaginatedDonationHistoryResponse } from './entities/paginated-donation-history.entity';
 import { PublicUserEntity } from './entities/public-user.entity';
 
 @ApiTags('Donations')
-@Public()
-@Controller()
+@Controller('donations')
 export class DonationsController {
   constructor(private readonly donationsService: DonationsService) {}
 
-  @Get('/user/:username')
+  @Get('user/:username')
+  @Public()
   @ApiOperation({ summary: 'Obter informações públicas do usuário' })
   @ApiResponse({
     status: 200,
@@ -46,6 +59,7 @@ export class DonationsController {
   }
 
   @Post('donation')
+  @Public()
   @ApiOperation({ summary: 'Criar uma nova doação' })
   @ApiResponse({
     status: 201,
@@ -69,6 +83,7 @@ export class DonationsController {
   }
 
   @Get('donation/:id')
+  @Public()
   @ApiOperation({
     summary: 'Obter status de pagamento de uma doação',
   })
@@ -91,5 +106,44 @@ export class DonationsController {
   })
   getDonation(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
     return this.donationsService.getDonation(id);
+  }
+
+  @Get('history')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obter histórico de doações paginado' })
+  @ApiResponse({
+    status: 200,
+    type: PaginatedDonationHistoryResponse,
+    description: 'Histórico retornado com sucesso.',
+  })
+  @ApiResponse({ status: 400, description: 'Parâmetros de query inválidos.' })
+  @ApiResponse({ status: 401, description: 'Não autorizado.' })
+  getHistory(
+    @CurrentUser() user: SafeUser,
+    @Query() query: GetHistoryQueryDto,
+  ) {
+    return this.donationsService.getHistory(user.id, query);
+  }
+
+  @Get('history/:id/audio')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Baixar áudio da doação como anexo' })
+  @ApiResponse({ status: 200, description: 'Arquivo de áudio.' })
+  @ApiResponse({ status: 404, description: 'Áudio não disponível.' })
+  @ApiResponse({ status: 401, description: 'Não autorizado.' })
+  async downloadAudio(
+    @CurrentUser() user: SafeUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const audio = await this.donationsService.getDonationAudio(user.id, id);
+    res.set({
+      'Content-Type': audio.contentType,
+      'Content-Disposition': `attachment; filename="${audio.filename}"`,
+      ...(audio.contentLength !== undefined
+        ? { 'Content-Length': String(audio.contentLength) }
+        : {}),
+    });
+    return new StreamableFile(audio.stream);
   }
 }

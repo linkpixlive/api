@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { DomainError } from '../errors/domain.error';
@@ -15,6 +16,8 @@ interface NestErrorResponse {
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -37,7 +40,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 : 'Internal Server Error',
           };
 
-    console.error(exception);
+    this.logger.error(
+      exception instanceof Error ? exception.message : 'Unhandled exception',
+      exception instanceof Error ? exception.stack : undefined,
+    );
 
     const message =
       typeof exceptionResponse === 'string'

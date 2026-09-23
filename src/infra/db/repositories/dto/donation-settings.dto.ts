@@ -7,5 +7,4 @@ export interface UpdateDonationSettingsParams {
   filterSpam?: boolean;
   filterHateSpeech?: boolean;
   customRules?: string;
-  defaultVoiceId?: string | null;
 }

@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  IsUUID,
   Length,
   Max,
   Min,
@@ -75,6 +76,10 @@ export class EnvironmentVariables {
   @IsUrl({ protocols: ['http', 'https'], require_tld: false })
   @IsNotEmpty()
   R2_ENDPOINT_URL: string;
+
+  @IsString()
+  @IsNotEmpty()
+  R2_BUCKET_NAME: string;
 
   @IsUrl({ protocols: ['http', 'https'], require_tld: false })
   @IsNotEmpty()
@@ -144,6 +149,14 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   GRADIUM_API_KEY: string;
+
+  @IsOptional()
+  @IsUUID('4', { message: 'DEFAULT_VOICE_ID deve ser um UUID válido' })
+  DEFAULT_VOICE_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  LOG_DIR?: string;
 }
 
 export function validate(config: Record<string, unknown>) {
