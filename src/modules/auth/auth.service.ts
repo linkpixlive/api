@@ -24,6 +24,7 @@ import { EmailService } from 'src/infra/queues/email/email.service';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { ProfileService } from '../profile/profile.service';
+import { SafeUser } from './entities/safe-user.entity';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
@@ -41,6 +42,11 @@ interface OtpData {
 interface Pending2fa {
   userId: string;
   attempts: number;
+}
+
+interface SessionTokenPayload {
+  sub: string;
+  sid: string;
 }
 
 @Injectable()
@@ -309,6 +315,30 @@ export class AuthService {
     await this.redisService.remove(redisKey);
 
     return await this.createSession(updatedUser.id);
+  }
+
+  async validateSessionToken(token: string) {
+    let payload: SessionTokenPayload;
+    try {
+      payload = await this.jwtService.verifyAsync<SessionTokenPayload>(token);
+    } catch {
+      throw new UnauthorizedException();
+    }
+
+    if (!payload.sub || !payload.sid) throw new UnauthorizedException();
+
+    const session = await this.redisService.get<string>(
+      RedisKeys.session(payload.sid),
+    );
+    if (session !== payload.sub) throw new UnauthorizedException();
+
+    const user = await this.usersRepository.findById(payload.sub);
+    if (!user?.active) throw new UnauthorizedException();
+
+    return {
+      user: SafeUser.fromPrisma(user),
+      sid: payload.sid,
+    };
   }
 
   async logout(sid: string, userId: string) {

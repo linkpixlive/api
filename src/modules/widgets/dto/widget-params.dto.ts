@@ -1,5 +1,5 @@
 import { WidgetType } from '@prisma/client';
-import { IsEnum, IsString } from 'class-validator';
+import { IsEnum, IsUUID } from 'class-validator';
 
 export class WidgetTypeParams {
   @IsEnum(WidgetType, {
@@ -9,6 +9,6 @@ export class WidgetTypeParams {
 }
 
 export class PublicWidgetParams {
-  @IsString({ message: 'token deve ser uma string' })
+  @IsUUID('4', { message: 'token deve ser um UUID v4 válido' })
   token: string;
 }

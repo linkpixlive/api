@@ -14,6 +14,7 @@ import {
   PersistedOverlaySettings,
 } from './dto/overlay-settings.dto';
 import { WidgetSettingsMap } from './dto/widget-settings.map';
+import { PublicWidgetEntity } from './entities/public-widget.entity';
 import { WidgetEntity } from './entities/widget.entity';
 import { OverlayService } from './overlay.service';
 import { getWidgetDefaults } from './widget-defaults';
@@ -87,11 +88,11 @@ export class WidgetsService {
     return WidgetEntity.fromPrisma<T>(widget);
   }
 
-  async getPublicWidgetSettings<T extends WidgetType>(token: string) {
+  async getPublicWidgetSettings(token: string) {
     const widget = await this.widgetRepository.findByToken(token);
     if (!widget) throw new NotFoundException('Widget não encontrado');
 
-    return WidgetEntity.fromPrisma<T>(widget);
+    return PublicWidgetEntity.fromPrisma(widget);
   }
 
   async resetToken(

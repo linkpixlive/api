@@ -1,6 +1,6 @@
 # Realtime — Filas, WebSocket, TTS
 
-> Verificado contra o código em 2026-09-02.
+> Verificado contra o código em 2026-09-23.
 
 ## BullMQ
 
@@ -11,7 +11,7 @@
 
 | Fila | Job | Produtor |
 |---|---|---|
-| `donations-queue` | `send-donation` | webhook Efí (doação `pending`) e cron de expiração (vencida que a Efí confirma paga). Options próprias: `attempts: 4`, backoff exponencial 30s |
+| `donations-queue` | `send-donation` | webhook Efí (doação `pending/expired`) e cron de expiração (vencida que a Efí confirma paga). Options próprias: `attempts: 4`, backoff exponencial 30s |
 | email | `send-email` | auth/account (verificação, reset) |
 
 ## Pipeline `donations-queue` (processor)
@@ -53,18 +53,18 @@ Emitir de processors/serviços de domínio — nunca de controllers HTTP. Evento
 
 | Gateway | Namespace | Auth na conexão | Sala | Emite | Escuta |
 |---|---|---|---|---|---|
-| `OverlayGateway` | `/overlay` | `query.token` validado no DB (widget ativo) | `token` | `new_donation`, `skip_alert`, `pause_alerts`, `resume_alerts`, `clear_alerts`, `settings_updated` | `alert_finished`, `heartbeat_pulse` |
-| `DashboardGateway` | `/dashboard` | `handshake.auth.token` decodificado com `jwt.decode` (**sem verificar assinatura/expiração** — caveat conhecido) | `userId` | `queue_sync`, `overlay_status`, `donation:created`, `donation:updated` | — |
+| `OverlayGateway` | `/overlay` | `query.token` validado no DB (widget `overlay` ativo) | `token` | `new_donation`, `skip_alert`, `pause_alerts`, `resume_alerts`, `clear_alerts`, `settings_updated` | `alert_finished`, `heartbeat_pulse` |
+| `DashboardGateway` | `/dashboard` | `handshake.auth.token` com assinatura, expiração, sessão Redis e usuário ativo validados na conexão | `userId` | `queue_sync`, `overlay_status`, `donation:created`, `donation:updated` | — |
 
 ## Motor da fila de alertas (`modules/widgets/overlay.service.ts`)
 
 - **Enfileirar**: só se overlay online (`overlay:<token>`); `RPUSH` do id; sincroniza dashboard; tenta despachar.
 - **Dispatch gate** (`dispatchIfReady`): widget ativo + não pausado + `overlay:current` inexistente (claim via `setIfNotExists`). Se perder a corrida, o id volta pro início da fila (`LPUSH`).
 - **`dispatchNextAlert`**: `LPOP`; `test-<uuid>` vira payload sintético em memória (nome LinkPix, R$8,43); id sem doação no DB é descartado silenciosamente (self-healing).
-- **`alert_finished`**: marca `displayed` (exceto test), apaga `overlay:current`, `dispatchIfReady` — é o único avanço normal da fila.
+- **`alert_finished`**: exige que o ID enviado seja o `overlay:current` do token; doações reais usam update condicional por `id + userId + status paid/displayed`; o compare-and-delete do current só avança a fila para o handler vencedor. IDs stale/cross-owner são no-op.
 - **Pausa** (`POST /overlay/toggle-pause`): persiste `settings.isPaused`, emite `pause_alerts`, limpa `overlay:current`. Retomar: `resume_alerts` + `dispatchIfReady`.
 - **PUT `/widgets/overlay`**: substitui o objeto inteiro, mas preserva `isPaused` (pausa é só via `toggle-pause`; o pipe rejeita o campo com 400) e emite `settings_updated` para o OBS aplicar volume/audioOnly/narrador sem reconnect.
 - **Skip**: emite `skip_alert`, limpa `overlay:current`; pausado → descarta o próximo da cabeça; ativo → `dispatchNextAlert`. Skip nunca despausa.
 - **Extras**: `DELETE /overlay/queue` (limpa tudo), `DELETE /overlay/queue/:donationId`, `POST /overlay/replay/:donationId` (RPUSH + dispatch), `POST /overlay/test` (enfileira `test-<uuid>`).
-- **Reconexão**: revalida token, liga online flag, socket dá `join` na sala **antes** de qualquer emit, reemite payload de `overlay:current`, dispara `dispatchIfReady` (autoplay da fila pendente se despausado e sem current) e `queue_sync`.
+- **Reconexão**: revalida token como widget `overlay` ativo, liga online flag, socket dá `join` na sala **antes** de qualquer emit, reemite payload de `overlay:current`, dispara `dispatchIfReady` (autoplay da fila pendente se despausado e sem current) e `queue_sync`.
 - **`queue_sync`** espelha a ordem: posição 0 = em exibição (`isCurrent: true`), resto na ordem do Redis; toda dispatch (mesmo fila vazia) reemite o snapshot.

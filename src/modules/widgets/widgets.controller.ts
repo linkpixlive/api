@@ -5,12 +5,14 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/isPublic';
 import { WidgetSettingsPipe } from 'src/common/pipes/widget-settings.pipe';
 import { SafeUser } from 'src/modules/auth/entities/safe-user.entity';
 import { PublicWidgetParams, WidgetTypeParams } from './dto/widget-params.dto';
 import type { AnyWidgetSettings } from './dto/widget-settings.map';
+import { PublicWidgetEntity } from './entities/public-widget.entity';
 import { WidgetEntity } from './entities/widget.entity';
 import { WidgetsService } from './widgets.service';
 
@@ -22,10 +24,14 @@ export class WidgetsController {
 
   @Public()
   @Get('public/:token')
+  @Throttle({
+    default: { limit: 30, ttl: 60000 },
+    burst: { limit: 5, ttl: 10000 },
+  })
   @ApiOperation({
     summary: 'Obter configurações públicas do widget para OBS/Uso externo',
   })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 200, type: PublicWidgetEntity })
   async getPublicSettings(@Param() { token }: PublicWidgetParams) {
     return this.widgetsService.getPublicWidgetSettings(token);
   }

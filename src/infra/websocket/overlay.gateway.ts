@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
+import { AlertFinishedDto } from 'src/modules/widgets/dto/alert-finished.dto';
 import { OverlayService } from 'src/modules/widgets/overlay.service';
 
 @WebSocketGateway({
@@ -30,8 +31,8 @@ export class OverlayGateway
   ) {}
 
   async handleConnection(client: Socket) {
-    const token = client.handshake.query.token as string;
-    if (!token) return client.disconnect();
+    const token = client.handshake.query.token;
+    if (typeof token !== 'string' || !token) return client.disconnect();
 
     await client.join(token);
 
@@ -50,7 +51,7 @@ export class OverlayGateway
   @SubscribeMessage('alert_finished')
   async handleAlertFinished(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { id: string },
+    @MessageBody() data: AlertFinishedDto,
   ) {
     const token = client['token'] as string;
     if (!token || !data?.id) return;

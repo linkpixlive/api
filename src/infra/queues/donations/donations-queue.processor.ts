@@ -91,10 +91,10 @@ export class DonationsQueueProcessor extends WorkerHost {
 
     if (
       result.paidAmount !== undefined &&
-      !new Decimal(result.paidAmount).equals(expectedAmount)
+      !result.paidAmount.equals(expectedAmount)
     ) {
       throw new BadRequestException(
-        `Valor pago (R$${result.paidAmount}) difere do valor da doação (R$${String(expectedAmount)})`,
+        `Valor pago (R$${String(result.paidAmount)}) difere do valor da doação (R$${String(expectedAmount)})`,
       );
     }
   }

@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import type { Readable } from 'node:stream';
+import { MAX_DONATION_AMOUNT } from 'src/common/constants/donation.constants';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { findBlockedCustomWord } from 'src/common/utils/custom-rules.util';
@@ -72,7 +73,7 @@ export class DonationsService {
     const overlay = user?.widgets[0];
     const settings = user?.donationSettings;
 
-    if (!user || !settings) {
+    if (!user?.active || !settings) {
       throw new NotFoundException('Usuário ou configurações não encontrados');
     }
 
@@ -88,6 +89,7 @@ export class DonationsService {
       overlayActive: !!overlayStatus,
       minAudioAmount: Number(settings.minAudioAmount),
       minTextAmount: Number(settings.minTextAmount),
+      maxDonationAmount: MAX_DONATION_AMOUNT,
       maxLength: Math.min(settings.maxLength, 250),
     };
 
@@ -117,7 +119,7 @@ export class DonationsService {
 
     const user = await this.usersRepository.findByUsernameWithConfig(username);
 
-    if (!user) {
+    if (!user?.active) {
       throw new NotFoundException('Usuário não encontrado');
     }
 
@@ -135,9 +137,9 @@ export class DonationsService {
       );
     }
 
-    const amountNum = new Decimal(amount);
+    const amountDecimal = new Decimal(amount);
 
-    if (amountNum.lt(settings.minTextAmount)) {
+    if (amountDecimal.lt(settings.minTextAmount)) {
       throw new BadRequestException(
         `Valor mínimo de doação é R$${Number(settings.minTextAmount)}`,
       );
@@ -151,7 +153,7 @@ export class DonationsService {
     );
 
     const transaction = await this.gateway.generatePix({
-      amount,
+      amount: amountDecimal,
     });
 
     if (!transaction) {
@@ -163,7 +165,7 @@ export class DonationsService {
     const donation = await this.donationsRepository.create({
       name: moderated.name,
       message: moderated.message,
-      amount,
+      amount: amountDecimal,
       voiceId,
       userId: user.id,
       pix: transaction.pix,
@@ -296,7 +298,10 @@ export class DonationsService {
       );
     }
 
-    if (donation.status === DonationStatus.pending) {
+    if (
+      donation.status === DonationStatus.pending ||
+      donation.status === DonationStatus.expired
+    ) {
       await this.donationsQueue.sendDonation({ donation_id: donation.id });
     }
   }

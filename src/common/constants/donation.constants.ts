@@ -1,0 +1,2 @@
+export const MIN_DONATION_AMOUNT = 1;
+export const MAX_DONATION_AMOUNT = 999_999.99;

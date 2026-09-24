@@ -1,6 +1,6 @@
 # CONTEXT.md — Produto e domínio
 
-> Verificado contra o código em 2026-09-02.
+> Verificado contra o código em 2026-09-23.
 
 ## Produto
 
@@ -29,7 +29,7 @@
 
 ## Fluxo da doação (ponta a ponta)
 
-1. Espectador: `GET /donations/user/:username` (público) → dados do streamer + mínimos; `POST /donations/donation` (público, throttled) → valida voz/mínimos/comprimento → `gateway.generatePix` → doação `pending` com código Pix.
+1. Espectador: `GET /donations/user/:username` (público) → dados do streamer + mínimo/máximo; `POST /donations/donation` (público, throttled) → valida destinatário ativo, valor em centavos, voz, mínimos e comprimento → `gateway.generatePix` → doação `pending` com código Pix.
 2. Efí confirma → `POST /webhook/pix` → enfileira `{donation_id}` em `donations-queue`.
 3. Processor (ver `docs/realtime.md`): verifica pagamento → TTS → upload R2 → doação `paid` + crédito no ledger → WS `donation:created` → enfileira alerta no overlay.
 4. Overlay exibe; cliente emite `alert_finished` → status `displayed` → próxima da fila.

@@ -1,7 +1,9 @@
+import { Decimal } from '@prisma/client/runtime/client';
+
 export interface UpdateDonationSettingsParams {
   maxLength?: number;
-  minAudioAmount?: number;
-  minTextAmount?: number;
+  minAudioAmount?: Decimal;
+  minTextAmount?: Decimal;
   aiModeration?: boolean;
   filterProfanity?: boolean;
   filterSpam?: boolean;

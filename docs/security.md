@@ -1,6 +1,6 @@
 # Segurança
 
-> Verificado contra o código em 2026-09-05.
+> Verificado contra o código em 2026-09-23.
 
 ## Variáveis de ambiente
 
@@ -22,13 +22,19 @@
 
 ## Auth e sessões
 
-- JWT: payload `{ sub, sid }` (sem claim de roles — autorização lê do banco via `AuthGuard`); secret `JWT_SECRET`; expiração `${JWT_EXPIRES_IN_DAYS}d`. `AuthGuard` global (APP_GUARD): valida o binding `session === payload.sub`, checa `user.active` e recarrega o usuário do banco a cada request.
+- JWT: payload `{ sub, sid }` (sem claim de roles — autorização lê do banco via `AuthGuard`); secret `JWT_SECRET`; expiração `${JWT_EXPIRES_IN_DAYS}d`. `AuthService.validateSessionToken()` é compartilhado pelo `AuthGuard` HTTP e pelo handshake `/dashboard`: verifica assinatura, expiração, binding `session === payload.sub` e `user.active`. A validação do WebSocket ocorre na conexão; sockets já abertos permanecem até desconectar.
 - **Sessão revogável**: `sid` (uuid) → `auth:session:<sid>` (Redis, TTL = dias do JWT) + set `auth:user_sessions:<userId>`. Logout, troca de email/senha, reset de senha (esqueci minha senha) e desativação matam sessões (troca de senha preserva a atual via `@CurrentSid()`).
 - **Reset de senha**: token hasheado, TTL de 15 min, resposta uniforme (não revela existência de cadastro, sem metadados internos); link do e-mail aponta para `/forgot-password`.
 - Conta inativa reativa no login com credenciais válidas. Login e register não revelam existência de cadastro: login tem mensagem única "Credenciais inválidas" com bcrypt sempre executado (hash dummy quando o usuário não existe); register responde genericamente para e-mail já existente (reenvia o código apenas se o registro estiver pendente, sem sobrescrever os dados pendentes).
 - **2FA**: login devolve `{ requires2fa: true, nonce }` (Redis 300s, one-shot); `POST /auth/login-2fa` revalida credenciais + TOTP (defesa contra nonce roubado). Setup: segredo fica no Redis (`totp:setup`, criptografado) até o primeiro código confirmar; issuer "LinkPix". Desativar 2FA exige senha **e** código TOTP. `login-2fa` e `enable-2fa` contam tentativas (máx. 5) e invalidam o nonce/setup ao exceder. Sem backup codes (decisão de design).
 - **OTP de email**: 6 dígitos, hash, 600s, cooldown 60s, comparação com `timingSafeEqual`, ≥5 erros invalidam; cron `auth-cleanup` (30min) apaga contas não verificadas há >15min.
 - Decorators `@CurrentUser()` e `@CurrentSid()` para acesso ao request.
+
+## Doações
+
+- Destinatários inativos são ocultados da descoberta pública e não podem receber novas doações; o pagamento de uma doação já criada continua elegível para crédito.
+- `amount` e os mínimos configuráveis são números finitos, com no máximo duas casas decimais, entre R$ 1,00 e R$ 999.999,99; entradas inválidas são rejeitadas antes da Efí.
+- O valor validado é convertido uma vez para `Decimal` e essa representação segue até a persistência, confirmação do gateway e crédito do wallet.
 
 ## Rate limiting
 
@@ -46,7 +52,7 @@
 - Auth: query param `?hmac=` comparado a `EFI_WEBHOOK_SECRET` com `timingSafeEqual` (segredo compartilhado estático, **não** HMAC do body — é o formato que a Efí suporta: ela só ecoa a string cadastrada na URL).
 - Cadastro na Efí: registrar a URL **base** `https://<api>/webhook?hmac=<segredo>` via `PUT /v2/webhook` — a Efí anexa `/pix` sozinha e chama `POST .../webhook/pix?hmac=<segredo>`. Se cadastrar a URL cheia (`.../webhook/pix?hmac=...`), adicionar `&ignorar=` ao fim para não duplicar o `/pix`.
 - Segredo em query string pode vazar em logs/proxies — rotação manual; mTLS/IP allowlist como mitigação (follow-up de infra, ver auditorias de withdrawals).
-- Batch máximo 5; roteia: `gnExtras.idEnvio` → saque; senão `txid` → doação (só enfileira se ainda `pending`).
+- Batch máximo 5; roteia: `gnExtras.idEnvio` → saque; senão `txid` → doação (enfileira se `pending` ou `expired`; a Efí ainda confirma status e valor).
 
 ## Gateway Efí
 

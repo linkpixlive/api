@@ -7,7 +7,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Donation, Widget, WidgetType } from '@prisma/client';
+import { Donation, DonationStatus, Widget, WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { getStorageUrl } from 'src/common/utils/storageUrl.util';
 import { isOlderThanRetention } from 'src/common/utils/history-retention.util';
@@ -50,7 +50,10 @@ export class OverlayService {
   // ─── Overlay Connection ──────────────────────────────────────────────────────
 
   async registerConnection(token: string) {
-    const widget = await this.widgetRepository.findByToken(token);
+    const widget = await this.widgetRepository.findByTokenAndType(
+      token,
+      WidgetType.overlay,
+    );
     if (!widget || !widget.active) return false;
 
     const settings = widget.settings as unknown as PersistedOverlaySettings;
@@ -88,7 +91,10 @@ export class OverlayService {
   }
 
   async unregisterConnection(token: string) {
-    const widget = await this.widgetRepository.findByToken(token);
+    const widget = await this.widgetRepository.findByTokenAndType(
+      token,
+      WidgetType.overlay,
+    );
     await this.redisService.remove(RedisKeys.overlayOnline(token));
     if (widget) this.dashboardGateway.emitOverlayStatus(widget.userId, false);
   }
@@ -123,14 +129,35 @@ export class OverlayService {
   }
 
   async alertFinished(token: string, donationId: string) {
+    const widget = await this.widgetRepository.findByTokenAndType(
+      token,
+      WidgetType.overlay,
+    );
+    if (!widget?.active) return;
+
+    const currentKey = RedisKeys.overlayCurrent(token);
+    const current =
+      await this.redisService.get<OverlayDonationEntity>(currentKey);
+    if (!current || current.id !== donationId) return;
+
+    let updated: Donation | null = null;
     if (!donationId.startsWith(TEST_ID_PREFIX)) {
-      const updated = await this.donationsRepository.update(donationId, {
-        status: 'displayed',
-      });
+      updated = await this.donationsRepository.markAsDisplayedIfOwnedAndSettled(
+        donationId,
+        widget.userId,
+      );
+      if (!updated) return;
+
       const historyEntity = DonationHistoryEntity.fromDonation(updated);
       this.dashboardGateway.emitDonationUpdated(updated.userId, historyEntity);
     }
-    await this.redisService.remove(RedisKeys.overlayCurrent(token));
+
+    const removed = await this.redisService.removeIfValueMatches(
+      currentKey,
+      current,
+    );
+    if (!removed) return;
+
     await this.dispatchIfReady(token);
   }
 
@@ -221,7 +248,12 @@ export class OverlayService {
   async replayDonation(userId: string, donationId: string) {
     const donation = await this.donationsRepository.findById(donationId);
 
-    if (!donation || donation.userId !== userId) {
+    if (
+      !donation ||
+      donation.userId !== userId ||
+      (donation.status !== DonationStatus.paid &&
+        donation.status !== DonationStatus.displayed)
+    ) {
       throw new NotFoundException('Doação não encontrada');
     }
 
@@ -276,7 +308,10 @@ export class OverlayService {
   }
 
   private async dispatchIfReady(token: string) {
-    const widget = await this.widgetRepository.findByToken(token);
+    const widget = await this.widgetRepository.findByTokenAndType(
+      token,
+      WidgetType.overlay,
+    );
     if (!widget || !widget.active) return;
 
     const settings = widget.settings as unknown as PersistedOverlaySettings;
@@ -384,7 +419,10 @@ export class OverlayService {
     const queueKey = RedisKeys.overlayQueue(token);
     const currentKey = RedisKeys.overlayCurrent(token);
 
-    const widget = await this.widgetRepository.findByToken(token);
+    const widget = await this.widgetRepository.findByTokenAndType(
+      token,
+      WidgetType.overlay,
+    );
 
     const nextId = await this.redisService.removeFromListStart(queueKey);
     const payload = nextId ? await this.resolvePayload(nextId) : null;

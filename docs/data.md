@@ -1,6 +1,6 @@
 # Dados — Prisma & Redis
 
-> Verificado contra o código em 2026-09-02.
+> Verificado contra o código em 2026-09-23.
 
 ## Prisma 7
 
@@ -49,7 +49,7 @@
 |---|---|---|---|
 | `overlayOnline` | `overlay:<token>` | 80s | heartbeat do overlay |
 | `overlayQueue` | `overlay:queue:<token>` | — (deliberado) | fila FIFO de ids de doação / `test-<uuid>` |
-| `overlayCurrent` | `overlay:current:<token>` | 300s | payload da doação em exibição (claim SET NX) |
+| `overlayCurrent` | `overlay:current:<token>` | 300s | payload da doação em exibição (claim SET NX; conclusão usa compare-and-delete) |
 | `otpVerification` | `otp:verification:<email>` | 600s | OTP de email (hash sha256) |
 | `totpSetup` | `totp:setup:<userId>` | 600s | segredo 2FA pendente (criptografado) |
 | `authPending2fa` | `auth:pending_2fa:<nonce>` | 300s | nonce one-shot do login 2FA |

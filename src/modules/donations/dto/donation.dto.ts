@@ -4,10 +4,16 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  MAX_DONATION_AMOUNT,
+  MIN_DONATION_AMOUNT,
+} from 'src/common/constants/donation.constants';
+import { IsMoney } from 'src/common/decorators/is-money.decorator';
 import { SanitizeHTML } from 'src/common/decorators/sanitize.decorator';
 
 export class DonationDto {
@@ -24,9 +30,17 @@ export class DonationDto {
   @SanitizeHTML()
   message: string;
 
-  @ApiProperty({ example: 10, minimum: 1 })
+  @ApiProperty({
+    example: 10,
+    minimum: MIN_DONATION_AMOUNT,
+    maximum: MAX_DONATION_AMOUNT,
+  })
   @IsNumber({}, { message: 'O valor deve ser um número' })
-  @Min(1, { message: 'O valor mínimo é 1' })
+  @IsMoney({ message: 'O valor deve ter no máximo 2 casas decimais' })
+  @Min(MIN_DONATION_AMOUNT, { message: 'O valor mínimo é 1' })
+  @Max(MAX_DONATION_AMOUNT, {
+    message: `O valor máximo é ${MAX_DONATION_AMOUNT}`,
+  })
   amount: number;
 
   @ApiProperty({ example: 'uuid-voice-id', nullable: true, required: false })

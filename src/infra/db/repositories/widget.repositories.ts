@@ -10,7 +10,12 @@ export class WidgetRepository {
   async findByToken(token: string) {
     return await this.prisma.widget.findUnique({
       where: { token },
-      include: { user: true },
+    });
+  }
+
+  async findByTokenAndType(token: string, type: WidgetType) {
+    return await this.prisma.widget.findFirst({
+      where: { token, type },
     });
   }
 

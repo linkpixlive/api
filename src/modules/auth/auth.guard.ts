@@ -5,26 +5,15 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/isPublic';
-import { UsersRepository } from '../../infra/db/repositories/users.repositories';
-import { RedisKeys } from '../../infra/redis/redis-keys';
-import { RedisService } from '../../infra/redis/redis.service';
-import { SafeUser } from './entities/safe-user.entity';
-
-export interface JwtPayload {
-  sub: string;
-  sid: string;
-}
+import { AuthService } from './auth.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
-    private jwtService: JwtService,
-    private reflector: Reflector,
-    private usersRepository: UsersRepository,
-    private redisService: RedisService,
+    private readonly authService: AuthService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -44,30 +33,10 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+    const { user, sid } = await this.authService.validateSessionToken(token);
 
-      const session = await this.redisService.get(
-        RedisKeys.session(payload.sid),
-      );
-
-      if (!session || session !== payload.sub) {
-        throw new UnauthorizedException();
-      }
-
-      const user = await this.usersRepository.findById(payload.sub);
-
-      if (!user || !user.active) {
-        throw new UnauthorizedException();
-      }
-
-      const safeUser = SafeUser.fromPrisma(user);
-
-      request['user'] = safeUser;
-      request['sid'] = payload.sid;
-    } catch {
-      throw new UnauthorizedException();
-    }
+    request['user'] = user;
+    request['sid'] = sid;
     return true;
   }
 

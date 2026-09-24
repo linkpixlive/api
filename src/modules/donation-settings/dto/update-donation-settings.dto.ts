@@ -1,5 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  MAX_DONATION_AMOUNT,
+  MIN_DONATION_AMOUNT,
+} from 'src/common/constants/donation.constants';
+import { IsMoney } from 'src/common/decorators/is-money.decorator';
+import {
   IsBoolean,
   IsInt,
   IsNumber,
@@ -8,6 +13,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class UpdateDonationSettingsDto {
@@ -19,16 +25,36 @@ export class UpdateDonationSettingsDto {
   @Max(250, { message: 'O tamanho máximo não pode ser maior que 250' })
   maxLength?: number;
 
-  @ApiPropertyOptional({ example: 5.0 })
-  @IsOptional()
+  @ApiPropertyOptional({
+    example: 5.0,
+    minimum: MIN_DONATION_AMOUNT,
+    maximum: MAX_DONATION_AMOUNT,
+  })
+  @ValidateIf((_, value: unknown) => value !== undefined)
   @IsNumber({}, { message: 'O valor mínimo de áudio deve ser um número' })
-  @Min(1, { message: 'O valor mínimo de áudio é 1' })
+  @IsMoney({
+    message: 'O valor mínimo de áudio deve ter no máximo 2 casas decimais',
+  })
+  @Min(MIN_DONATION_AMOUNT, { message: 'O valor mínimo de áudio é 1' })
+  @Max(MAX_DONATION_AMOUNT, {
+    message: `O valor mínimo de áudio deve ser no máximo ${MAX_DONATION_AMOUNT}`,
+  })
   minAudioAmount?: number;
 
-  @ApiPropertyOptional({ example: 1.0 })
-  @IsOptional()
+  @ApiPropertyOptional({
+    example: 1.0,
+    minimum: MIN_DONATION_AMOUNT,
+    maximum: MAX_DONATION_AMOUNT,
+  })
+  @ValidateIf((_, value: unknown) => value !== undefined)
   @IsNumber({}, { message: 'O valor mínimo de texto deve ser um número' })
-  @Min(1, { message: 'O valor mínimo de texto é 1' })
+  @IsMoney({
+    message: 'O valor mínimo de texto deve ter no máximo 2 casas decimais',
+  })
+  @Min(MIN_DONATION_AMOUNT, { message: 'O valor mínimo de texto é 1' })
+  @Max(MAX_DONATION_AMOUNT, {
+    message: `O valor mínimo de texto deve ser no máximo ${MAX_DONATION_AMOUNT}`,
+  })
   minTextAmount?: number;
 
   @ApiPropertyOptional({

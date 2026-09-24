@@ -8,7 +8,6 @@ import { PrismaService } from '../prisma.service';
 import {
   CreateDonationParams,
   GetDonationHistoryParams,
-  UpdateDonationParams,
 } from './dto/donations.dto';
 import {
   DonationAlreadyProcessedError,
@@ -106,11 +105,21 @@ export class DonationsRepository {
     });
   }
 
-  async update(id: string, data: UpdateDonationParams) {
-    return await this.prismaService.donation.update({
-      where: { id },
-      data,
+  async markAsDisplayedIfOwnedAndSettled(id: string, userId: string) {
+    const result = await this.prismaService.donation.updateMany({
+      where: {
+        id,
+        userId,
+        status: {
+          in: [DonationStatus.paid, DonationStatus.displayed],
+        },
+      },
+      data: { status: DonationStatus.displayed },
     });
+
+    if (result.count === 0) return null;
+
+    return await this.prismaService.donation.findUnique({ where: { id } });
   }
 
   async findManyByIds(ids: string[]) {

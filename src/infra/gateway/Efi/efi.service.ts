@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Decimal } from '@prisma/client/runtime/client';
 import * as https from 'https';
 import { firstValueFrom } from 'rxjs';
 import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
@@ -40,7 +41,7 @@ export class EfiService extends GatewayContract {
     amount,
     secondsToExpire,
   }: {
-    amount: number;
+    amount: Decimal;
     secondsToExpire?: number;
   }) {
     const expiration =
@@ -92,7 +93,7 @@ export class EfiService extends GatewayContract {
 
   async getPixStatus(transactionId: string): Promise<{
     status: TransactionStatus;
-    paidAmount?: number;
+    paidAmount?: Decimal;
   }> {
     const token = await this.getAccessToken();
 
@@ -129,7 +130,7 @@ export class EfiService extends GatewayContract {
 
     const paidAmount =
       data.status === 'CONCLUIDA' && data.valor?.original
-        ? Number(data.valor.original)
+        ? new Decimal(data.valor.original)
         : undefined;
 
     switch (data.status) {

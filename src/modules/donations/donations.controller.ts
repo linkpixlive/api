@@ -71,6 +71,10 @@ export class DonationsController {
     description: 'Dados inválidos (amount, userId, voiceId...)',
   })
   @ApiResponse({
+    status: 404,
+    description: 'Usuário não encontrado ou indisponível',
+  })
+  @ApiResponse({
     status: 429,
     description: 'Muitas requisições (Limite de taxa).',
   })

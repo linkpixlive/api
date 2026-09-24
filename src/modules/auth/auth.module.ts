@@ -26,6 +26,6 @@ import { VerificationService } from './verification.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, AuthCleanupService, VerificationService],
-  exports: [VerificationService, JwtModule],
+  exports: [AuthService, VerificationService],
 })
 export class AuthModule {}

@@ -3,6 +3,16 @@
 > Escopo: `src/modules/donations/*`, `src/modules/donation-settings/*`, `src/modules/widgets/*`, `src/infra/db/repositories/widget.repositories.ts`, `src/infra/db/repositories/donations.repositories.ts`, `prisma/schema.prisma` (models `Donation`/`DonationSettings`/`Widget`/`Voice`), `src/infra/websocket/overlay.gateway.ts`.  
 > Data: 2026-09-02
 
+## Revalidação em 2026-09-23
+
+| # | Status | Correção aplicada |
+|---|---|---|
+| 2 | Corrigida | Usuários inativos retornam 404 na descoberta e na criação; doações já criadas continuam liquidáveis após desativação. |
+| 4 | Corrigida | Valores limitadas a duas casas e R$ 1,00–R$ 999.999,99; `Decimal` é preservado até gateway, banco e webhook. |
+| 5 | Corrigida | `alert_finished` exige current ID, ownership, status `paid/displayed` e compare-and-delete antes de avançar. |
+| 6 | Corrigida com tradeoff | UUID v4 e throttling explícito; rota pública não retorna o token no body. O token permanece no path por compatibilidade. |
+| Adjacente | Corrigida | `/dashboard` valida assinatura JWT, sessão Redis, binding `sid/sub` e usuário ativo na conexão. |
+
 ## Ranking por Gravidade
 
 | # | Severidade | Vulnerabilidade |

@@ -1,7 +1,9 @@
+import { Decimal } from '@prisma/client/runtime/client';
+
 export interface CreateDonationParams {
   userId: string;
   name: string;
-  amount: number;
+  amount: Decimal;
   transactionId: string;
   paymentMethod: 'pix';
   ip?: string;
@@ -25,20 +27,4 @@ export interface GetDonationHistoryParams {
   days?: DonationHistoryDays;
   search?: string;
   searchBy?: 'name' | 'message';
-}
-
-export interface UpdateDonationParams {
-  name?: string;
-  amount?: number;
-  ip?: string;
-  voiceId?: string;
-  pix?: string;
-  status?: 'pending' | 'paid' | 'displayed' | 'failed' | 'expired';
-  expiredAt?: Date;
-  approvedAt?: Date;
-  paymentMethod?: 'pix';
-  transactionId?: string;
-  messageType?: 'audio' | 'text';
-  message?: string;
-  voiceUrl?: string;
 }
