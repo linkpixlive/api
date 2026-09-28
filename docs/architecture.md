@@ -1,6 +1,6 @@
 # Arquitetura
 
-> Verificado contra o código em 2026-09-05.
+> Verificado contra o código em 2026-09-24.
 
 ## Camadas
 
@@ -59,6 +59,7 @@ Injete sempre a abstração, nunca o provider. Exceção: email não tem contrac
 - O processor da fila injeta services de módulo (`VoicesService`, `OverlayService`) — infra alcança módulos no pipeline de doações.
 - Crons vivem em services de módulo: `auth-cleanup` (30min), `withdrawals-scheduler` (5min), `wallets-scheduler` (3h).
 - `WidgetSettingsPipe` (request-scoped): escolhe o DTO por `WIDGET_DTO_MAP[type]` para validar o body de settings do widget.
+- `common/security/step-up.util.ts`: política única de reautenticação (TOTP quando há 2FA; senha quando não há) para operações sensíveis. A troca de senha soma senha atual + TOTP opcional.
 
 ## Verificação
 

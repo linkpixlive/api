@@ -73,7 +73,7 @@ export class DonationsService {
     const overlay = user?.widgets[0];
     const settings = user?.donationSettings;
 
-    if (!user?.active || !settings) {
+    if (!user?.active || !user.verifiedEmail || !settings) {
       throw new NotFoundException('Usuário ou configurações não encontrados');
     }
 
@@ -119,7 +119,7 @@ export class DonationsService {
 
     const user = await this.usersRepository.findByUsernameWithConfig(username);
 
-    if (!user?.active) {
+    if (!user?.active || !user.verifiedEmail) {
       throw new NotFoundException('Usuário não encontrado');
     }
 

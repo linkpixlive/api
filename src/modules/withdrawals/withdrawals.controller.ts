@@ -14,6 +14,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SafeUser } from '../auth/entities/safe-user.entity';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
@@ -29,6 +30,7 @@ export class WithdrawalsController {
   constructor(private readonly withdrawalsService: WithdrawalsService) {}
 
   @Post()
+  @Throttle({ default: { limit: 5, ttl: 300000 } })
   @ApiOperation({ summary: 'Solicitar um novo saque' })
   @ApiHeader({
     name: 'Idempotency-Key',

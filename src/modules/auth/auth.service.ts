@@ -210,19 +210,17 @@ export class AuthService {
     const user = await this.usersRepository.findByEmail(email);
     if (!user) return responseMsg;
 
-    await this.changePassRepository.deleteManyByUserId(user.id);
-
     const uuid = crypto.randomUUID();
     const hashedUUID = hashData(uuid);
 
     const expiresDate = new Date();
     expiresDate.setMinutes(expiresDate.getMinutes() + 15);
 
-    await this.changePassRepository.create({
-      token: hashedUUID,
-      expiresAt: expiresDate,
-      userId: user.id,
-    });
+    await this.changePassRepository.replaceForUser(
+      user.id,
+      hashedUUID,
+      expiresDate,
+    );
 
     await this.emailService.sendEmail({
       to: email,
@@ -237,31 +235,30 @@ export class AuthService {
 
   async resetPassword(resetPassword: ResetPasswordDto) {
     const { newPassword, token } = resetPassword;
-
     const hashedToken = hashData(token);
+    const now = new Date();
 
-    const updatePassword =
-      await this.changePassRepository.findByToken(hashedToken);
-
-    if (!updatePassword) throw new BadRequestException('token inválido');
-
-    const nowDate = new Date();
-
-    if (nowDate > updatePassword.expiresAt) {
+    if (!(await this.changePassRepository.existsValidToken(hashedToken, now))) {
       throw new BadRequestException(
-        'Tempo expirado, inicie o processo novamente',
+        'Token inválido ou expirado, inicie o processo novamente',
       );
     }
 
     const hashedNewPassword = await this.generatePasswordHash(newPassword);
+    const userId =
+      await this.changePassRepository.consumeTokenAndUpdatePassword(
+        hashedToken,
+        now,
+        hashedNewPassword,
+      );
 
-    await this.usersRepository.update(updatePassword.userId, {
-      password: hashedNewPassword,
-    });
+    if (!userId) {
+      throw new BadRequestException(
+        'Token inválido ou expirado, inicie o processo novamente',
+      );
+    }
 
-    await this.killAllSessions(updatePassword.userId);
-
-    await this.changePassRepository.deleteManyByUserId(updatePassword.userId);
+    await this.killAllSessions(userId);
 
     return 'senha alterada com sucesso';
   }
@@ -313,6 +310,10 @@ export class AuthService {
     });
 
     await this.redisService.remove(redisKey);
+
+    if (updatedUser.totpEnabled) {
+      return { requiresLogin: true };
+    }
 
     return await this.createSession(updatedUser.id);
   }

@@ -1,7 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
+  IsOptional,
   IsString,
+  Length,
   Matches,
   MaxLength,
   MinLength,
@@ -27,4 +29,10 @@ export class ChangePasswordDto {
       'Senha muito fraca. Use maiúsculas, números e caracteres especiais.',
   })
   newPassword: string;
+
+  @ApiProperty({ example: '123456', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  totp?: string;
 }

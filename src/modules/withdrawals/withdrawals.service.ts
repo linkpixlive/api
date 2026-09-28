@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { Withdrawal, WithdrawalStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
+import { assertStepUp } from 'src/common/security/step-up.util';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { WithdrawalClientKeyConflictError } from '../../common/errors/withdrawals.errors';
 import { decryptData } from '../../common/utils/crypto.util';
@@ -45,6 +46,8 @@ export class WithdrawalsService {
       }
       return this.mapToEntity(existing);
     }
+
+    await assertStepUp(user, dto);
 
     const minAmount = this.configService.getOrThrow<number>(
       'MIN_WITHDRAWAL_AMOUNT',

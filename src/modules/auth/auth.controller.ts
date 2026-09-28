@@ -174,8 +174,18 @@ export class AuthController {
   @ApiOperation({ summary: 'Verificar OTP' })
   @ApiResponse({
     status: 200,
-    type: String,
-    description: 'OTP verificado com sucesso. Retorna o JWT da sessão.',
+    description:
+      'OTP verificado. Retorna o JWT ou { requiresLogin: true } para contas com 2FA.',
+    schema: {
+      oneOf: [
+        { type: 'string' },
+        {
+          type: 'object',
+          properties: { requiresLogin: { type: 'boolean' } },
+          required: ['requiresLogin'],
+        },
+      ],
+    },
   })
   @ApiResponse({
     status: 400,

@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+  MaxLength,
+} from 'class-validator';
 
 export class ChangeEmailDto {
   @ApiProperty({ example: 'johndoe@email.com' })
@@ -8,8 +15,15 @@ export class ChangeEmailDto {
   @MaxLength(100)
   email: string;
 
-  @ApiProperty({ example: 'P@ssword123' })
+  @ApiProperty({ example: 'P@ssword123', required: false })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  password: string;
+  password?: string;
+
+  @ApiProperty({ example: '123456', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  totp?: string;
 }

@@ -3,12 +3,17 @@ import {
   ConflictException,
   Injectable,
   Logger,
-  UnauthorizedException,
 } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { generateSecret, generateURI, verifySync } from 'otplib';
 import { MAX_TOTP_ATTEMPTS } from 'src/common/constants/auth.constants';
+import {
+  assertPassword,
+  assertPasswordWithOptionalTotp,
+  assertStepUp,
+} from 'src/common/security/step-up.util';
 import { decryptData, encryptData } from 'src/common/utils/crypto.util';
+import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
@@ -16,9 +21,11 @@ import { SafeUser } from '../auth/entities/safe-user.entity';
 import { VerificationService } from '../auth/verification.service';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
 import { DeactivateAccountDto } from './dto/deactivate-account.dto';
 import { Disable2faDto } from './dto/disable-2fa.dto';
 import { Enable2faDto } from './dto/enable-2fa.dto';
+import { Setup2faDto } from './dto/setup-2fa.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AccountEntity } from './entities/account.entity';
 
@@ -33,6 +40,7 @@ export class AccountService {
 
   constructor(
     private readonly usersRepository: UsersRepository,
+    private readonly changePasswordRepository: ChangePasswordRepository,
     private readonly redisService: RedisService,
     private readonly verificationService: VerificationService,
   ) {}
@@ -53,27 +61,61 @@ export class AccountService {
     return { name: update.name };
   }
 
-  async changeEmail(user: SafeUser, dto: ChangeEmailDto) {
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid)
-      throw new UnauthorizedException('Credenciais inválidas');
+  async changeEmail(user: SafeUser, currentSid: string, dto: ChangeEmailDto) {
+    await assertStepUp(user, dto);
+
+    if (dto.email === user.email) {
+      throw new BadRequestException(
+        'O novo email deve ser diferente do email atual.',
+      );
+    }
 
     const existing = await this.usersRepository.findByEmail(dto.email);
-    if (existing && existing.id !== user.id)
+    if (existing) {
       throw new ConflictException('Email já está em uso');
+    }
 
-    await this.usersRepository.update(user.id, {
-      email: dto.email,
-      verifiedEmail: false,
-    });
+    await this.verificationService.sendEmailChangeOtp(user.id, dto.email);
+    await this.killAllSessionsExceptCurrent(user.id, currentSid);
 
-    await this.killAllSessions(user.id);
+    this.logger.log(`Email change requested: userId=${user.id}`);
 
-    await this.verificationService.sendVerificationOtp(dto.email);
+    return {
+      message: 'Confirme o novo email com o código enviado para verificá-lo.',
+    };
+  }
+
+  async confirmEmailChange(
+    user: SafeUser,
+    currentSid: string,
+    dto: ConfirmEmailChangeDto,
+  ) {
+    const email = await this.verificationService.verifyEmailChangeOtp(
+      user.id,
+      dto.otp,
+    );
+
+    const existing = await this.usersRepository.findByEmail(email);
+    if (existing && existing.id !== user.id) {
+      throw new ConflictException('Email já está em uso');
+    }
+
+    const updated =
+      await this.changePasswordRepository.updateEmailAndInvalidateTokens(
+        user.id,
+        email,
+      );
+
+    if (!updated) {
+      throw new ConflictException('Email já está em uso');
+    }
+
+    await this.verificationService.clearEmailChangeOtp(user.id);
+    await this.killAllSessionsExceptCurrent(user.id, currentSid);
 
     this.logger.log(`Email changed: userId=${user.id}`);
 
-    return { message: 'Email atualizado. Verifique o novo endereço.' };
+    return { message: 'Email atualizado com sucesso.' };
   }
 
   async changePassword(
@@ -81,16 +123,13 @@ export class AccountService {
     dto: ChangePasswordDto,
     currentSid: string,
   ) {
-    const isPasswordValid = await bcrypt.compare(
-      dto.currentPassword,
-      user.password,
-    );
-    if (!isPasswordValid)
-      throw new UnauthorizedException('Credenciais inválidas');
+    await assertPasswordWithOptionalTotp(user, dto.currentPassword, dto.totp);
 
     const newHash = await bcrypt.hash(dto.newPassword, 12);
-
-    await this.usersRepository.update(user.id, { password: newHash });
+    await this.changePasswordRepository.updatePasswordAndInvalidateTokens(
+      user.id,
+      newHash,
+    );
 
     await this.killAllSessionsExceptCurrent(user.id, currentSid);
 
@@ -100,12 +139,9 @@ export class AccountService {
   }
 
   async deactivateAccount(user: SafeUser, dto: DeactivateAccountDto) {
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid)
-      throw new UnauthorizedException('Credenciais inválidas');
+    await assertStepUp(user, dto);
 
     await this.usersRepository.update(user.id, { active: false });
-
     await this.killAllSessions(user.id);
 
     this.logger.log(`Account deactivated: userId=${user.id}`);
@@ -113,7 +149,9 @@ export class AccountService {
     return { message: 'Conta desativada. Faça login para reativar.' };
   }
 
-  async setup2fa(user: SafeUser) {
+  async setup2fa(user: SafeUser, dto: Setup2faDto) {
+    await assertPassword(user, dto.password);
+
     if (user.totpEnabled) throw new BadRequestException('2FA já está ativo');
 
     const secret = generateSecret();
@@ -137,7 +175,7 @@ export class AccountService {
     return { otpauthUrl, secret };
   }
 
-  async enable2fa(userId: string, dto: Enable2faDto) {
+  async enable2fa(userId: string, currentSid: string, dto: Enable2faDto) {
     const pending = await this.redisService.get<Pending2faSetup>(
       RedisKeys.totpSetup(userId),
     );
@@ -155,7 +193,6 @@ export class AccountService {
     }
 
     const secret = decryptData(pending.encryptedSecret);
-
     const result = verifySync({ token: dto.token, secret });
 
     if (!result.valid) {
@@ -179,6 +216,7 @@ export class AccountService {
     });
 
     await this.redisService.remove(RedisKeys.totpSetup(userId));
+    await this.killAllSessionsExceptCurrent(userId, currentSid);
 
     this.logger.log(`2FA enabled: userId=${userId}`);
 
@@ -186,16 +224,11 @@ export class AccountService {
   }
 
   async disable2fa(user: SafeUser, dto: Disable2faDto) {
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid)
-      throw new UnauthorizedException('Credenciais inválidas');
+    await assertPasswordWithOptionalTotp(user, dto.password, dto.token);
 
-    if (!user.totpEnabled || !user.totpSecret)
+    if (!user.totpEnabled || !user.totpSecret) {
       throw new BadRequestException('2FA não está ativo nesta conta');
-
-    const secret = decryptData(user.totpSecret);
-    const result = verifySync({ token: dto.token, secret });
-    if (!result.valid) throw new UnauthorizedException('Código inválido');
+    }
 
     await this.usersRepository.update(user.id, {
       totpSecret: null,

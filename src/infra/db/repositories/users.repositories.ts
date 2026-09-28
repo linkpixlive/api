@@ -139,6 +139,10 @@ export class UsersRepository {
         createdAt: {
           lt: olderThan,
         },
+        donationsReceived: { none: {} },
+        withdrawals: { none: {} },
+        transactions: { none: {} },
+        pixKeys: { none: {} },
       },
     });
   }

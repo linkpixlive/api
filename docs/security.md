@@ -1,6 +1,6 @@
 # Segurança
 
-> Verificado contra o código em 2026-09-23.
+> Verificado contra o código em 2026-09-24.
 
 ## Variáveis de ambiente
 
@@ -23,16 +23,18 @@
 ## Auth e sessões
 
 - JWT: payload `{ sub, sid }` (sem claim de roles — autorização lê do banco via `AuthGuard`); secret `JWT_SECRET`; expiração `${JWT_EXPIRES_IN_DAYS}d`. `AuthService.validateSessionToken()` é compartilhado pelo `AuthGuard` HTTP e pelo handshake `/dashboard`: verifica assinatura, expiração, binding `session === payload.sub` e `user.active`. A validação do WebSocket ocorre na conexão; sockets já abertos permanecem até desconectar.
-- **Sessão revogável**: `sid` (uuid) → `auth:session:<sid>` (Redis, TTL = dias do JWT) + set `auth:user_sessions:<userId>`. Logout, troca de email/senha, reset de senha (esqueci minha senha) e desativação matam sessões (troca de senha preserva a atual via `@CurrentSid()`).
-- **Reset de senha**: token hasheado, TTL de 15 min, resposta uniforme (não revela existência de cadastro, sem metadados internos); link do e-mail aponta para `/forgot-password`.
+- **Sessão revogável**: `sid` (uuid) → `auth:session:<sid>` (Redis, TTL = dias do JWT) + set `auth:user_sessions:<userId>`. Logout, confirmação de email, troca de senha, reset de senha, ativação do 2FA e desativação matam sessões; fluxo que preserva a atual usa `@CurrentSid()`.
+- **Reset de senha**: token hasheado, TTL de 15 min, resposta uniforme (não revela existência de cadastro, sem metadados internos); link do e-mail aponta para `/forgot-password`. O consumo é atômico (apenas uma requisição pode usar o token) e qualquer troca de senha ou confirmação de e-mail invalida os tokens pendentes.
 - Conta inativa reativa no login com credenciais válidas. Login e register não revelam existência de cadastro: login tem mensagem única "Credenciais inválidas" com bcrypt sempre executado (hash dummy quando o usuário não existe); register responde genericamente para e-mail já existente (reenvia o código apenas se o registro estiver pendente, sem sobrescrever os dados pendentes).
-- **2FA**: login devolve `{ requires2fa: true, nonce }` (Redis 300s, one-shot); `POST /auth/login-2fa` revalida credenciais + TOTP (defesa contra nonce roubado). Setup: segredo fica no Redis (`totp:setup`, criptografado) até o primeiro código confirmar; issuer "LinkPix". Desativar 2FA exige senha **e** código TOTP. `login-2fa` e `enable-2fa` contam tentativas (máx. 5) e invalidam o nonce/setup ao exceder. Sem backup codes (decisão de design).
+- **2FA**: login devolve `{ requires2fa: true, nonce }` (Redis 300s, one-shot); `POST /auth/login-2fa` revalida credenciais + TOTP (defesa contra nonce roubado). Setup exige a senha atual e mantém o segredo no Redis (`totp:setup`, criptografado) até o primeiro código confirmar; issuer "LinkPix". A ativação revoga todas as sessões exceto a atual. Desativar 2FA exige senha **e** código TOTP. `login-2fa` e `enable-2fa` contam tentativas (máx. 5) e invalidam o nonce/setup ao exceder. Sem backup codes (decisão de design).
+- **Step-up**: alterar/desativar conta e solicitar saque exigem TOTP quando o 2FA está ativo e senha quando não está. Iniciar o 2FA exige sempre a senha atual. Trocar senha exige sempre a senha atual e TOTP adicional quando o 2FA está ativo. `POST /auth/verify-otp` apenas cria sessão para contas sem 2FA.
+- **Alteração de email**: o endereço atual permanece verificado até a confirmação. `PATCH /account/email` cria uma pendência `email:change:<userId>` no Redis (OTP hasheado, 600s, contador atômico de tentativas) e preserva somente a sessão atual; `POST /account/email/verify` confere o OTP, persiste o novo endereço, invalida recovery tokens e só então remove a pendência.
 - **OTP de email**: 6 dígitos, hash, 600s, cooldown 60s, comparação com `timingSafeEqual`, ≥5 erros invalidam; cron `auth-cleanup` (30min) apaga contas não verificadas há >15min.
 - Decorators `@CurrentUser()` e `@CurrentSid()` para acesso ao request.
 
 ## Doações
 
-- Destinatários inativos são ocultados da descoberta pública e não podem receber novas doações; o pagamento de uma doação já criada continua elegível para crédito.
+- Destinatários inativos ou sem e-mail verificado são ocultados da descoberta pública e não podem receber novas doações; o pagamento de uma doação já criada continua elegível para crédito. O cleanup de contas não verificadas nunca remove usuários com doações, saques, transações ou chaves Pix.
 - `amount` e os mínimos configuráveis são números finitos, com no máximo duas casas decimais, entre R$ 1,00 e R$ 999.999,99; entradas inválidas são rejeitadas antes da Efí.
 - O valor validado é convertido uma vez para `Decimal` e essa representação segue até a persistência, confirmação do gateway e crédito do wallet.
 
@@ -40,7 +42,7 @@
 
 - `ThrottlerGuard` global (**exceto em `development`**), storage Redis (`ThrottlerStorageRedisService`).
 - `forRoot` (`app.module.ts`) define só **tetos globais**, válidos para todas as rotas (contador por rota+IP; limite efetivo de uma rota = mínimo entre os buckets): `default` sem nome (45/min — a base overridável), `burst` (5/s), `long_term` (500/h).
-- Regra específica de rota = **override no handler**: `@Throttle({ default: { limit, ttl } })` (mais `burst` quando a rota precisar de rajada própria). Armadilha do v6: o nome citado no decorator **precisa** existir no `forRoot`, senão é no-op silencioso; e não existe opt-in — registrar um nome novo o aplica a todas as rotas (`@SkipThrottle` é a única exceção por rota).
+- Regra específica de rota = **override no handler**: `@Throttle({ default: { limit, ttl } })` (mais `burst` quando a rota precisar de rajada própria). Armadilha do v6: o nome citado no decorator **precisa** existir no `forRoot`, senão é no-op silencioso; e não existe opt-in — registrar um nome novo o aplica a todas as rotas (`@SkipThrottle` é a única exceção por rota). `POST /withdrawals` exige step-up e tem limite próprio de 5/5min para conter tentativas de TOTP.
 - WebSocket: sem throttling — o guard padrão é HTTP-only; throttle de mensagens exigiria um guard custom.
 
 ## Sanitização

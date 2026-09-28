@@ -55,6 +55,17 @@ export class RedisService {
     return true;
   }
 
+  async incrementWithExpire(key: string, expiresIn: number): Promise<number> {
+    const result = await this.redis.eval(
+      'local value = redis.call("INCR", KEYS[1]); if value == 1 then redis.call("EXPIRE", KEYS[1], ARGV[1]); end; return value',
+      1,
+      key,
+      expiresIn,
+    );
+
+    return Number(result);
+  }
+
   async setExpire(key: string, seconds: number) {
     await this.redis.expire(key, seconds);
   }

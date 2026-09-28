@@ -2,9 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsPositive,
   IsString,
   IsUUID,
+  Length,
   Max,
   Min,
 } from 'class-validator';
@@ -25,4 +27,16 @@ export class CreateWithdrawalDto {
   @IsString({ message: 'pixId deve ser uma string' })
   @IsNotEmpty({ message: 'pixId não pode estar vazio' })
   pixId: string;
+
+  @ApiProperty({ example: 'P@ssword123', required: false })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  password?: string;
+
+  @ApiProperty({ example: '123456', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  totp?: string;
 }
