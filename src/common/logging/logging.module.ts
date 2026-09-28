@@ -1,46 +1,48 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
+
+const NOISY_CONTEXTS = new Set([
+  'RouterExplorer',
+  'RoutesResolver',
+  'WebSocketsController',
+]);
 
 @Module({
   imports: [
     WinstonModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const file = new DailyRotateFile({
-          dirname: config.get<string>('LOG_DIR') || 'logs',
-          filename: 'app-%DATE%.log',
-          datePattern: 'YYYY-MM-DD',
-          maxFiles: '7d',
-          format: winston.format.combine(
-            winston.format.timestamp(),
-            winston.format.errors({ stack: true }),
-            winston.format.json(),
-          ),
-        });
+        const isProduction = config.get<string>('NODE_ENV') === 'production';
+        const format = winston.format.combine(
+          winston.format((info) => {
+            const context =
+              typeof info.context === 'string' ? info.context : '';
 
-        file.on('error', (err) => console.error('[logs]', err));
+            if (
+              isProduction &&
+              info.level === 'info' &&
+              NOISY_CONTEXTS.has(context)
+            ) {
+              return false;
+            }
+
+            return info;
+          })(),
+          winston.format.timestamp(),
+          winston.format.errors({ stack: true }),
+          winston.format.json(),
+        );
 
         return {
+          level: config.get<string>('LOG_LEVEL') ?? 'info',
+          format,
           transports: [
             new winston.transports.Console({
-              format: winston.format.combine(
-                winston.format.timestamp(),
-                winston.format.colorize(),
-                winston.format.printf((info) => {
-                  const ctx =
-                    typeof info.context === 'string' ? info.context : 'App';
-                  const msg =
-                    typeof info.message === 'string'
-                      ? info.message
-                      : JSON.stringify(info.message);
-                  return `${String(info.timestamp)} [${ctx}] ${String(info.level)}: ${msg}`;
-                }),
-              ),
+              stderrLevels: ['warn', 'error'],
             }),
-            file,
           ],
         };
       },

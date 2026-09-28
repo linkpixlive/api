@@ -1,4 +1,5 @@
 export const MAX_TOTP_ATTEMPTS = 5;
+export const MAX_OTP_ATTEMPTS = 5;
 
 /** Hash bcrypt de valor aleatório inexistente — usado para equalizar o tempo de
  * resposta do login quando o usuário não existe (evita timing oracle). */

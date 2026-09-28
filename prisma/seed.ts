@@ -556,9 +556,6 @@ async function main() {
     console.log(
       `  Withdrawals: ${summary.withdrawalsTotal} (${summary.withdrawalsCreated ? 'criados' : 'já existiam'})`,
     );
-    console.log(
-      `Credentials: ${SEED.admin.email} / ${SEED.password} · ${SEED.streamer.email} / ${SEED.password}`,
-    );
   } finally {
     await prisma.$disconnect();
   }

@@ -4,6 +4,7 @@ import {
   IsBase64,
   IsEnum,
   IsHexadecimal,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -85,6 +86,10 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   BUCKET_URL: string;
 
+  @IsOptional()
+  @IsIn(['debug', 'info', 'warn', 'error'])
+  LOG_LEVEL?: string;
+
   // GATEWAY
   @IsUrl({ protocols: ['http', 'https'], require_tld: false })
   @IsNotEmpty()
@@ -153,10 +158,6 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsUUID('4', { message: 'DEFAULT_VOICE_ID deve ser um UUID válido' })
   DEFAULT_VOICE_ID?: string;
-
-  @IsOptional()
-  @IsString()
-  LOG_DIR?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

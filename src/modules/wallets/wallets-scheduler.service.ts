@@ -10,7 +10,7 @@ export class WalletsSchedulerService {
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async reconcileAllWallets() {
-    this.logger.log('Starting wallet reconciliation...');
+    this.logger.debug('Starting wallet reconciliation...');
 
     const batchSize = 100;
     let skip = 0;
@@ -50,7 +50,7 @@ export class WalletsSchedulerService {
       skip += batchSize;
     }
 
-    this.logger.log(
+    this.logger.debug(
       `Wallet reconciliation done: ${checked} checked, ${mismatches} mismatches.`,
     );
   }

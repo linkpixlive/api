@@ -27,7 +27,7 @@ Entities (`modules/<m>/entities/`): `@Exclude()` na classe, `@Expose()` por camp
 |---|---|---|---|
 | `AiContract.moderate` | `GeminiService` | `AiModule` | moderação de doações (veredito na submissão) |
 | `SpeechContract.generateTTS` | `SpeechService` roteia por `voice.provider` (`GradiumService` default, `GoogleService` p/ `google`) | `SpeechModule` | áudio TTS |
-| `StorageContract.uploadAudio` | `R2Service` (Cloudflare R2) | `StorageModule` | upload de áudio |
+| `StorageContract.upload` | `R2Service` (Cloudflare R2) | `StorageModule` | upload de áudio, imagens e vozes |
 | `GatewayContract` (`generatePix`, `getPixStatus`, `sendPix`, `getSentPixStatus`) | `EfiService` (Efí/Pix, mTLS, token cache) | `GatewayModule` | Pix |
 
 Injete sempre a abstração, nunca o provider. Exceção: email não tem contract — vai pela fila (`infra/queues/email/`).
@@ -36,6 +36,7 @@ Injete sempre a abstração, nunca o provider. Exceção: email não tem contrac
 
 - `helmet`, CORS `origin: '*'`, sem prefixo/versionamento de rota, porta `PORT ?? 3000`.
 - `GlobalExceptionFilter` → `{ success: false, error: { message, code } }`; `ResponseInterceptor` → `{ success: true, data, timestamp, path }`; `ClassSerializerInterceptor`.
+- Winston envia logs estruturados em JSON para stdout/stderr; a retenção e a coleta ficam a cargo da plataforma de hospedagem. Não há arquivo de log no container.
 - `ValidationPipe` global: `whitelist`, `forbidNonWhitelisted`, `transform`; mensagens viram array no `BadRequestException` (o filtro expõe só a primeira).
 - Swagger em `/api/docs` quando `NODE_ENV !== 'production'`.
 
@@ -59,7 +60,7 @@ Injete sempre a abstração, nunca o provider. Exceção: email não tem contrac
 - O processor da fila injeta services de módulo (`VoicesService`, `OverlayService`) — infra alcança módulos no pipeline de doações.
 - Crons vivem em services de módulo: `auth-cleanup` (30min), `withdrawals-scheduler` (5min), `wallets-scheduler` (3h).
 - `WidgetSettingsPipe` (request-scoped): escolhe o DTO por `WIDGET_DTO_MAP[type]` para validar o body de settings do widget.
-- `common/security/step-up.util.ts`: política única de reautenticação (TOTP quando há 2FA; senha quando não há) para operações sensíveis. A troca de senha soma senha atual + TOTP opcional.
+- `common/security/step-up.util.ts`: reautenticação das operações sensíveis, com a exigência por ação em `docs/security.md`. Duas funções: `assertPassword` (só senha) e `assertPasswordWithOptionalTotp` (senha sempre, TOTP adicional quando há 2FA). O TOTP nunca substitui a senha.
 
 ## Verificação
 

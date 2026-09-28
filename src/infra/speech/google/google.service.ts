@@ -38,17 +38,14 @@ export class GoogleService extends SpeechContract {
     );
 
     const { data } = await firstValueFrom(response).catch((error: unknown) => {
-      const axiosResponse = (
-        error as { response?: { status?: unknown; data?: unknown } }
-      )?.response;
+      const axiosResponse = (error as { response?: { status?: unknown } })
+        ?.response;
       const status = axiosResponse?.status;
       const statusText =
         typeof status === 'number' || typeof status === 'string'
           ? String(status)
           : '?';
-      this.logger.error(
-        `Google TTS falhou (status ${statusText}): ${JSON.stringify(axiosResponse?.data ?? 'sem corpo de resposta').slice(0, 500)}`,
-      );
+      this.logger.warn(`Google TTS falhou (status ${statusText})`);
       throw error;
     });
 

@@ -74,7 +74,10 @@ export class DonationsQueueProcessor extends WorkerHost {
         );
       }
     } catch (error) {
-      this.logger.error(`Falha ao processar doação ${donation_id}:`, error);
+      this.logger.error(
+        `Falha ao processar doação ${donation_id} (job ${job.id ?? 'desconhecido'}, tentativa ${job.attemptsMade + 1}): ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw error;
     }
   }
@@ -119,7 +122,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     const fullMessage = `${nameAmountPrefix}${message}`.trim();
 
     if (!fullMessage) {
-      this.logger.warn(
+      this.logger.debug(
         `Doação ${donation.id} sem texto para TTS; creditando sem áudio`,
       );
       return null;
@@ -191,7 +194,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     }
 
     if (donation.status !== 'pending' && donation.status !== 'expired') {
-      this.logger.warn(
+      this.logger.debug(
         `Doação ${id} já processada (status ${donation.status}); ignorando`,
       );
       return null;

@@ -20,7 +20,7 @@ export class AuthCleanupService {
         await this.usersRepository.deleteManyUnverified(fifteenMinutesAgo);
 
       if (result.count > 0) {
-        this.logger.log(`Limpou ${result.count} usuários não verificados.`);
+        this.logger.debug(`Limpou ${result.count} usuários não verificados.`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

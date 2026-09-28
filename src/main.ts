@@ -13,8 +13,12 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+    bufferLogs: true,
+  });
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+  app.enableShutdownHooks();
 
   const corsOrigins = app
     .get(ConfigService)
@@ -63,4 +67,9 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  process.stderr.write(
+    `${error instanceof Error ? error.stack : String(error)}\n`,
+  );
+  process.exitCode = 1;
+});

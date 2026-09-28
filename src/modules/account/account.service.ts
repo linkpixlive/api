@@ -10,7 +10,6 @@ import { MAX_TOTP_ATTEMPTS } from 'src/common/constants/auth.constants';
 import {
   assertPassword,
   assertPasswordWithOptionalTotp,
-  assertStepUp,
 } from 'src/common/security/step-up.util';
 import { decryptData, encryptData } from 'src/common/utils/crypto.util';
 import { ChangePasswordRepository } from 'src/infra/db/repositories/change-password.repositories';
@@ -31,7 +30,6 @@ import { AccountEntity } from './entities/account.entity';
 
 interface Pending2faSetup {
   encryptedSecret: string;
-  attempts: number;
 }
 
 @Injectable()
@@ -62,7 +60,7 @@ export class AccountService {
   }
 
   async changeEmail(user: SafeUser, currentSid: string, dto: ChangeEmailDto) {
-    await assertStepUp(user, dto);
+    await assertPasswordWithOptionalTotp(user, dto.password, dto.totp);
 
     if (dto.email === user.email) {
       throw new BadRequestException(
@@ -139,7 +137,7 @@ export class AccountService {
   }
 
   async deactivateAccount(user: SafeUser, dto: DeactivateAccountDto) {
-    await assertStepUp(user, dto);
+    await assertPassword(user, dto.password);
 
     await this.usersRepository.update(user.id, { active: false });
     await this.killAllSessions(user.id);
@@ -162,7 +160,6 @@ export class AccountService {
       REDIS_TTL.totpSetup,
       {
         encryptedSecret,
-        attempts: 0,
       } satisfies Pending2faSetup,
     );
 
@@ -185,25 +182,20 @@ export class AccountService {
       );
     }
 
-    if (pending.attempts >= MAX_TOTP_ATTEMPTS) {
-      await this.redisService.remove(RedisKeys.totpSetup(userId));
-      throw new BadRequestException(
-        'Muitas tentativas. Reinicie o setup do 2FA.',
-      );
-    }
-
     const secret = decryptData(pending.encryptedSecret);
     const result = verifySync({ token: dto.token, secret });
 
     if (!result.valid) {
-      const updated = await this.redisService.update(
-        RedisKeys.totpSetup(userId),
-        { ...pending, attempts: pending.attempts + 1 },
+      const attempts = await this.redisService.incrementWithExpire(
+        RedisKeys.totpSetupAttempts(userId),
+        REDIS_TTL.totpSetup,
       );
 
-      if (!updated) {
+      if (attempts >= MAX_TOTP_ATTEMPTS) {
+        await this.redisService.remove(RedisKeys.totpSetup(userId));
+        await this.redisService.remove(RedisKeys.totpSetupAttempts(userId));
         throw new BadRequestException(
-          'Configuração expirada ou não iniciada. Reinicie o setup.',
+          'Muitas tentativas. Reinicie o setup do 2FA.',
         );
       }
 
@@ -216,6 +208,7 @@ export class AccountService {
     });
 
     await this.redisService.remove(RedisKeys.totpSetup(userId));
+    await this.redisService.remove(RedisKeys.totpSetupAttempts(userId));
     await this.killAllSessionsExceptCurrent(userId, currentSid);
 
     this.logger.log(`2FA enabled: userId=${userId}`);

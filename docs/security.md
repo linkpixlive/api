@@ -27,7 +27,19 @@
 - **Reset de senha**: token hasheado, TTL de 15 min, resposta uniforme (não revela existência de cadastro, sem metadados internos); link do e-mail aponta para `/forgot-password`. O consumo é atômico (apenas uma requisição pode usar o token) e qualquer troca de senha ou confirmação de e-mail invalida os tokens pendentes.
 - Conta inativa reativa no login com credenciais válidas. Login e register não revelam existência de cadastro: login tem mensagem única "Credenciais inválidas" com bcrypt sempre executado (hash dummy quando o usuário não existe); register responde genericamente para e-mail já existente (reenvia o código apenas se o registro estiver pendente, sem sobrescrever os dados pendentes).
 - **2FA**: login devolve `{ requires2fa: true, nonce }` (Redis 300s, one-shot); `POST /auth/login-2fa` revalida credenciais + TOTP (defesa contra nonce roubado). Setup exige a senha atual e mantém o segredo no Redis (`totp:setup`, criptografado) até o primeiro código confirmar; issuer "LinkPix". A ativação revoga todas as sessões exceto a atual. Desativar 2FA exige senha **e** código TOTP. `login-2fa` e `enable-2fa` contam tentativas (máx. 5) e invalidam o nonce/setup ao exceder. Sem backup codes (decisão de design).
-- **Step-up**: alterar/desativar conta e solicitar saque exigem TOTP quando o 2FA está ativo e senha quando não está. Iniciar o 2FA exige sempre a senha atual. Trocar senha exige sempre a senha atual e TOTP adicional quando o 2FA está ativo. `POST /auth/verify-otp` apenas cria sessão para contas sem 2FA.
+- **Step-up**: reautenticação por ação, não por uniformly. Senha é sempre exigida; o TOTP soma quando o 2FA está ativo.
+
+  | Ação | 2FA desligado | 2FA ativo |
+  |---|---|---|
+  | Solicitar saque | senha | senha + TOTP |
+  | Trocar email (etapa 1) | senha | senha + TOTP |
+  | Trocar senha | senha atual | senha atual + TOTP |
+  | Desativar 2FA | — | senha + TOTP |
+  | Desativar conta | senha | senha |
+  | Iniciar setup do 2FA | senha | — |
+
+  Implementado em `common/security/step-up.util.ts` por `assertPassword` (só senha) e `assertPasswordWithOptionalTotp` (senha sempre, TOTP se 2FA); `deactivateAccount` usa a primeira, as demais a segunda. A senha é o fator que o atacante normalmente não tem — o TOTP é phishable, então nunca substitui a senha, só a complementa. O step-up não é cacheado: cada ação acima pede as credenciais de novo.
+- **Tentativas de OTP/TOTP**: contadores em chaves Redis próprias (`incrementWithExpire`, INCR atômico) com o mesmo TTL da pendência — `auth:pending_2fa_attempts`, `totp:setup_attempts`, `otp:verification_attempts`, `email:change:attempts`. Ler-modificar-escrever o payload da pendência seriaLost-update sob concorrência e o teto de tentativas não dispararia.
 - **Alteração de email**: o endereço atual permanece verificado até a confirmação. `PATCH /account/email` cria uma pendência `email:change:<userId>` no Redis (OTP hasheado, 600s, contador atômico de tentativas) e preserva somente a sessão atual; `POST /account/email/verify` confere o OTP, persiste o novo endereço, invalida recovery tokens e só então remove a pendência.
 - **OTP de email**: 6 dígitos, hash, 600s, cooldown 60s, comparação com `timingSafeEqual`, ≥5 erros invalidam; cron `auth-cleanup` (30min) apaga contas não verificadas há >15min.
 - Decorators `@CurrentUser()` e `@CurrentSid()` para acesso ao request.
@@ -42,7 +54,7 @@
 
 - `ThrottlerGuard` global (**exceto em `development`**), storage Redis (`ThrottlerStorageRedisService`).
 - `forRoot` (`app.module.ts`) define só **tetos globais**, válidos para todas as rotas (contador por rota+IP; limite efetivo de uma rota = mínimo entre os buckets): `default` sem nome (45/min — a base overridável), `burst` (5/s), `long_term` (500/h).
-- Regra específica de rota = **override no handler**: `@Throttle({ default: { limit, ttl } })` (mais `burst` quando a rota precisar de rajada própria). Armadilha do v6: o nome citado no decorator **precisa** existir no `forRoot`, senão é no-op silencioso; e não existe opt-in — registrar um nome novo o aplica a todas as rotas (`@SkipThrottle` é a única exceção por rota). `POST /withdrawals` exige step-up e tem limite próprio de 5/5min para conter tentativas de TOTP.
+- Regra específica de rota = **override no handler**: `@Throttle({ default: { limit, ttl } })` (mais `burst` quando a rota precisar de rajada própria). Armadilha do v6: o nome citado no decorator **precisa** existir no `forRoot`, senão é no-op silencioso; e não existe opt-in — registrar um nome novo o aplica a todas as rotas (`@SkipThrottle` é a única exceção por rota). `POST /withdrawals` exige step-up e tem limite próprio de 5/5min para conter tentativas de TOTP. O step-up é avaliado **antes** da leitura de idempotência, então um replay não contorna o limite.
 - WebSocket: sem throttling — o guard padrão é HTTP-only; throttle de mensagens exigiria um guard custom.
 
 ## Sanitização
@@ -65,3 +77,4 @@
 ## Dados sensíveis
 
 - Nunca logar ou retornar CPF, hash de senha, chaves ou tokens. `SafeUser` e as entities com `@Exclude` cuidam das respostas (o `cpf` de `SafeUser` não tem `@Expose` — nunca é serializado).
+- Logs não devem conter nome/mensagem de doadores, palavras bloqueadas, respostas completas de provedores externos, credenciais ou query strings com segredos.

@@ -28,11 +28,10 @@ export class CreateWithdrawalDto {
   @IsNotEmpty({ message: 'pixId não pode estar vazio' })
   pixId: string;
 
-  @ApiProperty({ example: 'P@ssword123', required: false })
-  @IsOptional()
+  @ApiProperty({ example: 'P@ssword123' })
   @IsString()
   @IsNotEmpty()
-  password?: string;
+  password: string;
 
   @ApiProperty({ example: '123456', required: false })
   @IsOptional()

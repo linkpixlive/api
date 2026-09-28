@@ -9,11 +9,6 @@ interface StepUpUser {
   totpSecret: string | null;
 }
 
-export interface StepUpCredentials {
-  password?: string;
-  totp?: string;
-}
-
 const REAUTHENTICATION_ERROR = 'Reautenticação inválida.';
 
 export async function assertPassword(
@@ -40,18 +35,6 @@ export function assertTotp(user: StepUpUser, totp?: string): void {
     if (error instanceof UnauthorizedException) throw error;
     throw new UnauthorizedException(REAUTHENTICATION_ERROR);
   }
-}
-
-export async function assertStepUp(
-  user: StepUpUser,
-  credentials: StepUpCredentials,
-): Promise<void> {
-  if (user.totpEnabled) {
-    assertTotp(user, credentials.totp);
-    return;
-  }
-
-  await assertPassword(user, credentials.password);
 }
 
 export async function assertPasswordWithOptionalTotp(

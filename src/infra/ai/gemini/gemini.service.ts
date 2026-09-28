@@ -69,7 +69,7 @@ export class GeminiService implements AiContract {
       );
     } catch (error) {
       this.logger.warn(
-        `Moderação IA indisponível (fail-open): ${error instanceof Error ? error.message : String(error)}`,
+        `Moderação IA indisponível (fail-open): ${error instanceof Error ? error.name : 'erro desconhecido'}`,
       );
       return { blocked: false, categories: [] };
     }

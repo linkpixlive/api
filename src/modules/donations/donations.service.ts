@@ -44,7 +44,6 @@ const HARD_EXPIRY_MS = 48 * 60 * 60 * 1000;
 const OVERDUE_BATCH_LIMIT = 50;
 const BLOCKED_MESSAGE =
   'Mensagem não permitida pelas regras do streamer. Edite e tente novamente.';
-const LOG_EXCERPT_LENGTH = 80;
 
 export interface DonationAudioDownload {
   stream: Readable;
@@ -375,7 +374,7 @@ export class DonationsService {
 
     if (customWord) {
       this.logger.warn(
-        `Doação bloqueada por regra custom do streamer ${username}: palavra "${customWord}"`,
+        `Doação bloqueada por regra custom do streamer ${username}`,
       );
       throw new BadRequestException(BLOCKED_MESSAGE);
     }
@@ -398,24 +397,16 @@ export class DonationsService {
 
       if (verdict.blocked) {
         this.logger.warn(
-          `Doação bloqueada pela moderação IA do streamer ${username}: categorias [${verdict.categories.join(', ')}], texto "${this.excerpt(finalName, finalMessage)}"`,
+          `Doação bloqueada pela moderação IA do streamer ${username}: categorias [${verdict.categories.join(', ')}]`,
         );
         throw new BadRequestException(BLOCKED_MESSAGE);
       }
 
       this.logger.debug(
-        `Doação permitida pela moderação IA do streamer ${username}: texto "${this.excerpt(finalName, finalMessage)}"`,
+        `Doação permitida pela moderação IA do streamer ${username}`,
       );
     }
 
     return { name: finalName, message: finalMessage };
-  }
-
-  private excerpt(name: string, message: string | null): string {
-    const text = [name, message].filter(Boolean).join(' | ');
-
-    return text.length > LOG_EXCERPT_LENGTH
-      ? `${text.slice(0, LOG_EXCERPT_LENGTH)}...`
-      : text;
   }
 }

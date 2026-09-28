@@ -51,9 +51,12 @@
 | `overlayQueue` | `overlay:queue:<token>` | — (deliberado) | fila FIFO de ids de doação / `test-<uuid>` |
 | `overlayCurrent` | `overlay:current:<token>` | 300s | payload da doação em exibição (claim SET NX; conclusão usa compare-and-delete) |
 | `otpVerification` | `otp:verification:<email>` | 600s | OTP de email (hash sha256) |
+| `otpVerificationAttempts` | `otp:verification_attempts:<email>` | 600s | tentativas inválidas do OTP de cadastro (INCR atômico) |
 | `emailChangeVerification` | `email:change:<userId>` | 600s | OTP + novo email pendente |
 | `emailChangeAttempts` | `email:change:attempts:<userId>` | 600s | tentativas inválidas do OTP de email |
 | `totpSetup` | `totp:setup:<userId>` | 600s | segredo 2FA pendente (criptografado) |
+| `totpSetupAttempts` | `totp:setup_attempts:<userId>` | 600s | tentativas inválidas no `2fa/enable` (INCR atômico) |
 | `authPending2fa` | `auth:pending_2fa:<nonce>` | 300s | nonce one-shot do login 2FA |
+| `authPending2faAttempts` | `auth:pending_2fa_attempts:<nonce>` | 300s | tentativas inválidas no `login-2fa` (INCR atômico) |
 | `session` | `auth:session:<sid>` | TTL = dias do JWT (definido no login) | sessão revogável |
 | `userSessions` | `auth:user_sessions:<userId>` | acompanha as sessões | set de sids (logout-all) |

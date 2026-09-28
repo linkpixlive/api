@@ -40,10 +40,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 : 'Internal Server Error',
           };
 
-    this.logger.error(
-      exception instanceof Error ? exception.message : 'Unhandled exception',
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    const errorMessage =
+      exception instanceof Error ? exception.message : 'Unhandled exception';
+    const errorStack = exception instanceof Error ? exception.stack : undefined;
+
+    if (status >= 500) {
+      this.logger.error(errorMessage, errorStack);
+    } else {
+      this.logger.debug(
+        `HTTP ${status} ${exception instanceof Error ? exception.name : typeof exception}`,
+      );
+    }
 
     const message =
       typeof exceptionResponse === 'string'

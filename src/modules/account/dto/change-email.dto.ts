@@ -15,11 +15,10 @@ export class ChangeEmailDto {
   @MaxLength(100)
   email: string;
 
-  @ApiProperty({ example: 'P@ssword123', required: false })
-  @IsOptional()
+  @ApiProperty({ example: 'P@ssword123' })
   @IsString()
   @IsNotEmpty()
-  password?: string;
+  password: string;
 
   @ApiProperty({ example: '123456', required: false })
   @IsOptional()

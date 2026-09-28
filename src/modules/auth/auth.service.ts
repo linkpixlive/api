@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import { verifySync } from 'otplib';
 import {
   DUMMY_PASSWORD_HASH,
+  MAX_OTP_ATTEMPTS,
   MAX_TOTP_ATTEMPTS,
 } from 'src/common/constants/auth.constants';
 import {
@@ -35,13 +36,11 @@ import { VerificationService } from './verification.service';
 
 interface OtpData {
   otp: string;
-  attempts: number;
   createdAt: Date;
 }
 
 interface Pending2fa {
   userId: string;
-  attempts: number;
 }
 
 interface SessionTokenPayload {
@@ -139,7 +138,7 @@ export class AuthService {
       await this.redisService.setWithExpire(
         RedisKeys.authPending2fa(nonce),
         REDIS_TTL.authPending2fa,
-        { userId: user.id, attempts: 0 } satisfies Pending2fa,
+        { userId: user.id } satisfies Pending2fa,
       );
       return { requires2fa: true, nonce };
     }
@@ -172,32 +171,29 @@ export class AuthService {
     if (!user.totpEnabled || !user.totpSecret)
       throw new BadRequestException('2FA não ativo nesta conta');
 
-    if (pending.attempts >= MAX_TOTP_ATTEMPTS) {
-      await this.redisService.remove(RedisKeys.authPending2fa(nonce));
-      throw new UnauthorizedException(
-        'Muitas tentativas. Faça login novamente.',
-      );
-    }
-
     const secret = decryptData(user.totpSecret);
 
     const result = verifySync({ token: totp, secret });
 
     if (!result.valid) {
-      const updated = await this.redisService.update(
-        RedisKeys.authPending2fa(nonce),
-        { ...pending, attempts: pending.attempts + 1 },
+      const attempts = await this.redisService.incrementWithExpire(
+        RedisKeys.authPending2faAttempts(nonce),
+        REDIS_TTL.authPending2fa,
       );
 
-      if (!updated)
+      if (attempts >= MAX_TOTP_ATTEMPTS) {
+        await this.redisService.remove(RedisKeys.authPending2fa(nonce));
+        await this.redisService.remove(RedisKeys.authPending2faAttempts(nonce));
         throw new UnauthorizedException(
-          'Sessão expirada. Faça login novamente.',
+          'Muitas tentativas. Faça login novamente.',
         );
+      }
 
       throw new UnauthorizedException('Código inválido');
     }
 
     await this.redisService.remove(RedisKeys.authPending2fa(nonce));
+    await this.redisService.remove(RedisKeys.authPending2faAttempts(nonce));
 
     return await this.createSession(user.id);
   }
@@ -272,14 +268,6 @@ export class AuthService {
       throw new BadRequestException('OTP expirado ou não encontrado');
     }
 
-    if (otpData.attempts >= 5) {
-      await this.redisService.remove(redisKey);
-      await this.verificationService.sendVerificationOtp(email);
-      throw new BadRequestException(
-        'Muitas tentativas. Um novo código foi enviado para seu email.',
-      );
-    }
-
     const storedOtp = Buffer.from(otpData.otp, 'hex');
     const computedOtp = Buffer.from(hashedOtp, 'hex');
     const otpMatches =
@@ -287,13 +275,20 @@ export class AuthService {
       crypto.timingSafeEqual(storedOtp, computedOtp);
 
     if (!otpMatches) {
-      const updated = await this.redisService.update(redisKey, {
-        ...otpData,
-        attempts: otpData.attempts + 1,
-      });
+      const attempts = await this.redisService.incrementWithExpire(
+        RedisKeys.otpVerificationAttempts(email),
+        REDIS_TTL.otpVerification,
+      );
 
-      if (!updated) {
-        throw new BadRequestException('OTP expirado ou não encontrado');
+      if (attempts >= MAX_OTP_ATTEMPTS) {
+        await this.redisService.remove(redisKey);
+        await this.redisService.remove(
+          RedisKeys.otpVerificationAttempts(email),
+        );
+        await this.verificationService.sendVerificationOtp(email);
+        throw new BadRequestException(
+          'Muitas tentativas. Um novo código foi enviado para seu email.',
+        );
       }
 
       throw new BadRequestException('OTP inválido');

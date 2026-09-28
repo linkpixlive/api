@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import crypto from 'node:crypto';
+import { MAX_OTP_ATTEMPTS } from 'src/common/constants/auth.constants';
 import { hashData } from 'src/common/utils/crypto.util';
 import { EmailService } from 'src/infra/queues/email/email.service';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
@@ -11,7 +12,6 @@ interface CooldownData {
 
 interface OtpData extends CooldownData {
   otp: string;
-  attempts: number;
 }
 
 interface EmailChangeOtpData extends CooldownData {
@@ -19,7 +19,6 @@ interface EmailChangeOtpData extends CooldownData {
   otp: string;
 }
 
-const MAX_OTP_ATTEMPTS = 5;
 const OTP_COOLDOWN_SECONDS = 60;
 
 @Injectable()
@@ -36,9 +35,9 @@ export class VerificationService {
     const otp = crypto.randomInt(100000, 999999).toString();
     const hashedOtp = hashData(otp);
 
+    await this.redisService.remove(RedisKeys.otpVerificationAttempts(email));
     await this.redisService.setWithExpire(redisKey, REDIS_TTL.otpVerification, {
       otp: hashedOtp,
-      attempts: 0,
       createdAt: new Date(),
     } satisfies OtpData);
 
