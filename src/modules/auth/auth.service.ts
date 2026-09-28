@@ -260,7 +260,7 @@ export class AuthService {
 
     await this.killAllSessions(userId);
 
-    return 'senha alterada com sucesso';
+    return 'Senha alterada com sucesso!';
   }
 
   async verifyOtp({ otp, email }: VerifyOtpDto) {
