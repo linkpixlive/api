@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { User, UserRole } from '@prisma/client';
+import type { UserRole } from '@prisma/client';
 import { Exclude, Expose } from 'class-transformer';
 import { getStorageUrl } from 'src/common/utils/storageUrl.util';
+import type { AuthenticatedUser } from '../types/authenticated-user';
 
 @Exclude()
 export class SafeUser {
@@ -31,9 +32,6 @@ export class SafeUser {
   @Expose()
   profileImageUrl: string | null;
 
-  @ApiProperty({ example: null, nullable: true })
-  cpf: string | null;
-
   @ApiProperty({ example: '2026-04-16T12:00:00.000Z' })
   @Expose()
   createdAt: Date;
@@ -57,12 +55,6 @@ export class SafeUser {
   @Expose()
   roles: UserRole[];
 
-  @Exclude()
-  password: string;
-
-  @Exclude()
-  totpSecret: string | null;
-
   @ApiProperty({ example: false })
   @Expose()
   totpEnabled: boolean;
@@ -71,22 +63,10 @@ export class SafeUser {
     Object.assign(this, partial);
   }
 
-  static fromPrisma(user: User): SafeUser {
+  static fromPrisma(user: AuthenticatedUser): SafeUser {
     return new SafeUser({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      username: user.username,
+      ...user,
       profileImageUrl: getStorageUrl(user.profileImageUrl),
-      cpf: user.cpf,
-      createdAt: user.createdAt,
-      active: user.active,
-      verifiedEmail: user.verifiedEmail,
-      usernameChangedAt: user.usernameChangedAt,
-      roles: user.roles,
-      password: user.password,
-      totpSecret: user.totpSecret,
-      totpEnabled: user.totpEnabled,
     });
   }
 }

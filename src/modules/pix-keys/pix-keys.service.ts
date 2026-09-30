@@ -19,7 +19,7 @@ import {
 } from '../../common/utils/crypto.util';
 import { maskPixKey } from '../../common/utils/mask.util';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreatePixKeyDto } from './dto/create-pix-key.dto';
 import { PixKeyEntity } from './entities/pix-key.entity';
 
@@ -30,7 +30,10 @@ export class PixKeysService {
     private configService: ConfigService,
   ) {}
 
-  async create(user: SafeUser, dto: CreatePixKeyDto): Promise<PixKeyEntity> {
+  async create(
+    user: AuthenticatedUser,
+    dto: CreatePixKeyDto,
+  ): Promise<PixKeyEntity> {
     const keyType = this.detectKeyType(dto.key);
     const rawKey = this.stripPhoneDdi(keyType, dto.key);
 
@@ -66,17 +69,17 @@ export class PixKeysService {
     return this.mapToEntity(pixKey);
   }
 
-  async findAll(user: SafeUser): Promise<PixKeyEntity[]> {
+  async findAll(user: AuthenticatedUser): Promise<PixKeyEntity[]> {
     const pixKeys = await this.pixKeysRepository.findByUserId(user.id);
     return pixKeys.map((pk) => this.mapToEntity(pk));
   }
 
-  async findAllMasked(user: SafeUser): Promise<PixKeyEntity[]> {
+  async findAllMasked(user: AuthenticatedUser): Promise<PixKeyEntity[]> {
     const pixKeys = await this.pixKeysRepository.findByUserId(user.id);
     return pixKeys.map((pk) => new PixKeyEntity(pk));
   }
 
-  async remove(user: SafeUser, id: string): Promise<PixKeyEntity> {
+  async remove(user: AuthenticatedUser, id: string): Promise<PixKeyEntity> {
     const pixKey = await this.pixKeysRepository.findById(id);
 
     if (!pixKey || pixKey.userId !== user.id) {

@@ -25,7 +25,6 @@ import { EmailService } from 'src/infra/queues/email/email.service';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { ProfileService } from '../profile/profile.service';
-import { SafeUser } from './entities/safe-user.entity';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
@@ -328,11 +327,11 @@ export class AuthService {
     );
     if (session !== payload.sub) throw new UnauthorizedException();
 
-    const user = await this.usersRepository.findById(payload.sub);
+    const user = await this.usersRepository.findByIdForAuth(payload.sub);
     if (!user?.active) throw new UnauthorizedException();
 
     return {
-      user: SafeUser.fromPrisma(user),
+      user,
       sid: payload.sid,
     };
   }

@@ -14,7 +14,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreatePixKeyDto } from './dto/create-pix-key.dto';
 import { PixKeyEntity } from './entities/pix-key.entity';
 import { PixKeysService } from './pix-keys.service';
@@ -41,7 +41,7 @@ export class PixKeysController {
     description: 'Chave Pix já registrada.',
   })
   create(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() createPixKeyDto: CreatePixKeyDto,
   ) {
     return this.pixKeysService.create(user, createPixKeyDto);
@@ -54,7 +54,7 @@ export class PixKeysController {
     type: PixKeyEntity,
     description: 'Lista de chaves Pix mascaradas.',
   })
-  findAllMasked(@CurrentUser() user: SafeUser) {
+  findAllMasked(@CurrentUser() user: AuthenticatedUser) {
     return this.pixKeysService.findAllMasked(user);
   }
 
@@ -65,7 +65,7 @@ export class PixKeysController {
     type: PixKeyEntity,
     description: 'Chaves Pix retornadas com sucesso.',
   })
-  findAll(@CurrentUser() user: SafeUser) {
+  findAll(@CurrentUser() user: AuthenticatedUser) {
     return this.pixKeysService.findAll(user);
   }
 
@@ -80,7 +80,7 @@ export class PixKeysController {
     description: 'Chave Pix não encontrada.',
   })
   remove(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.pixKeysService.remove(user, id);

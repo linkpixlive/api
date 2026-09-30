@@ -76,5 +76,5 @@
 
 ## Dados sensíveis
 
-- Nunca logar ou retornar CPF, hash de senha, chaves ou tokens. `SafeUser` e as entities com `@Exclude` cuidam das respostas (o `cpf` de `SafeUser` não tem `@Expose` — nunca é serializado).
+- Nunca logar ou retornar CPF, hash de senha, chaves ou tokens. `request['user']` é `AuthenticatedUser` (sem segredos, via `UsersRepository.findByIdForAuth`); step-up sensível (troca de email/senha, desativação, 2FA, saque) sempre re-busca a linha completa via `findById` na hora da ação. `SafeUser` é o tipo público do `GET /auth/me` — não adicionar segredos a ele.
 - Logs não devem conter nome/mensagem de doadores, palavras bloqueadas, respostas completas de provedores externos, credenciais ou query strings com segredos.

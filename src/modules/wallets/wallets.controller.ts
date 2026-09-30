@@ -7,7 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { WalletBalancesEntity } from './entities/wallet-balances.entity';
 import { WalletsService } from './wallets.service';
 
@@ -29,7 +29,7 @@ export class WalletsController {
     status: 404,
     description: 'Carteira não encontrada.',
   })
-  getBalances(@CurrentUser() user: SafeUser) {
+  getBalances(@CurrentUser() user: AuthenticatedUser) {
     return this.walletsService.getBalances(user);
   }
 }

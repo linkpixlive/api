@@ -9,7 +9,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/isPublic';
 import { WidgetSettingsPipe } from 'src/common/pipes/widget-settings.pipe';
-import { SafeUser } from 'src/modules/auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from 'src/modules/auth/types/authenticated-user';
 import { PublicWidgetParams, WidgetTypeParams } from './dto/widget-params.dto';
 import type { AnyWidgetSettings } from './dto/widget-settings.map';
 import { PublicWidgetEntity } from './entities/public-widget.entity';
@@ -40,7 +40,7 @@ export class WidgetsController {
   @ApiOperation({ summary: 'Obter configurações de um tipo de widget' })
   @ApiResponse({ status: 200, type: WidgetEntity })
   async getSettings(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Param() { type }: WidgetTypeParams,
   ) {
     return this.widgetsService.getWidgetSettings(user.id, type);
@@ -52,7 +52,7 @@ export class WidgetsController {
   })
   @ApiResponse({ status: 200, type: WidgetEntity })
   async upsertSettings(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Param() { type }: WidgetTypeParams,
     @Body(WidgetSettingsPipe) settings?: AnyWidgetSettings,
   ) {
@@ -63,7 +63,7 @@ export class WidgetsController {
   @ApiOperation({ summary: 'Resetar o token de um tipo de widget' })
   @ApiResponse({ status: 200, type: WidgetEntity })
   async resetToken(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Param() { type }: WidgetTypeParams,
   ) {
     return this.widgetsService.resetToken(user.id, type);

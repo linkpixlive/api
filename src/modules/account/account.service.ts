@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { generateSecret, generateURI, verifySync } from 'otplib';
@@ -16,7 +17,7 @@ import { ChangePasswordRepository } from 'src/infra/db/repositories/change-passw
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { VerificationService } from '../auth/verification.service';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -43,8 +44,8 @@ export class AccountService {
     private readonly verificationService: VerificationService,
   ) {}
 
-  getSettings(user: SafeUser) {
-    return AccountEntity.fromSafeUser(user);
+  getSettings(user: AuthenticatedUser) {
+    return AccountEntity.fromAuthenticatedUser(user);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -59,10 +60,15 @@ export class AccountService {
     return { name: update.name };
   }
 
-  async changeEmail(user: SafeUser, currentSid: string, dto: ChangeEmailDto) {
-    await assertPasswordWithOptionalTotp(user, dto.password, dto.totp);
+  async changeEmail(
+    user: AuthenticatedUser,
+    currentSid: string,
+    dto: ChangeEmailDto,
+  ) {
+    const fresh = await this.requireFreshUser(user.id);
+    await assertPasswordWithOptionalTotp(fresh, dto.password, dto.totp);
 
-    if (dto.email === user.email) {
+    if (dto.email === fresh.email) {
       throw new BadRequestException(
         'O novo email deve ser diferente do email atual.',
       );
@@ -84,7 +90,7 @@ export class AccountService {
   }
 
   async confirmEmailChange(
-    user: SafeUser,
+    user: AuthenticatedUser,
     currentSid: string,
     dto: ConfirmEmailChangeDto,
   ) {
@@ -117,11 +123,12 @@ export class AccountService {
   }
 
   async changePassword(
-    user: SafeUser,
+    user: AuthenticatedUser,
     dto: ChangePasswordDto,
     currentSid: string,
   ) {
-    await assertPasswordWithOptionalTotp(user, dto.currentPassword, dto.totp);
+    const fresh = await this.requireFreshUser(user.id);
+    await assertPasswordWithOptionalTotp(fresh, dto.currentPassword, dto.totp);
 
     const newHash = await bcrypt.hash(dto.newPassword, 12);
     await this.changePasswordRepository.updatePasswordAndInvalidateTokens(
@@ -136,8 +143,9 @@ export class AccountService {
     return { message: 'Senha alterada com sucesso.' };
   }
 
-  async deactivateAccount(user: SafeUser, dto: DeactivateAccountDto) {
-    await assertPassword(user, dto.password);
+  async deactivateAccount(user: AuthenticatedUser, dto: DeactivateAccountDto) {
+    const fresh = await this.requireFreshUser(user.id);
+    await assertPassword(fresh, dto.password);
 
     await this.usersRepository.update(user.id, { active: false });
     await this.killAllSessions(user.id);
@@ -147,10 +155,11 @@ export class AccountService {
     return { message: 'Conta desativada. Faça login para reativar.' };
   }
 
-  async setup2fa(user: SafeUser, dto: Setup2faDto) {
-    await assertPassword(user, dto.password);
+  async setup2fa(user: AuthenticatedUser, dto: Setup2faDto) {
+    const fresh = await this.requireFreshUser(user.id);
+    await assertPassword(fresh, dto.password);
 
-    if (user.totpEnabled) throw new BadRequestException('2FA já está ativo');
+    if (fresh.totpEnabled) throw new BadRequestException('2FA já está ativo');
 
     const secret = generateSecret();
     const encryptedSecret = encryptData(secret);
@@ -165,7 +174,7 @@ export class AccountService {
 
     const otpauthUrl = generateURI({
       issuer: 'LinkPix',
-      label: user.username,
+      label: fresh.username,
       secret,
     });
 
@@ -216,10 +225,11 @@ export class AccountService {
     return { message: '2FA ativado com sucesso.' };
   }
 
-  async disable2fa(user: SafeUser, dto: Disable2faDto) {
-    await assertPasswordWithOptionalTotp(user, dto.password, dto.token);
+  async disable2fa(user: AuthenticatedUser, dto: Disable2faDto) {
+    const fresh = await this.requireFreshUser(user.id);
+    await assertPasswordWithOptionalTotp(fresh, dto.password, dto.token);
 
-    if (!user.totpEnabled || !user.totpSecret) {
+    if (!fresh.totpEnabled || !fresh.totpSecret) {
       throw new BadRequestException('2FA não está ativo nesta conta');
     }
 
@@ -231,6 +241,12 @@ export class AccountService {
     this.logger.log(`2FA disabled: userId=${user.id}`);
 
     return { message: '2FA desativado.' };
+  }
+
+  private async requireFreshUser(userId: string) {
+    const fresh = await this.usersRepository.findById(userId);
+    if (!fresh) throw new UnauthorizedException();
+    return fresh;
   }
 
   private async killAllSessions(userId: string): Promise<void> {

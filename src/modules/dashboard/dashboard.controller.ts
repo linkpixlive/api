@@ -6,7 +6,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { DashboardService } from './dashboard.service';
 import { GetStatsQueryDto } from './dto/get-stats-query.dto';
 import { DashboardStatsEntity } from './entities/dashboard-stats.entity';
@@ -28,7 +28,10 @@ export class DashboardController {
   })
   @ApiResponse({ status: 400, description: 'Parâmetros de query inválidos.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  getStats(@CurrentUser() user: SafeUser, @Query() query: GetStatsQueryDto) {
+  getStats(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetStatsQueryDto,
+  ) {
     return this.dashboardService.getStats(user.id, query.range ?? '7');
   }
 }

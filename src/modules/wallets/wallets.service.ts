@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { WalletsRepository } from '../../infra/db/repositories/wallets.repositories';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { WalletBalancesEntity } from './entities/wallet-balances.entity';
 
 @Injectable()
 export class WalletsService {
   constructor(private walletsRepository: WalletsRepository) {}
 
-  async getBalances(user: SafeUser): Promise<WalletBalancesEntity> {
+  async getBalances(user: AuthenticatedUser): Promise<WalletBalancesEntity> {
     const wallet = await this.walletsRepository.findByUserId({
       userId: user.id,
     });

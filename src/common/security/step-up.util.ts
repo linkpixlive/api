@@ -1,13 +1,10 @@
 import { UnauthorizedException } from '@nestjs/common';
+import type { User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { verifySync } from 'otplib';
 import { decryptData } from 'src/common/utils/crypto.util';
 
-interface StepUpUser {
-  password: string;
-  totpEnabled: boolean;
-  totpSecret: string | null;
-}
+type StepUpUser = Pick<User, 'password' | 'totpEnabled' | 'totpSecret'>;
 
 const REAUTHENTICATION_ERROR = 'Reautenticação inválida.';
 

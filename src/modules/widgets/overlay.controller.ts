@@ -1,7 +1,7 @@
 import { Controller, Delete, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { SafeUser } from 'src/modules/auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from 'src/modules/auth/types/authenticated-user';
 import { OverlayService } from './overlay.service';
 
 @ApiTags('Overlay')
@@ -12,32 +12,32 @@ export class OverlayController {
 
   @Post('test')
   @ApiOperation({ summary: 'Enviar notificação de teste para o overlay' })
-  async test(@CurrentUser() user: SafeUser) {
+  async test(@CurrentUser() user: AuthenticatedUser) {
     return this.overlayService.testOverlay(user.id);
   }
 
   @Post('toggle-pause')
   @ApiOperation({ summary: 'Alternar pausa dos alertas do overlay' })
-  async togglePause(@CurrentUser() user: SafeUser) {
+  async togglePause(@CurrentUser() user: AuthenticatedUser) {
     return this.overlayService.togglePause(user.id);
   }
 
   @Post('skip')
   @ApiOperation({ summary: 'Pular o alerta atual e exibir o próximo' })
-  async skip(@CurrentUser() user: SafeUser) {
+  async skip(@CurrentUser() user: AuthenticatedUser) {
     return this.overlayService.skipCurrent(user.id);
   }
 
   @Delete('queue')
   @ApiOperation({ summary: 'Limpar todos os alertas pendentes da fila' })
-  async clearQueue(@CurrentUser() user: SafeUser) {
+  async clearQueue(@CurrentUser() user: AuthenticatedUser) {
     return this.overlayService.clearQueue(user.id);
   }
 
   @Delete('queue/:donationId')
   @ApiOperation({ summary: 'Remover doação específica da fila' })
   async removeFromQueue(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('donationId') donationId: string,
   ) {
     return this.overlayService.removeFromQueue(user.id, donationId);
@@ -48,7 +48,7 @@ export class OverlayController {
     summary: 'Readicionar doação à fila de alertas para repetir',
   })
   async replay(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('donationId') donationId: string,
   ) {
     return this.overlayService.replayDonation(user.id, donationId);

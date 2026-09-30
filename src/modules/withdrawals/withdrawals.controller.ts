@@ -16,7 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
 import { WithdrawalEntity } from './entities/withdrawal.entity';
@@ -57,7 +57,7 @@ export class WithdrawalsController {
     description: 'Idempotency-Key já utilizada com outro valor ou chave Pix.',
   })
   create(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() createWithdrawalDto: CreateWithdrawalDto,
     @Headers('idempotency-key') clientKey: string,
   ) {
@@ -82,7 +82,7 @@ export class WithdrawalsController {
     description: 'Lista de saques retornada com sucesso.',
   })
   findAll(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListWithdrawalsQueryDto,
   ) {
     return this.withdrawalsService.findAll(user, query);

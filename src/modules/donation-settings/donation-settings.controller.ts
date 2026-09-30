@@ -6,7 +6,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { SafeUser } from 'src/modules/auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from 'src/modules/auth/types/authenticated-user';
 import { DonationSettingsService } from './donation-settings.service';
 import { UpdateDonationSettingsDto } from './dto/update-donation-settings.dto';
 import { DonationSettingsEntity } from './entities/donation-settings.entity';
@@ -26,7 +26,7 @@ export class DonationSettingsController {
     type: DonationSettingsEntity,
     description: 'Configurações de doação recuperadas com sucesso',
   })
-  async getMySettings(@CurrentUser() user: SafeUser) {
+  async getMySettings(@CurrentUser() user: AuthenticatedUser) {
     return this.donationSettingsService.getSettings(user.id);
   }
 
@@ -39,7 +39,7 @@ export class DonationSettingsController {
     description: 'Configurações de doação atualizadas com sucesso',
   })
   async updateSettings(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() updateDonationSettingsDto: UpdateDonationSettingsDto,
   ) {
     return this.donationSettingsService.updateSettings(

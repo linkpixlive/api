@@ -20,7 +20,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/isPublic';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { DonationsService } from './donations.service';
 import { DonationDto } from './dto/donation.dto';
 import { GetHistoryQueryDto } from './dto/get-history-query.dto';
@@ -123,7 +123,7 @@ export class DonationsController {
   @ApiResponse({ status: 400, description: 'Parâmetros de query inválidos.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   getHistory(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Query() query: GetHistoryQueryDto,
   ) {
     return this.donationsService.getHistory(user.id, query);
@@ -136,7 +136,7 @@ export class DonationsController {
   @ApiResponse({ status: 404, description: 'Áudio não disponível.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   async downloadAudio(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Res({ passthrough: true }) res: Response,
   ) {

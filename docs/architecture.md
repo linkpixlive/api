@@ -19,7 +19,7 @@ Convenções de repository:
 - Repos podem depender de outros e lançar `HttpException` em guardas. **Exceção financeira**: `WalletsRepository.applyOp` lança erros de domínio (`WalletNotFoundError`, `InsufficientBalanceError` em `wallets.errors.ts`) — os erros só viram `HttpException` no service do domínio (ex.: `WithdrawalsService.create`).
 - Retornam tipos Prisma; transformação fica no Service/entities.
 
-Entities (`modules/<m>/entities/`): `@Exclude()` na classe, `@Expose()` por campo, factory `fromPrisma()`, `@Transform` Decimal→Number. Serializadas pelo `ClassSerializerInterceptor` global.
+Entities (`modules/<m>/entities/`): `@Exclude()` na classe, `@Expose()` por campo, factory `fromPrisma()`, `@Transform` Decimal→Number. Serializadas pelo `ClassSerializerInterceptor` global. **Regra de fronteira**: entity com `@Expose` gera schema no Swagger e chega ao frontend — nunca colocar segredo (`password`, `cpf`, `totpSecret`) em entity. Tipo interno de request (`AuthenticatedUser` em `modules/auth/types/`) é interface TS pura, sem decoradores, e nunca é citado em `@ApiResponse/@ApiBody` — por isso não entra em `api-schema.d.ts`.
 
 ## Contracts (integrações externas)
 

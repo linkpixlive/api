@@ -3,7 +3,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentSid } from 'src/common/decorators/current-sid.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { AccountService } from './account.service';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -31,7 +31,7 @@ export class AccountController {
     description: 'Configurações da conta retornadas com sucesso.',
   })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  getSettings(@CurrentUser() user: SafeUser) {
+  getSettings(@CurrentUser() user: AuthenticatedUser) {
     return this.accountService.getSettings(user);
   }
 
@@ -44,7 +44,10 @@ export class AccountController {
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  updateProfile(@CurrentUser() user: SafeUser, @Body() dto: UpdateProfileDto) {
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ) {
     return this.accountService.updateProfile(user.id, dto);
   }
 
@@ -63,7 +66,7 @@ export class AccountController {
   @ApiResponse({ status: 409, description: 'Email já está em uso.' })
   @Throttle({ default: { limit: 3, ttl: 900000 } })
   changeEmail(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @CurrentSid() sid: string,
     @Body() dto: ChangeEmailDto,
   ) {
@@ -82,7 +85,7 @@ export class AccountController {
   @ApiResponse({ status: 409, description: 'Email já está em uso.' })
   @Throttle({ default: { limit: 5, ttl: 300000 } })
   confirmEmailChange(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @CurrentSid() sid: string,
     @Body() dto: ConfirmEmailChangeDto,
   ) {
@@ -100,7 +103,7 @@ export class AccountController {
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @Throttle({ default: { limit: 3, ttl: 900000 } })
   changePassword(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @CurrentSid() sid: string,
     @Body() dto: ChangePasswordDto,
   ) {
@@ -117,7 +120,7 @@ export class AccountController {
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @Throttle({ default: { limit: 3, ttl: 900000 } })
   deactivateAccount(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: DeactivateAccountDto,
   ) {
     return this.accountService.deactivateAccount(user, dto);
@@ -134,7 +137,7 @@ export class AccountController {
   @ApiResponse({ status: 400, description: '2FA já está ativo.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   @Throttle({ default: { limit: 5, ttl: 300000 } })
-  setup2fa(@CurrentUser() user: SafeUser, @Body() dto: Setup2faDto) {
+  setup2fa(@CurrentUser() user: AuthenticatedUser, @Body() dto: Setup2faDto) {
     return this.accountService.setup2fa(user, dto);
   }
 
@@ -152,7 +155,7 @@ export class AccountController {
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   @Throttle({ default: { limit: 5, ttl: 300000 } })
   enable2fa(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @CurrentSid() sid: string,
     @Body() dto: Enable2faDto,
   ) {
@@ -168,7 +171,10 @@ export class AccountController {
   })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   @Throttle({ default: { limit: 5, ttl: 300000 } })
-  disable2fa(@CurrentUser() user: SafeUser, @Body() dto: Disable2faDto) {
+  disable2fa(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: Disable2faDto,
+  ) {
     return this.accountService.disable2fa(user, dto);
   }
 }

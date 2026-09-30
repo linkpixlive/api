@@ -1,8 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, UserRole, WidgetType } from '@prisma/client';
 import { getWidgetDefaults } from 'src/modules/widgets/widget-defaults';
+import type { AuthenticatedUser } from 'src/modules/auth/types/authenticated-user';
 import { PrismaService } from '../prisma.service';
 import { CreateUserParams, UpdateUserParams } from './dto/users.dto';
+
+const authUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  username: true,
+  profileImageUrl: true,
+  createdAt: true,
+  active: true,
+  verifiedEmail: true,
+  usernameChangedAt: true,
+  roles: true,
+  totpEnabled: true,
+} satisfies Prisma.UserSelect;
 
 @Injectable()
 export class UsersRepository {
@@ -37,6 +52,13 @@ export class UsersRepository {
 
   async findById(id: string) {
     return await this.prismaService.user.findUnique({ where: { id } });
+  }
+
+  async findByIdForAuth(id: string): Promise<AuthenticatedUser | null> {
+    return await this.prismaService.user.findUnique({
+      where: { id },
+      select: authUserSelect,
+    });
   }
 
   async findByIdWithConfig(id: string) {

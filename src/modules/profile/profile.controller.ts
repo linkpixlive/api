@@ -20,7 +20,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import type { UploadedFile as MulterUploadedFile } from 'src/common/interfaces/uploaded-file.interface';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { UpdateUsernameDto } from './dto/update-username.dto';
 import { UploadProfilePhotoDto } from './dto/upload-profile-photo.dto';
 import {
@@ -49,7 +49,7 @@ export class ProfileController {
     description: 'Não autorizado.',
   })
   changeUsername(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() updateUsernameDto: UpdateUsernameDto,
   ) {
     return this.profileService.changeUsername(user.id, updateUsernameDto);
@@ -79,7 +79,7 @@ export class ProfileController {
     description: 'Não autorizado.',
   })
   uploadProfilePhoto(
-    @CurrentUser() user: SafeUser,
+    @CurrentUser() user: AuthenticatedUser,
     @UploadedFile() file: MulterUploadedFile,
   ) {
     return this.profileService.uploadProfilePhoto(user.id, file);
@@ -96,7 +96,7 @@ export class ProfileController {
     status: 401,
     description: 'Não autorizado.',
   })
-  removeProfilePhoto(@CurrentUser() user: SafeUser) {
+  removeProfilePhoto(@CurrentUser() user: AuthenticatedUser) {
     return this.profileService.removeProfilePhoto(user.id);
   }
 }

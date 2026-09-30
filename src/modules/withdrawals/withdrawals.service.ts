@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Withdrawal, WithdrawalStatus } from '@prisma/client';
@@ -12,10 +13,11 @@ import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { WithdrawalClientKeyConflictError } from '../../common/errors/withdrawals.errors';
 import { decryptData } from '../../common/utils/crypto.util';
 import { PixKeysRepository } from '../../infra/db/repositories/pix-keys.repositories';
+import { UsersRepository } from '../../infra/db/repositories/users.repositories';
 import { WalletsRepository } from '../../infra/db/repositories/wallets.repositories';
 import { WithdrawalsRepository } from '../../infra/db/repositories/withdrawals.repositories';
 import { GatewayContract } from '../../infra/gateway/contract/gateway.contract';
-import { SafeUser } from '../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
 import { WithdrawalEntity } from './entities/withdrawal.entity';
@@ -26,16 +28,19 @@ export class WithdrawalsService {
     private withdrawalsRepository: WithdrawalsRepository,
     private walletsRepository: WalletsRepository,
     private pixKeysRepository: PixKeysRepository,
+    private usersRepository: UsersRepository,
     private configService: ConfigService,
     private gatewayContract: GatewayContract,
   ) {}
 
   async create(
-    user: SafeUser,
+    user: AuthenticatedUser,
     dto: CreateWithdrawalDto,
     clientKey: string,
   ): Promise<WithdrawalEntity> {
-    await assertPasswordWithOptionalTotp(user, dto.password, dto.totp);
+    const fresh = await this.usersRepository.findById(user.id);
+    if (!fresh) throw new UnauthorizedException();
+    await assertPasswordWithOptionalTotp(fresh, dto.password, dto.totp);
 
     const existing = await this.withdrawalsRepository.findByClientKey(
       user.id,
@@ -111,7 +116,7 @@ export class WithdrawalsService {
   }
 
   async findAll(
-    user: SafeUser,
+    user: AuthenticatedUser,
     query: ListWithdrawalsQueryDto,
   ): Promise<PaginatedResponseDto<WithdrawalEntity>> {
     const result = await this.withdrawalsRepository.findByUserId({

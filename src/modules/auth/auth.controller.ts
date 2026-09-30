@@ -26,6 +26,7 @@ import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SafeUser } from './entities/safe-user.entity';
+import type { AuthenticatedUser } from './types/authenticated-user';
 
 @ApiTags('Auth')
 @ApiExtraModels(Pending2faDto)
@@ -213,15 +214,15 @@ export class AuthController {
     description: 'Usuário autenticado recuperado com sucesso.',
     type: SafeUser,
   })
-  me(@CurrentUser() user: SafeUser) {
-    return user;
+  me(@CurrentUser() user: AuthenticatedUser) {
+    return SafeUser.fromPrisma(user);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sair da sessão atual' })
   @ApiResponse({ status: 200, description: 'Sessão encerrada com sucesso.' })
-  logout(@CurrentSid() sid: string, @CurrentUser() user: SafeUser) {
+  logout(@CurrentSid() sid: string, @CurrentUser() user: AuthenticatedUser) {
     return this.authService.logout(sid, user.id);
   }
 
@@ -232,7 +233,7 @@ export class AuthController {
     status: 200,
     description: 'Sessão encerrada em todos os dispositivos.',
   })
-  logoutAll(@CurrentUser() user: SafeUser, @CurrentSid() sid: string) {
+  logoutAll(@CurrentUser() user: AuthenticatedUser, @CurrentSid() sid: string) {
     return this.authService.logoutAll(user.id, sid);
   }
 }

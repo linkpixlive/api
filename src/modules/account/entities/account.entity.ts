@@ -1,6 +1,6 @@
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
-import { SafeUser } from '../../auth/entities/safe-user.entity';
+import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 
 @Exclude()
 export class AccountEntity {
@@ -33,7 +33,7 @@ export class AccountEntity {
     Object.assign(this, partial);
   }
 
-  static fromSafeUser(user: SafeUser): AccountEntity {
+  static fromAuthenticatedUser(user: AuthenticatedUser): AccountEntity {
     return new AccountEntity({
       id: user.id,
       email: maskEmail(user.email),
