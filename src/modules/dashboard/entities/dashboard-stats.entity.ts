@@ -121,6 +121,21 @@ export class DashboardStatsEntity {
   peakHour: number | null;
 
   @ApiProperty({
+    example: '2026-10-07',
+    description:
+      'Data do pico de doações (dia do bucket data+hora com mais doações)',
+    nullable: true,
+  })
+  peakDate: string | null;
+
+  @ApiProperty({
+    example: 6,
+    description: 'Quantidade de doações no bucket data+hora do pico',
+    nullable: true,
+  })
+  peakCount: number | null;
+
+  @ApiProperty({
     example: 10,
     description: 'Valor de doação mais frequente',
     nullable: true,

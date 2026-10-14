@@ -26,6 +26,8 @@ export interface DashboardStats {
   largest: DashboardLargest | null;
   peakDay: number | null;
   peakHour: number | null;
+  peakDate: string | null;
+  peakCount: number | null;
   modeAmount: number | null;
 }
 
@@ -86,15 +88,21 @@ export class DashboardRepository {
         `,
 
       this.prismaService.$queryRaw<
-        { peak_day: number; peak_hour: number; donation_count: bigint }[]
+        {
+          peak_date: Date | string;
+          peak_day: number;
+          peak_hour: number;
+          donation_count: bigint;
+        }[]
       >`
           SELECT
+            date_trunc('day', created_at)::date AS peak_date,
             EXTRACT(DOW FROM created_at)::int AS peak_day,
             EXTRACT(HOUR FROM created_at)::int AS peak_hour,
             COUNT(*) AS donation_count
           FROM donations
           WHERE ${baseWhere}
-          GROUP BY peak_day, peak_hour
+          GROUP BY peak_date, peak_day, peak_hour
           ORDER BY donation_count DESC
           LIMIT 1
         `,
@@ -192,6 +200,12 @@ export class DashboardRepository {
         : null,
       peakDay: peak ? peak.peak_day : null,
       peakHour: peak ? peak.peak_hour : null,
+      peakDate: peak
+        ? peak.peak_date instanceof Date
+          ? peak.peak_date.toISOString().slice(0, 10)
+          : String(peak.peak_date).slice(0, 10)
+        : null,
+      peakCount: peak ? Number(peak.donation_count) : null,
       modeAmount: mode ? Number(mode.mode_amount) : null,
     };
   }

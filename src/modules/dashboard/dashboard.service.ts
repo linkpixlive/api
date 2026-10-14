@@ -56,6 +56,8 @@ export class DashboardService {
       series: stats.series,
       peakDay: stats.peakDay,
       peakHour: stats.peakHour,
+      peakDate: stats.peakDate,
+      peakCount: stats.peakCount,
       modeAmount: stats.modeAmount,
     });
   }
