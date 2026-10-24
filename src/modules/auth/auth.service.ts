@@ -108,6 +108,10 @@ export class AuthService {
     return 'Verifique seu email e finalize o cadastro.';
   }
 
+  validateUsernameAvailability(username: string) {
+    return this.profileService.validateUsernameAvailability(username);
+  }
+
   async login(loginAuthDto: LoginAuthDto) {
     const { email, password } = loginAuthDto;
 

@@ -23,6 +23,7 @@ import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { Pending2faDto } from './dto/pending-2fa.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
+import { ValidateUsernameDto } from './dto/validate-username.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SafeUser } from './entities/safe-user.entity';
@@ -56,6 +57,25 @@ export class AuthController {
   })
   register(@Body() registerAuthDto: RegisterAuthDto) {
     return this.authService.register(registerAuthDto);
+  }
+
+  @Public()
+  @Post('validate-username')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Validar disponibilidade de nome de usuÃ¡rio' })
+  @ApiResponse({
+    status: 200,
+    description: 'Nome de usuÃ¡rio disponÃ­vel.',
+    schema: { type: 'object', properties: { available: { type: 'boolean' } } },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Nome de usuÃ¡rio invÃ¡lido, em uso ou bloqueado.',
+  })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async validateUsername(@Body() { username }: ValidateUsernameDto) {
+    await this.authService.validateUsernameAvailability(username);
+    return { available: true };
   }
 
   @Public()
