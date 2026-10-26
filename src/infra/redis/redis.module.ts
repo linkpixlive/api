@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import Redis from 'ioredis';
 import { RedisService } from './redis.service';
 
@@ -10,10 +10,13 @@ import { RedisService } from './redis.service';
       provide: 'REDIS_CLIENT',
       useFactory: () => {
         const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-        return new Redis(redisUrl);
+        const redis = new Redis(redisUrl);
+        const logger = new Logger(RedisModule.name);
+        redis.on('error', (err) => logger.warn(`Redis: ${err.message}`));
+        return redis;
       },
     },
   ],
-  exports: [RedisService],
+  exports: [RedisService, 'REDIS_CLIENT'],
 })
 export class RedisModule {}
