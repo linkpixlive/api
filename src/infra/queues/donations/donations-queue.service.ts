@@ -1,10 +1,18 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
 @Injectable()
-export class DonationsQueueService {
+export class DonationsQueueService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(DonationsQueueService.name);
+
   constructor(@InjectQueue('donations-queue') private donationsQueue: Queue) {}
+
+  onApplicationBootstrap() {
+    this.donationsQueue.on('error', (err) =>
+      this.logger.error(`donations-queue: ${err.message}`),
+    );
+  }
 
   async sendDonation(data: { donation_id: string }) {
     const jobId = data.donation_id;

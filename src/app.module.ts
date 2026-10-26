@@ -42,6 +42,7 @@ import { HealthModule } from './modules/health/health.module';
     BullModule.forRoot({
       connection: {
         url: process.env.REDIS_URL || 'redis://localhost:6379',
+        maxRetriesPerRequest: null,
       },
     }),
     ThrottlerModule.forRootAsync({

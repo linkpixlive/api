@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Donation, User } from '@prisma/client';
@@ -33,6 +33,11 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly configService: ConfigService,
   ) {
     super();
+  }
+
+  @OnWorkerEvent('error')
+  logError(err: Error) {
+    this.logger.error(`donations-queue worker: ${err.message}`);
   }
 
   async process(job: Job<{ donation_id: string }>): Promise<void> {

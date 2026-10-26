@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +17,11 @@ export class EmailProcessor extends WorkerHost {
     private configService: ConfigService,
   ) {
     super();
+  }
+
+  @OnWorkerEvent('error')
+  logError(err: Error) {
+    this.logger.error(`email-queue worker: ${err.message}`);
   }
 
   async process(job: Job): Promise<any> {
