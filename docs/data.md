@@ -6,6 +6,7 @@
 
 - Postgres via driver adapter (`@prisma/adapter-pg`); URL vem de `DATABASE_URL` em `prisma.config.ts` (o schema não tem `url`).
 - Migrations: `pnpm db:migrate` (dev — cria migration + gera client) / `pnpm db:deploy` (prod — aplica pendentes). Client gerado em `generated/prisma`.
+- Render (Docker): o runner aplica migrations automaticamente no boot (`npx prisma migrate deploy && node dist/main`). Usa `DATABASE_MIGRATE_URL` se definida — URL Neon de conexão **direta** (host sem `-pooler`); senão cai em `DATABASE_URL`.
 - Tabelas snake_case via `@@map`; índice obrigatório em todo campo usado em `where`/`orderBy`.
 - Prefira os enums do `@prisma/client` a strings soltas.
 

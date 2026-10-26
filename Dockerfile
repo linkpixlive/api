@@ -41,4 +41,4 @@ COPY --chown=node:node prisma ./prisma
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
 USER node
 EXPOSE 3000
-CMD ["node", "dist/main"]
+CMD ["sh", "-c", "DATABASE_URL=\"${DATABASE_MIGRATE_URL:-$DATABASE_URL}\" npx prisma migrate deploy && node dist/main"]
