@@ -52,7 +52,6 @@ export class AuthController {
     description: 'Muitas solicitações.',
   })
   @Throttle({
-    burst: { limit: 1, ttl: 1000 },
     default: { limit: 3, ttl: 900000 },
   })
   register(@Body() registerAuthDto: RegisterAuthDto) {
@@ -98,7 +97,6 @@ export class AuthController {
     description: 'Muitas solicitações.',
   })
   @Throttle({
-    burst: { limit: 2, ttl: 1000 },
     default: { limit: 10, ttl: 300000 },
   })
   login(@Body() loginAuthDto: LoginAuthDto) {
@@ -126,7 +124,6 @@ export class AuthController {
     description: 'Muitas solicitações.',
   })
   @Throttle({
-    burst: { limit: 2, ttl: 1000 },
     default: { limit: 10, ttl: 300000 },
   })
   login2fa(@Body() login2faDto: Login2faDto) {

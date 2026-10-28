@@ -51,7 +51,6 @@ export class DonationsController {
     description: 'Muitas requisições.',
   })
   @Throttle({
-    burst: { limit: 10, ttl: 10000 },
     default: { limit: 60, ttl: 600000 },
   })
   async getUser(@Param('username') username: string) {
@@ -79,7 +78,6 @@ export class DonationsController {
     description: 'Muitas requisições (Limite de taxa).',
   })
   @Throttle({
-    burst: { limit: 2, ttl: 10000 },
     default: { limit: 15, ttl: 3600000 },
   })
   donation(@Body() donationDto: DonationDto, @Ip() ip: string) {
@@ -105,7 +103,6 @@ export class DonationsController {
     description: 'Muitas requisições.',
   })
   @Throttle({
-    burst: { limit: 20, ttl: 10000 },
     default: { limit: 120, ttl: 3600000 },
   })
   getDonation(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {

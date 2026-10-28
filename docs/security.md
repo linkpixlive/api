@@ -53,8 +53,8 @@
 ## Rate limiting
 
 - `ThrottlerGuard` global (**exceto em `development`**), storage Redis (`ThrottlerStorageRedisService`).
-- `forRoot` (`app.module.ts`) define só **tetos globais**, válidos para todas as rotas (contador por rota+IP; limite efetivo de uma rota = mínimo entre os buckets): `default` sem nome (45/min — a base overridável), `burst` (5/s), `long_term` (500/h).
-- Regra específica de rota = **override no handler**: `@Throttle({ default: { limit, ttl } })` (mais `burst` quando a rota precisar de rajada própria). Armadilha do v6: o nome citado no decorator **precisa** existir no `forRoot`, senão é no-op silencioso; e não existe opt-in — registrar um nome novo o aplica a todas as rotas (`@SkipThrottle` é a única exceção por rota). `POST /withdrawals` exige step-up e tem limite próprio de 5/5min para conter tentativas de TOTP. O step-up é avaliado **antes** da leitura de idempotência, então um replay não contorna o limite.
+- `forRoot` (`app.module.ts`) define um único teto global: `default` sem nome (45/min — a base overridável). Apenas 1 bucket por request para poupar comandos de Redis no free tier (antes eram 3: `burst` 5/s e `long_term` 500/h, removidos em 2026-10).
+- Regra específica de rota = **override no handler**: `@Throttle({ default: { limit, ttl } })`. Armadilha do v6: o nome citado no decorator **precisa** existir no `forRoot`, senão é no-op silencioso; e não existe opt-in — registrar um nome novo o aplica a todas as rotas (`@SkipThrottle` é a única exceção por rota). `POST /withdrawals` exige step-up e tem limite próprio de 5/5min para conter tentativas de TOTP. O step-up é avaliado **antes** da leitura de idempotência, então um replay não contorna o limite.
 - WebSocket: sem throttling — o guard padrão é HTTP-only; throttle de mensagens exigiria um guard custom.
 
 ## Sanitização

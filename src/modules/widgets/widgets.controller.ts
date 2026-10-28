@@ -26,7 +26,6 @@ export class WidgetsController {
   @Get('public/:token')
   @Throttle({
     default: { limit: 30, ttl: 60000 },
-    burst: { limit: 5, ttl: 10000 },
   })
   @ApiOperation({
     summary: 'Obter configurações públicas do widget para OBS/Uso externo',

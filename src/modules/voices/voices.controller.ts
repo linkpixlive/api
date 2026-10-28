@@ -15,7 +15,7 @@ export class VoicesPublicController {
   @ApiOperation({ summary: 'Listar vozes ativas (público)' })
   @ApiResponse({ status: 200, type: [PublicVoiceEntity] })
   @Throttle({
-    burst: { limit: 20, ttl: 10000 },
+    default: { limit: 45, ttl: 60000 },
   })
   findActive() {
     return this.voicesService.findActivePublic();

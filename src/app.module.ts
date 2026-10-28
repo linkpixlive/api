@@ -48,11 +48,7 @@ import { HealthModule } from './modules/health/health.module';
     ThrottlerModule.forRootAsync({
       inject: ['REDIS_CLIENT'],
       useFactory: (redis: Redis) => ({
-        throttlers: [
-          { ttl: 60000, limit: 45 },
-          { name: 'burst', ttl: 1000, limit: 5 },
-          { name: 'long_term', ttl: 3600000, limit: 500 },
-        ],
+        throttlers: [{ ttl: 60000, limit: 45 }],
         errorMessage:
           'Muitas solicitações. Tente novamente em alguns instantes.',
         storage: new ThrottlerStorageRedisService(redis),
