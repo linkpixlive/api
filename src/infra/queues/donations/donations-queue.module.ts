@@ -31,6 +31,6 @@ import { DonationsQueueService } from './donations-queue.service';
     }),
   ],
   providers: [DonationsQueueService, DonationsQueueProcessor],
-  exports: [DonationsQueueService],
+  exports: [DonationsQueueService, DonationsQueueProcessor],
 })
 export class DonationsQueueModule {}

@@ -8,6 +8,7 @@
 - `defaultJobOptions` (todas as filas): `attempts: 3`, backoff exponencial 5s, `removeOnComplete: true`, `removeOnFail: 100`.
 - Erro no processor: loga e **re-lança** para erros transitórios (Efí/rede/TTS/R2) — o retry é do BullMQ. Casos definitivos (doação já paga) são resolvidos no processor **sem rethrow**.
 - Nomes de fila e job em kebab-case.
+- **Workers dormem quando não há trabalho** (`infra/queues/sleep-on-idle.ts`): boot já nasce pausado e volta a dormir 10min após `drained` (o timer nunca pausa com retry agendado — `getJobCounts` 'wait'/'delayed' guard). **Contrato obrigatório ao enfileirar**: chamar `wake(worker)` antes de `add()`/`retry()` (`EmailService.sendEmail` e `DonationsQueueService.sendDonation` já fazem). Motivo: worker BullMQ ocioso emite script de `moveToActive` + `BZPOPMIN` a cada ~5s e no Upstash cada command é cobrado; `pause`/`resume` são flags locais — zero commands (verificado no bullmq 5.70.1).
 
 | Fila | Job | Produtor |
 |---|---|---|
@@ -45,7 +46,7 @@ Detalhes e decisão em `docs/plans/2026-09-05-donation-expiry-and-retry.md`.
 
 ## email-queue
 
-Templates Handlebars em `src/templates/emails/*.hbs` (`verify-email`, `forgot-password`); envio via Resend (`RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`).
+Templates Handlebars: `src/templates/emails/*.hbs` (`verify-email`, `forgot-password`), copiados na build (assets do `nest-cli.json`) para `dist/templates/emails/` — o processor lê por `__dirname` (a imagem Docker de produção não tem `src/`). Envio via Resend (`RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`): o SDK nunca lança — erro chega em `{error}` e o processor **relança**, então rejeição da API vira retry visível no log (não passa mais despercebida).
 
 ## WebSocket (Socket.IO)
 

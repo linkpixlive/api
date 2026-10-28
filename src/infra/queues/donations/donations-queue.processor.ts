@@ -1,9 +1,18 @@
-import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { BadRequestException, Logger } from '@nestjs/common';
+import {
+  InjectQueue,
+  OnWorkerEvent,
+  Processor,
+  WorkerHost,
+} from '@nestjs/bullmq';
+import {
+  BadRequestException,
+  Logger,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Donation, User } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
-import { Job } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
@@ -16,9 +25,13 @@ import { VoiceEntity } from 'src/modules/voices/entities/voice.entity';
 import { VoicesService } from 'src/modules/voices/voices.service';
 import { OverlayWidgetSettingsDto } from 'src/modules/widgets/dto/overlay-settings.dto';
 import { OverlayService } from 'src/modules/widgets/overlay.service';
+import { sleepOnIdle } from '../sleep-on-idle';
 
 @Processor('donations-queue')
-export class DonationsQueueProcessor extends WorkerHost {
+export class DonationsQueueProcessor
+  extends WorkerHost
+  implements OnApplicationBootstrap
+{
   private readonly logger = new Logger(DonationsQueueProcessor.name);
 
   constructor(
@@ -31,6 +44,7 @@ export class DonationsQueueProcessor extends WorkerHost {
     private readonly voiceService: VoicesService,
     private readonly dashboardGateway: DashboardGateway,
     private readonly configService: ConfigService,
+    @InjectQueue('donations-queue') private donationsQueue: Queue,
   ) {
     super();
   }
@@ -38,6 +52,12 @@ export class DonationsQueueProcessor extends WorkerHost {
   @OnWorkerEvent('error')
   logError(err: Error) {
     this.logger.error(`donations-queue worker: ${err.message}`);
+  }
+
+  onApplicationBootstrap() {
+    sleepOnIdle(this.worker, () =>
+      this.donationsQueue.getJobCounts('wait', 'delayed'),
+    );
   }
 
   async process(job: Job<{ donation_id: string }>): Promise<void> {

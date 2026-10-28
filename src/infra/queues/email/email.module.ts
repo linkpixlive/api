@@ -32,6 +32,6 @@ import { EmailService } from './email.service';
     EmailService,
     EmailProcessor,
   ],
-  exports: [EmailService],
+  exports: [EmailService, EmailProcessor],
 })
 export class EmailModule {}
