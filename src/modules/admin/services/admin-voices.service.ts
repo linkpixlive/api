@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Voice } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { extname } from 'path';
 import sharp from 'sharp';
 import { UploadedFile } from 'src/common/interfaces/uploaded-file.interface';
 import { getStorageUrl } from 'src/common/utils/storageUrl.util';
@@ -27,10 +28,14 @@ const AUDIO_EXTENSION_BY_MIMETYPE: Record<string, string> = {
   'audio/mp3': 'mp3',
   'audio/wav': 'wav',
   'audio/x-wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/vnd.wave': 'wav',
   'audio/ogg': 'ogg',
   'audio/mp4': 'm4a',
   'audio/x-m4a': 'm4a',
 };
+
+const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'm4a'];
 
 export interface VoiceFiles {
   photo?: UploadedFile[];
@@ -133,9 +138,8 @@ export class AdminVoicesService {
   private async uploadVoiceAudio(file: UploadedFile): Promise<string> {
     this.validateAudioFile(file);
 
-    const key = `voices/audio/${randomUUID()}.${
-      AUDIO_EXTENSION_BY_MIMETYPE[file.mimetype]
-    }`;
+    const ext = this.resolveAudioExtension(file);
+    const key = `voices/audio/${randomUUID()}.${ext}`;
 
     await this.storage.upload(file.buffer, key, file.mimetype);
     return key;
@@ -153,12 +157,22 @@ export class AdminVoicesService {
     }
   }
 
+  private resolveAudioExtension(file: UploadedFile): string {
+    const mimeExt = AUDIO_EXTENSION_BY_MIMETYPE[file.mimetype];
+    if (mimeExt) return mimeExt;
+
+    const fileExt = extname(file.originalname ?? '')
+      .replace('.', '')
+      .toLowerCase();
+    if (AUDIO_EXTENSIONS.includes(fileExt)) return fileExt;
+
+    throw new BadRequestException(
+      'Formato de áudio inválido. Formatos aceitos: MP3, WAV, OGG e M4A.',
+    );
+  }
+
   private validateAudioFile(file: UploadedFile): void {
-    if (!AUDIO_EXTENSION_BY_MIMETYPE[file.mimetype]) {
-      throw new BadRequestException(
-        'Formato de áudio inválido. Formatos aceitos: MP3, WAV, OGG e M4A.',
-      );
-    }
+    this.resolveAudioExtension(file);
 
     if (file.buffer.length > MAX_VOICE_AUDIO_SIZE_BYTES) {
       throw new BadRequestException('Áudio excede o tamanho máximo de 5 MB.');
