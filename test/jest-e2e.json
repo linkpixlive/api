@@ -3,7 +3,14 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "moduleNameMapper": {
+    "^src/(.*)$": "<rootDir>/../src/$1"
+  },
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
-  }
+    "^.+\\.ts$": "ts-jest",
+    "^.+\\.js$": ["ts-jest", { "tsconfig": { "allowJs": true, "module": "commonjs" } }]
+  },
+  "transformIgnorePatterns": [
+    "/node_modules/(?!.*@(?:scure|noble)/)"
+  ]
 }

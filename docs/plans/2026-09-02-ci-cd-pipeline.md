@@ -1,6 +1,6 @@
 # Plano — Pipeline CI/CD para linkpix-api
 
-**Data:** 2026-09-02 · **Status:** proposto · **Decisões:** CI completo sem deploy automático; produção alvo em PaaS gerenciado
+**Data:** 2026-09-02 · **Status:** implementado (2026-11-03, com ajustes — ver [docs/audits/2026-11-03-ci-cd-feasibility.md](../audits/2026-11-03-ci-cd-feasibility.md)) · **Decisões:** CI completo sem deploy automático; produção alvo em PaaS gerenciado
 
 ## Contexto
 

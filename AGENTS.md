@@ -11,7 +11,7 @@ Backend da plataforma **LinkPix**: doações em lives via Pix, overlay de alerta
 - **Redis**: só via `RedisService`; chave nova = builder em `redis-keys.ts` + TTL + documentação em `docs/data.md`.
 - **Env**: só via `ConfigService` (exceção: bootstrap e utils de runtime em `common/utils/`, que leem `process.env` direto); variável nova entra em `env.validation.ts` + `.env(.example)`.
 - **Decimal**: valores monetários com `Decimal` do Prisma, nunca float.
-- **Verificação**: `pnpm build` + `pnpm lint` — não há suíte de testes.
+- **Verificação**: `pnpm build` + `pnpm lint` — não há suíte de testes unitários. O CI (`.github/workflows/ci.yml`) roda lint sem `--fix`, build, test, smoke e2e (Postgres+Redis de serviço) e build Docker em todo PR e push na `main`.
 
 ## Documentação detalhada (leia o que for tocar)
 
