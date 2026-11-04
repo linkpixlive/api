@@ -65,6 +65,9 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://linkpix:linkpix@localhost:5432/linkpix
+      REDIS_URL: redis://localhost:6379
       ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       JWT_SECRET: ci-smoke-dummy-jwt-secret-0123456789abcdef0123456789abcdef
       JWT_EXPIRES_IN_DAYS: '7'
