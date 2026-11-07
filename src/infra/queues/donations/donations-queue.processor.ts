@@ -14,6 +14,10 @@ import { Donation, User } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/client';
 import { Job, Queue } from 'bullmq';
 import { TransactionStatus } from 'src/common/interfaces/transaction-status.type';
+import {
+  getAudioExtension,
+  getAudioMimeType,
+} from 'src/common/utils/audio-extension.util';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
@@ -194,13 +198,12 @@ export class DonationsQueueProcessor
         provider: voice?.provider,
       });
 
-      const isGoogle = (voice?.provider ?? '').toLowerCase() === 'google';
-      const ttsKey = `tts/${user.username}-${donation.id}.${isGoogle ? 'mp3' : 'wav'}`;
+      const ttsKey = `tts/${user.username}-${donation.id}.${getAudioExtension(voice?.provider)}`;
 
       await this.storage.upload(
         ttsBuffer,
         ttsKey,
-        isGoogle ? 'audio/mpeg' : 'audio/wav',
+        getAudioMimeType(voice?.provider),
       );
       return ttsKey;
     } catch (error) {

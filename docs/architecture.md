@@ -64,5 +64,6 @@ Injete sempre a abstração, nunca o provider. Exceção: email não tem contrac
 
 ## Verificação
 
-- `pnpm build` + `pnpm lint` — **não existe suíte de testes** (zero `*.spec.ts`; o e2e é scaffold morto).
+- `pnpm test` — specs unitários colados ao código (`src/**/<arquivo>.spec.ts`), rodam no job `quality` do CI; env dummies em `test/setup-env.ts`.
+- `pnpm build` + `pnpm lint` + `pnpm test:e2e` — e2e smoke em `test/` (exige Postgres+Redis, providos por service containers no CI).
 - Package manager: **pnpm**. Postgres/Redis locais: `pnpm compose:up` (portas 5433/6380).

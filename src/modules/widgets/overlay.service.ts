@@ -10,6 +10,10 @@ import { ConfigService } from '@nestjs/config';
 import { Donation, DonationStatus, Widget, WidgetType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { getStorageUrl } from 'src/common/utils/storageUrl.util';
+import {
+  getAudioExtension,
+  getAudioMimeType,
+} from 'src/common/utils/audio-extension.util';
 import { isOlderThanRetention } from 'src/common/utils/history-retention.util';
 import { DonationsRepository } from 'src/infra/db/repositories/donations.repositories';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
@@ -71,11 +75,14 @@ export class OverlayService {
   }
 
   async emitDashboardState(userId: string) {
-    const widget = await this.widgetRepository.findByUserAndType(
+    let widget = await this.widgetRepository.findByUserAndType(
       userId,
       WidgetType.overlay,
     );
-    if (!widget || !widget.active) return;
+    if (!widget) {
+      widget = await this.createOverlayWithDefaults(userId);
+    }
+    if (!widget.active) return;
 
     const settings = widget.settings as unknown as PersistedOverlaySettings;
     const isOnline = await this.redisService.get<string>(
@@ -298,6 +305,10 @@ export class OverlayService {
         throw new NotFoundException('Overlay ativo não encontrado');
       return widget;
     }
+    return await this.createOverlayWithDefaults(userId);
+  }
+
+  private async createOverlayWithDefaults(userId: string) {
     return await this.widgetRepository.upsert(userId, {
       type: WidgetType.overlay,
       settings: getWidgetDefaults(WidgetType.overlay) as unknown as Record<
@@ -350,19 +361,14 @@ export class OverlayService {
 
     try {
       const voice = await this.voicesRepository.findById(systemVoiceId);
-      const isGoogle = (voice?.provider ?? '').toLowerCase() === 'google';
-      const key = `tts/test-${systemVoiceId}.${isGoogle ? 'mp3' : 'wav'}`;
+      const key = `tts/test-${systemVoiceId}.${getAudioExtension(voice?.provider)}`;
       if (!(await this.storage.exists(key))) {
         const tts = await this.speech.generateTTS({
           message: TEST_TTS_MESSAGE,
           voice: voice?.voiceId ?? null,
           provider: voice?.provider ?? null,
         });
-        await this.storage.upload(
-          tts,
-          key,
-          isGoogle ? 'audio/mpeg' : 'audio/wav',
-        );
+        await this.storage.upload(tts, key, getAudioMimeType(voice?.provider));
       }
       const url = getStorageUrl(key);
       if (url) this.testAudioUrlCache.set(systemVoiceId, url);
