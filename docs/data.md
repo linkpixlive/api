@@ -49,7 +49,7 @@
   - Rate limit global: storage in-memory do `@nestjs/throttler` (sem Redis). Se escalar para >1 réplica, o limite passa a valer por réplica — restaurar `ThrottlerStorageRedisService` se disso importar.
   - Status online do overlay: `OverlayOnlineTracker` (memória, janela 80s, pulso do front). Se escalar para >1 réplica, restaurar a chave Redis `overlay:<token>` com TTL 80 (webhook pode cair em réplica diferente do socket).
   - Sessão autenticada: cache local de 30s no `AuthService.validateSessionToken` (por sid, guarda o `AuthenticatedUser` — pula 1 GET Redis + 1 SELECT por request). `logout`/`killAllSessions` no mesmo processo purgam na hora; revogação externa propaga em ≤30s quando há cache.
-- **Redis hoje**: fila de alertas do overlay, sessões/OTP/2FA, BullMQ (email + donation pipeline — workers ociosos se auto-pausam via `sleep-on-idle.ts`).
+- **Redis hoje**: fila de alertas do overlay, sessões/OTP/2FA, BullMQ (email + donation pipeline — workers ociosos se auto-pausam após 30s via `sleep-on-idle.ts`; o custo real por job é baixo, o caro é o loop de polling enquanto acordado — manter a janela curta e o `wake()` antes de todo `add`).
 
 | Builder | Chave | TTL | Uso |
 |---|---|---|---|

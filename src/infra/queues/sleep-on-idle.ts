@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { Worker } from 'bullmq';
 
-const IDLE_MS = 10 * 60_000;
+const IDLE_MS = 30_000;
 const timers = new WeakMap<Worker, NodeJS.Timeout>();
 
 type PendingCounts = () => Promise<{ wait?: number; delayed?: number }>;
