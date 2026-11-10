@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { WithdrawalEntity } from 'src/modules/withdrawals/entities/withdrawal.entity';
+import { UpdateUserFeeDto } from '../dto/update-user-fee.dto';
 import { VerifyUserDto } from '../dto/verify-user.dto';
 import { AdminUsersService } from '../services/admin-users.service';
 import { AdminWithdrawalsService } from '../services/admin-withdrawals.service';
@@ -66,5 +67,26 @@ export class AdminController {
     @Body() verifyUserDto: VerifyUserDto,
   ) {
     return this.adminUsersService.verifyUser(id, verifyUserDto);
+  }
+
+  @Patch('users/:id/fee')
+  @ApiOperation({
+    summary:
+      'Definir taxa de saque personalizada de um usuário (null volta para a taxa global)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Taxa atualizada com sucesso.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Usuário não encontrado ou valor inválido.',
+  })
+  @ApiResponse({ status: 403, description: 'Sem permissão.' })
+  updateUserFee(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateUserFeeDto: UpdateUserFeeDto,
+  ) {
+    return this.adminUsersService.updateUserFee(id, updateUserFeeDto);
   }
 }

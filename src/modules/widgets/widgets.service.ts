@@ -17,6 +17,7 @@ import { WidgetSettingsMap } from './dto/widget-settings.map';
 import { PublicWidgetEntity } from './entities/public-widget.entity';
 import { WidgetEntity } from './entities/widget.entity';
 import { OverlayService } from './overlay.service';
+import { OverlayOnlineTracker } from './overlay-online.tracker';
 import { getWidgetDefaults } from './widget-defaults';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class WidgetsService {
   constructor(
     private readonly widgetRepository: WidgetRepository,
     private readonly redisService: RedisService,
+    private readonly onlineTracker: OverlayOnlineTracker,
     private readonly overlayService: OverlayService,
     private readonly voicesRepository: VoicesRepository,
   ) {}
@@ -115,12 +117,12 @@ export class WidgetsService {
     );
 
     if (existingWidget.token !== widget.token) {
+      this.onlineTracker.purge(existingWidget.token);
       await Promise.all([
         this.redisService.remove(RedisKeys.overlayQueue(existingWidget.token)),
         this.redisService.remove(
           RedisKeys.overlayCurrent(existingWidget.token),
         ),
-        this.redisService.remove(RedisKeys.overlayOnline(existingWidget.token)),
       ]);
     }
 

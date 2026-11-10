@@ -43,12 +43,16 @@
 ## Redis
 
 - Sempre via `RedisService` (JSON automático); nunca injete `REDIS_CLIENT` direto.
-- API: `setWithExpire`, `setIfNotExists` (SET NX — claims atômicos), `get<T>`, `update` (preserva TTL restante), `remove`, `setExpire`, listas (`addToListEnd`/`addToListStart`, `removeListValue`, `getListRange`…) e sets (sessões).
+- API: `setWithExpire`, `setIfNotExists` (SET NX — claims atômicos), `get<T>`, `remove`, `setExpire`, listas (`addToListEnd`/`addToListStart`, `removeListValue`, `getListRange`…) e sets (sessões).
 - **Chave nova** = builder em `src/infra/redis/redis-keys.ts` + TTL em `REDIS_TTL` + linha abaixo. Exceção sem TTL deve estar justificada aqui.
+- **Downgrades para memória local (single-instance)** 
+  - Rate limit global: storage in-memory do `@nestjs/throttler` (sem Redis). Se escalar para >1 réplica, o limite passa a valer por réplica — restaurar `ThrottlerStorageRedisService` se disso importar.
+  - Status online do overlay: `OverlayOnlineTracker` (memória, janela 80s, pulso do front). Se escalar para >1 réplica, restaurar a chave Redis `overlay:<token>` com TTL 80 (webhook pode cair em réplica diferente do socket).
+  - Sessão autenticada: cache local de 30s no `AuthService.validateSessionToken` (por sid, guarda o `AuthenticatedUser` — pula 1 GET Redis + 1 SELECT por request). `logout`/`killAllSessions` no mesmo processo purgam na hora; revogação externa propaga em ≤30s quando há cache.
+- **Redis hoje**: fila de alertas do overlay, sessões/OTP/2FA, BullMQ (email + donation pipeline — workers ociosos se auto-pausam via `sleep-on-idle.ts`).
 
 | Builder | Chave | TTL | Uso |
 |---|---|---|---|
-| `overlayOnline` | `overlay:<token>` | 80s | heartbeat do overlay |
 | `overlayQueue` | `overlay:queue:<token>` | — (deliberado) | fila FIFO de ids de doação / `test-<uuid>` |
 | `overlayCurrent` | `overlay:current:<token>` | 300s | payload da doação em exibição (claim SET NX; conclusão usa compare-and-delete) |
 | `otpVerification` | `otp:verification:<email>` | 600s | OTP de email (hash sha256) |

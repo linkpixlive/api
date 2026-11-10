@@ -27,9 +27,8 @@ import { UsersRepository } from 'src/infra/db/repositories/users.repositories';
 import { VoicesRepository } from 'src/infra/db/repositories/voices.repositories';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { DonationsQueueService } from 'src/infra/queues/donations/donations-queue.service';
-import { RedisKeys } from 'src/infra/redis/redis-keys';
-import { RedisService } from 'src/infra/redis/redis.service';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
+import { OverlayOnlineTracker } from 'src/modules/widgets/overlay-online.tracker';
 import type { StoredObject } from 'src/infra/storage/contract/storage.contract';
 import { DonationDto } from './dto/donation.dto';
 import { GetHistoryQueryDto } from './dto/get-history-query.dto';
@@ -61,7 +60,7 @@ export class DonationsService {
     private readonly donationsRepository: DonationsRepository,
     private readonly gateway: GatewayContract,
     private readonly donationsQueue: DonationsQueueService,
-    private readonly redisService: RedisService,
+    private readonly onlineTracker: OverlayOnlineTracker,
     private readonly voicesRepository: VoicesRepository,
     private readonly ai: AiContract,
     private readonly storage: StorageContract,
@@ -76,16 +75,14 @@ export class DonationsService {
       throw new NotFoundException('Usuário ou configurações não encontrados');
     }
 
-    const overlayStatus = overlay
-      ? await this.redisService.get(RedisKeys.overlayOnline(overlay.token))
-      : null;
-
     const data = {
       name: user.name,
       username: user.username,
       verified: user.verified,
       profileImageUrl: getStorageUrl(user.profileImageUrl),
-      overlayActive: !!overlayStatus,
+      overlayActive: overlay
+        ? this.onlineTracker.isFresh(overlay.token)
+        : false,
       minAudioAmount: Number(settings.minAudioAmount),
       minTextAmount: Number(settings.minTextAmount),
       maxDonationAmount: MAX_DONATION_AMOUNT,

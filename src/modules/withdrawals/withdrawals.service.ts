@@ -21,6 +21,7 @@ import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
 import { WithdrawalEntity } from './entities/withdrawal.entity';
+import { WithdrawalFeeEntity } from './entities/withdrawal-fee.entity';
 
 @Injectable()
 export class WithdrawalsService {
@@ -77,9 +78,9 @@ export class WithdrawalsService {
       throw new NotFoundException('Chave Pix não encontrada.');
     }
 
-    const feePercentage = this.configService.getOrThrow<number>(
-      'WITHDRAWAL_FEE_PERCENTAGE',
-    );
+    const feePercentage =
+      fresh.withdrawalFeePercentage ??
+      this.configService.getOrThrow<number>('WITHDRAWAL_FEE_PERCENTAGE');
     const grossAmount = new Decimal(dto.amount);
     const feeAmount = grossAmount
       .times(feePercentage)
@@ -113,6 +114,21 @@ export class WithdrawalsService {
     }
 
     return this.mapToEntity(withdrawal, pix.keyType);
+  }
+
+  async getFee(user: AuthenticatedUser): Promise<WithdrawalFeeEntity> {
+    const fresh = await this.usersRepository.findById(user.id);
+    if (!fresh) throw new UnauthorizedException();
+
+    const isCustom = fresh.withdrawalFeePercentage != null;
+    const feePercentage = isCustom
+      ? Number(fresh.withdrawalFeePercentage)
+      : this.configService.getOrThrow<number>('WITHDRAWAL_FEE_PERCENTAGE');
+    const minAmount = this.configService.getOrThrow<number>(
+      'MIN_WITHDRAWAL_AMOUNT',
+    );
+
+    return new WithdrawalFeeEntity({ feePercentage, isCustom, minAmount });
   }
 
   async findAll(

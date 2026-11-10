@@ -19,6 +19,7 @@ import { REDIS_TTL, RedisKeys } from 'src/infra/redis/redis-keys';
 import { RedisService } from 'src/infra/redis/redis.service';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { VerificationService } from '../auth/verification.service';
+import { AuthService } from '../auth/auth.service';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
@@ -41,6 +42,7 @@ export class AccountService {
     private readonly usersRepository: UsersRepository,
     private readonly changePasswordRepository: ChangePasswordRepository,
     private readonly redisService: RedisService,
+    private readonly authService: AuthService,
     private readonly verificationService: VerificationService,
   ) {}
 
@@ -249,38 +251,14 @@ export class AccountService {
     return fresh;
   }
 
-  private async killAllSessions(userId: string): Promise<void> {
-    const sessions = await this.redisService.getList(
-      RedisKeys.userSessions(userId),
-    );
-
-    await Promise.all([
-      ...sessions.map((sid) =>
-        this.redisService.remove(RedisKeys.session(sid)),
-      ),
-      ...sessions.map((sid) =>
-        this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
-      ),
-    ]);
+  private killAllSessions(userId: string): Promise<void> {
+    return this.authService.killAllSessions(userId);
   }
 
-  private async killAllSessionsExceptCurrent(
+  private killAllSessionsExceptCurrent(
     userId: string,
     currentSid: string,
   ): Promise<void> {
-    const sessions = await this.redisService.getList(
-      RedisKeys.userSessions(userId),
-    );
-
-    const sessionsToKill = sessions.filter((sid) => sid !== currentSid);
-
-    await Promise.all([
-      ...sessionsToKill.map((sid) =>
-        this.redisService.remove(RedisKeys.session(sid)),
-      ),
-      ...sessionsToKill.map((sid) =>
-        this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
-      ),
-    ]);
+    return this.authService.killAllSessions(userId, currentSid);
   }
 }

@@ -28,4 +28,5 @@ export interface UpdateUserParams {
   totpSecret?: string | null;
   totpEnabled?: boolean;
   active?: boolean;
+  withdrawalFeePercentage?: number | null;
 }

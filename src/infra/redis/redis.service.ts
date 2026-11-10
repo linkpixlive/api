@@ -44,17 +44,6 @@ export class RedisService {
     return result === 1;
   }
 
-  async update(key: string, data: unknown): Promise<boolean> {
-    const remainingTtl = await this.redis.ttl(key);
-
-    if (remainingTtl <= 0) {
-      return false;
-    }
-
-    await this.redis.set(key, JSON.stringify(data), 'EX', remainingTtl);
-    return true;
-  }
-
   async incrementWithExpire(key: string, expiresIn: number): Promise<number> {
     const result = await this.redis.eval(
       'local value = redis.call("INCR", KEYS[1]); if value == 1 then redis.call("EXPIRE", KEYS[1], ARGV[1]); end; return value',

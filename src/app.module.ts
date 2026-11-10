@@ -1,4 +1,3 @@
-import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
@@ -6,7 +5,6 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import type { Redis } from 'ioredis';
 import { validate } from './common/config/env.validation';
 import { RolesGuard } from './common/guards/roles.guard';
 import { LoggingModule } from './common/logging/logging.module';
@@ -45,14 +43,9 @@ import { HealthModule } from './modules/health/health.module';
         maxRetriesPerRequest: null,
       },
     }),
-    ThrottlerModule.forRootAsync({
-      inject: ['REDIS_CLIENT'],
-      useFactory: (redis: Redis) => ({
-        throttlers: [{ ttl: 60000, limit: 45 }],
-        errorMessage:
-          'Muitas solicitações. Tente novamente em alguns instantes.',
-        storage: new ThrottlerStorageRedisService(redis),
-      }),
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60000, limit: 45 }],
+      errorMessage: 'Muitas solicitações. Tente novamente em alguns instantes.',
     }),
     AuthModule,
     DashboardModule,

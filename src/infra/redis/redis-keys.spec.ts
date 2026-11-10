@@ -2,7 +2,6 @@ import { REDIS_TTL, RedisKeys } from './redis-keys';
 
 describe('RedisKeys', () => {
   it('namespaces de overlay incluem o token do streamer', () => {
-    expect(RedisKeys.overlayOnline('tok')).toBe('overlay:tok');
     expect(RedisKeys.overlayQueue('tok')).toBe('overlay:queue:tok');
     expect(RedisKeys.overlayCurrent('tok')).toBe('overlay:current:tok');
   });
@@ -13,6 +12,12 @@ describe('RedisKeys', () => {
     );
     expect(RedisKeys.otpVerificationAttempts('a@b.com')).toBe(
       'otp:verification_attempts:a@b.com',
+    );
+  });
+
+  it('chave de e-mail confirmado (cadastro pendente) é por email', () => {
+    expect(RedisKeys.registrationVerified('a@b.com')).toBe(
+      'auth:registration_verified:a@b.com',
     );
   });
 
@@ -43,11 +48,6 @@ describe('RedisKeys', () => {
 });
 
 describe('REDIS_TTL', () => {
-  it('overlayOnline (80s) sobrevive ao heartbeat de 30s do gateway', () => {
-    expect(REDIS_TTL.overlayOnline).toBeGreaterThan(30);
-    expect(REDIS_TTL.overlayOnline).toBe(80);
-  });
-
   it('overlayCurrent cobre a duração máxima de um alerta em exibição', () => {
     expect(REDIS_TTL.overlayCurrent).toBe(300);
   });
@@ -56,6 +56,10 @@ describe('REDIS_TTL', () => {
     expect(REDIS_TTL.otpVerification).toBe(600);
     expect(REDIS_TTL.emailChangeVerification).toBe(600);
     expect(REDIS_TTL.totpSetup).toBe(600);
+  });
+
+  it('ticket de e-mail confirmado expira em 15 minutos', () => {
+    expect(REDIS_TTL.registrationVerified).toBe(900);
   });
 
   it('pending 2FA (nonce) expira em 5 minutos', () => {

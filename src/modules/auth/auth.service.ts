@@ -32,6 +32,7 @@ import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { VerificationService } from './verification.service';
+import type { AuthenticatedUser } from './types/authenticated-user';
 
 interface OtpData {
   otp: string;
@@ -47,8 +48,15 @@ interface SessionTokenPayload {
   sid: string;
 }
 
+const SESSION_CACHE_TTL_MS = 30_000;
+
 @Injectable()
 export class AuthService {
+  private readonly sessionCache = new Map<
+    string,
+    { user: AuthenticatedUser; expiresAt: number }
+  >();
+
   constructor(
     private usersRepository: UsersRepository,
     private changePassRepository: ChangePasswordRepository,
@@ -62,12 +70,19 @@ export class AuthService {
 
   async register(registerAuthDto: RegisterAuthDto) {
     const { name, username, email, password, cpf } = registerAuthDto;
+
+    const ticket = await this.redisService.get(
+      RedisKeys.registrationVerified(email),
+    );
+    if (!ticket) {
+      throw new BadRequestException('Confirme seu e-mail antes de continuar.');
+    }
+
     const hashedCpf = hashData(cpf);
 
     await this.profileService.validateUsernameAvailability(username);
 
-    const [emailUser, usernameUser, cpfUser] = await Promise.all([
-      this.usersRepository.findByEmail(email),
+    const [usernameUser, cpfUser] = await Promise.all([
       this.usersRepository.findByUsername(username),
       this.usersRepository.findByCpfHash(hashedCpf),
     ]);
@@ -80,28 +95,32 @@ export class AuthService {
       throw new ConflictException('CPF já está em uso');
     }
 
-    const encryptedCpf = encryptData(cpf);
-    const encryptedPassword = await this.generatePasswordHash(password);
-
-    const userData = {
-      name,
-      username,
-      password: encryptedPassword,
-      cpfHash: hashedCpf,
-      cpf: encryptedCpf,
-      email,
-      verifiedEmail: false,
-    };
-
+    const emailUser = await this.usersRepository.findByEmail(email);
     if (emailUser) {
-      if (!emailUser.verifiedEmail) {
-        await this.verificationService.sendVerificationOtp(email);
-      }
-
-      return 'Verifique seu email e finalize o cadastro.';
+      throw new ConflictException('E-mail já cadastrado.');
     }
 
-    await this.usersRepository.create(userData);
+    const user = await this.usersRepository.create({
+      name,
+      username,
+      password: await this.generatePasswordHash(password),
+      cpfHash: hashedCpf,
+      cpf: encryptData(cpf),
+      email,
+      verifiedEmail: true,
+    });
+
+    await this.redisService.remove(RedisKeys.registrationVerified(email));
+
+    return await this.createSession(user.id);
+  }
+
+  async registerInit(email: string) {
+    const emailUser = await this.usersRepository.findByEmail(email);
+
+    if (emailUser?.verifiedEmail) {
+      throw new ConflictException('E-mail já cadastrado.');
+    }
 
     await this.verificationService.sendVerificationOtp(email);
 
@@ -300,7 +319,13 @@ export class AuthService {
     const user = await this.usersRepository.findByEmail(email);
 
     if (!user) {
-      throw new BadRequestException('Usuário não encontrado');
+      await this.redisService.remove(redisKey);
+      await this.redisService.setWithExpire(
+        RedisKeys.registrationVerified(email),
+        REDIS_TTL.registrationVerified,
+        { verifiedAt: new Date() },
+      );
+      return { requiresRegistrationCompletion: true };
     }
 
     const updatedUser = await this.usersRepository.update(user.id, {
@@ -326,6 +351,14 @@ export class AuthService {
 
     if (!payload.sub || !payload.sid) throw new UnauthorizedException();
 
+    const cached = this.sessionCache.get(payload.sid);
+    if (cached) {
+      if (cached.expiresAt > Date.now()) {
+        return { user: cached.user, sid: payload.sid };
+      }
+      this.sessionCache.delete(payload.sid);
+    }
+
     const session = await this.redisService.get<string>(
       RedisKeys.session(payload.sid),
     );
@@ -334,6 +367,11 @@ export class AuthService {
     const user = await this.usersRepository.findByIdForAuth(payload.sub);
     if (!user?.active) throw new UnauthorizedException();
 
+    this.sessionCache.set(payload.sid, {
+      user,
+      expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
+    });
+
     return {
       user,
       sid: payload.sid,
@@ -341,6 +379,7 @@ export class AuthService {
   }
 
   async logout(sid: string, userId: string) {
+    this.sessionCache.delete(sid);
     await Promise.all([
       this.redisService.remove(RedisKeys.session(sid)),
       this.redisService.removeFromList(RedisKeys.userSessions(userId), sid),
@@ -372,12 +411,14 @@ export class AuthService {
     });
   }
 
-  private async killAllSessions(userId: string, exceptSid?: string) {
+  async killAllSessions(userId: string, exceptSid?: string) {
     const sessions = await this.redisService.getList(
       RedisKeys.userSessions(userId),
     );
 
     const sessionsToKill = sessions.filter((sid) => sid !== exceptSid);
+
+    for (const sid of sessionsToKill) this.sessionCache.delete(sid);
 
     await Promise.all([
       ...sessionsToKill.map((sid) =>

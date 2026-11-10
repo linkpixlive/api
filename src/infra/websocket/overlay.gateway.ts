@@ -59,10 +59,10 @@ export class OverlayGateway
   }
 
   @SubscribeMessage('heartbeat_pulse')
-  async handlePulse(@ConnectedSocket() client: Socket) {
+  handlePulse(@ConnectedSocket() client: Socket) {
     const token = client['token'] as string;
     if (!token) return;
-    await this.overlayService.updateOnlineStatus(token);
+    this.overlayService.updateOnlineStatus(token);
   }
 
   emitNewDonation(token: string, donation: OverlayDonationEntity) {

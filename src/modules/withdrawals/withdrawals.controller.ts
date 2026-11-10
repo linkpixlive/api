@@ -20,6 +20,7 @@ import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { ListWithdrawalsQueryDto } from './dto/list-withdrawals-query.dto';
 import { WithdrawalEntity } from './entities/withdrawal.entity';
+import { WithdrawalFeeEntity } from './entities/withdrawal-fee.entity';
 import { PaginatedWithdrawalResponse } from './entities/paginated-withdrawal.entity';
 import { WithdrawalsService } from './withdrawals.service';
 
@@ -86,5 +87,20 @@ export class WithdrawalsController {
     @Query() query: ListWithdrawalsQueryDto,
   ) {
     return this.withdrawalsService.findAll(user, query);
+  }
+
+  @Get('fee')
+  @ApiOperation({
+    summary:
+      'Retorna a taxa de saque aplicável ao usuário logado e o valor mínimo',
+  })
+  @ApiResponse({
+    status: 200,
+    type: WithdrawalFeeEntity,
+    description:
+      'Taxa personalizada da conta quando existir; caso contrário, a taxa global.',
+  })
+  getFee(@CurrentUser() user: AuthenticatedUser) {
+    return this.withdrawalsService.getFee(user);
   }
 }

@@ -24,6 +24,7 @@ import { SpeechContract } from 'src/infra/speech/contract/speech.contract';
 import { StorageContract } from 'src/infra/storage/contract/storage.contract';
 import { DashboardGateway } from 'src/infra/websocket/dashboard.gateway';
 import { OverlayGateway } from 'src/infra/websocket/overlay.gateway';
+import { OverlayOnlineTracker } from './overlay-online.tracker';
 import { OverlayDonationEntity } from 'src/modules/donations/entities/overlay-donation.entity';
 import { DonationHistoryEntity } from '../donations/entities/donation-history.entity';
 import { PersistedOverlaySettings } from './dto/overlay-settings.dto';
@@ -39,6 +40,7 @@ export class OverlayService {
 
   constructor(
     private readonly redisService: RedisService,
+    private readonly onlineTracker: OverlayOnlineTracker,
     @Inject(forwardRef(() => OverlayGateway))
     private readonly overlayGateway: OverlayGateway,
     @Inject(forwardRef(() => DashboardGateway))
@@ -62,7 +64,7 @@ export class OverlayService {
 
     const settings = widget.settings as unknown as PersistedOverlaySettings;
 
-    await this.updateOnlineStatus(token);
+    this.updateOnlineStatus(token);
     this.dashboardGateway.emitOverlayStatus(
       widget.userId,
       true,
@@ -85,9 +87,7 @@ export class OverlayService {
     if (!widget.active) return;
 
     const settings = widget.settings as unknown as PersistedOverlaySettings;
-    const isOnline = await this.redisService.get<string>(
-      RedisKeys.overlayOnline(widget.token),
-    );
+    const isOnline = this.onlineTracker.isFresh(widget.token);
 
     this.dashboardGateway.emitOverlayStatus(
       userId,
@@ -102,16 +102,12 @@ export class OverlayService {
       token,
       WidgetType.overlay,
     );
-    await this.redisService.remove(RedisKeys.overlayOnline(token));
+    this.onlineTracker.purge(token);
     if (widget) this.dashboardGateway.emitOverlayStatus(widget.userId, false);
   }
 
-  async updateOnlineStatus(token: string) {
-    await this.redisService.setWithExpire(
-      RedisKeys.overlayOnline(token),
-      REDIS_TTL.overlayOnline,
-      'true',
-    );
+  updateOnlineStatus(token: string) {
+    this.onlineTracker.mark(token);
   }
 
   notifySettingsUpdated(token: string) {
@@ -121,10 +117,7 @@ export class OverlayService {
   // ─── Queue Orchestration ─────────────────────────────────────────────────────
 
   async handleNewDonation(overlay: Widget, donationId: string) {
-    const isOnline = await this.redisService.get<string>(
-      RedisKeys.overlayOnline(overlay.token),
-    );
-    if (!isOnline) return;
+    if (!this.onlineTracker.isFresh(overlay.token)) return;
 
     await this.redisService.addToListEnd(
       RedisKeys.overlayQueue(overlay.token),
@@ -183,12 +176,10 @@ export class OverlayService {
 
     this.overlayGateway.emitSettingsUpdated(updated.token);
 
-    const isOnline = await this.redisService.get<string>(
-      RedisKeys.overlayOnline(updated.token),
-    );
+    const isOnline = this.onlineTracker.isFresh(updated.token);
     this.dashboardGateway.emitOverlayStatus(
       userId,
-      Boolean(isOnline),
+      isOnline,
       settings.isPaused,
     );
 

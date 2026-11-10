@@ -8,7 +8,6 @@ import { Decimal } from '@prisma/client/runtime/client';
 import { GatewayContract } from 'src/infra/gateway/contract/gateway.contract';
 import { SentPixStatus } from 'src/common/interfaces/sent-pix-status.type';
 import { WithdrawalClientKeyConflictError } from 'src/common/errors/withdrawals.errors';
-import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { WithdrawalsService } from './withdrawals.service';
 
@@ -52,7 +51,7 @@ describe('WithdrawalsService', () => {
     );
   });
 
-  const user = (): AuthenticatedUser => ({
+  const user = (withdrawalFeePercentage: Decimal | null = null) => ({
     id: 'user-1',
     name: 'Streamer',
     email: 'streamer@example.com',
@@ -64,6 +63,7 @@ describe('WithdrawalsService', () => {
     usernameChangedAt: null,
     roles: [],
     totpEnabled: false,
+    withdrawalFeePercentage,
   });
 
   const dto = (overrides: Partial<CreateWithdrawalDto> = {}) => ({
@@ -96,8 +96,11 @@ describe('WithdrawalsService', () => {
     ...overrides,
   });
 
-  const stubHappyPath = (feePercentage = 5) => {
-    usersRepository.findById.mockResolvedValue(user());
+  const stubHappyPath = (
+    feePercentage = 5,
+    customFee: Decimal | null = null,
+  ) => {
+    usersRepository.findById.mockResolvedValue(user(customFee));
     withdrawalsRepository.findByClientKey.mockResolvedValue(null);
     configService.getOrThrow.mockImplementation((key: string) =>
       key === 'MIN_WITHDRAWAL_AMOUNT' ? 10 : feePercentage,
@@ -144,6 +147,68 @@ describe('WithdrawalsService', () => {
       const call = withdrawalsRepository.processWithdrawal.mock.calls[0][0];
       expect(call.feeAmount.toNumber()).toBe(7.5);
       expect(call.netAmount.toNumber()).toBe(92.5);
+    });
+
+    it('usa a taxa personalizada da conta quando existir (2,5% de R$100 → R$2,50)', async () => {
+      stubHappyPath(5, new Decimal(2.5));
+
+      await service.create(user(new Decimal(2.5)), dto(), 'client-key-4');
+
+      const call = withdrawalsRepository.processWithdrawal.mock.calls[0][0];
+      expect(call.feeAmount.toNumber()).toBe(2.5);
+      expect(call.netAmount.toNumber()).toBe(97.5);
+    });
+
+    it('taxa personalizada 0% zera a taxa (isento)', async () => {
+      stubHappyPath(5, new Decimal(0));
+
+      await service.create(user(new Decimal(0)), dto(), 'client-key-5');
+
+      const call = withdrawalsRepository.processWithdrawal.mock.calls[0][0];
+      expect(call.feeAmount.toNumber()).toBe(0);
+      expect(call.netAmount.toNumber()).toBe(100);
+    });
+  });
+
+  describe('getFee', () => {
+    const stubConfig = (globalFee = 4, minAmount = 10) =>
+      configService.getOrThrow.mockImplementation((key: string) =>
+        key === 'MIN_WITHDRAWAL_AMOUNT' ? minAmount : globalFee,
+      );
+
+    it('retorna taxa personalizada e isCustom=true', async () => {
+      stubConfig(4);
+      usersRepository.findById.mockResolvedValue(user(new Decimal(2.5)));
+
+      const fee = await service.getFee(user(new Decimal(2.5)));
+
+      expect(fee).toMatchObject({
+        feePercentage: 2.5,
+        isCustom: true,
+        minAmount: 10,
+      });
+    });
+
+    it('sem taxa personalizada retorna a taxa global e isCustom=false', async () => {
+      stubConfig(4);
+      usersRepository.findById.mockResolvedValue(user(null));
+
+      const fee = await service.getFee(user());
+
+      expect(fee).toMatchObject({
+        feePercentage: 4,
+        isCustom: false,
+        minAmount: 10,
+      });
+    });
+
+    it('usuário inexistente é rejeitado', async () => {
+      stubConfig(4);
+      usersRepository.findById.mockResolvedValue(null);
+
+      await expect(service.getFee(user())).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 

@@ -125,6 +125,7 @@ export class UsersRepository {
         totpSecret: data.totpSecret,
         totpEnabled: data.totpEnabled,
         active: data.active,
+        withdrawalFeePercentage: data.withdrawalFeePercentage,
       },
     });
   }

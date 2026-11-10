@@ -5,6 +5,7 @@ import { GatewayModule } from 'src/infra/gateway/gateway.module';
 import { DonationsQueueModule } from 'src/infra/queues/donations/donations-queue.module';
 import { StorageModule } from 'src/infra/storage/storage.module';
 import { WebsocketModule } from 'src/infra/websocket/websocket.module';
+import { WidgetsModule } from 'src/modules/widgets/widgets.module';
 import { DonationsController } from './donations.controller';
 import { DonationsService } from './donations.service';
 
@@ -16,6 +17,7 @@ import { DonationsService } from './donations.service';
     DonationsQueueModule,
     StorageModule,
     WebsocketModule,
+    WidgetsModule,
   ],
   controllers: [DonationsController],
   providers: [DonationsService],

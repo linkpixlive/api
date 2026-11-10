@@ -86,6 +86,7 @@ model User {
   roles            UserRole[] @default([streamer])
   totpSecret       String?  @map("totp_secret") @db.VarChar(500)
   totpEnabled      Boolean  @default(false) @map("totp_enabled")
+  withdrawalFeePercentage Decimal? @map("withdrawal_fee_percentage") @db.Decimal(5, 2)
 
   wallet           Wallet?
   pixKeys          PixKey[]           

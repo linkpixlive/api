@@ -22,6 +22,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { Login2faDto } from './dto/login-2fa.dto';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { Pending2faDto } from './dto/pending-2fa.dto';
+import { RegisterInitDto } from './dto/register-init.dto';
+import { RegistrationPendingDto } from './dto/registration-pending.dto';
 import { RegisterAuthDto } from './dto/register-auth.dto';
 import { ValidateUsernameDto } from './dto/validate-username.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -30,22 +32,62 @@ import { SafeUser } from './entities/safe-user.entity';
 import type { AuthenticatedUser } from './types/authenticated-user';
 
 @ApiTags('Auth')
-@ApiExtraModels(Pending2faDto)
+@ApiExtraModels(Pending2faDto, RegistrationPendingDto)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Post('register')
-  @ApiOperation({ summary: 'Registrar um novo usuário' })
+  @Post('register/init')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Iniciar cadastro: valida o e-mail e envia o código de verificação',
+  })
   @ApiResponse({
-    status: 201,
+    status: 200,
     type: String,
-    description: 'Usuário registrado com sucesso.',
+    description: 'Código de verificação enviado para o e-mail.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Dados inválidos (email já existe, formato, etc).',
+    description: 'E-mail inválido ou cooldown de reenvio ativo (60s).',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'E-mail já cadastrado em conta verificada.',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas solicitações.',
+  })
+  @Throttle({
+    default: { limit: 3, ttl: 900000 },
+  })
+  registerInit(@Body() registerInitDto: RegisterInitDto) {
+    return this.authService.registerInit(registerInitDto.email);
+  }
+
+  @Public()
+  @Post('register')
+  @ApiOperation({
+    summary:
+      'Concluir cadastro: exige e-mail confirmado e retorna o JWT da sessão',
+  })
+  @ApiResponse({
+    status: 201,
+    type: String,
+    description:
+      'Usuário criado com e-mail verificado. Retorna o JWT da sessão (login automático).',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'E-mail não confirmado (ticket ausente/expirado), dados inválidos ou username indisponível.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'E-mail, username ou CPF já em uso.',
   })
   @ApiResponse({
     status: 429,
@@ -193,15 +235,12 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description:
-      'OTP verificado. Retorna o JWT ou { requiresLogin: true } para contas com 2FA.',
+      'OTP verificado. Retorna o JWT (conta existente), { requiresRegistrationCompletion: true } (e-mail novo confirmado: concluir cadastro) ou { requiresLogin: true } (conta com 2FA).',
     schema: {
       oneOf: [
         { type: 'string' },
-        {
-          type: 'object',
-          properties: { requiresLogin: { type: 'boolean' } },
-          required: ['requiresLogin'],
-        },
+        { $ref: getSchemaPath(Pending2faDto) },
+        { $ref: getSchemaPath(RegistrationPendingDto) },
       ],
     },
   })
