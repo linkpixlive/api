@@ -93,8 +93,8 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0(@nestjs/common@11.1.14(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(winston@3.19.0)
       otplib:
-        specifier: ^13.4.1
-        version: 13.4.1
+        specifier: ^13.6.0
+        version: 13.6.0
       pg:
         specifier: ^8.19.0
         version: 8.19.0
@@ -1336,8 +1336,8 @@ packages:
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
 
-  '@noble/hashes@2.2.0':
-    resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
+  '@noble/hashes@2.4.0':
+    resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
     engines: {node: '>= 20.19.0'}
 
   '@nuxt/opencollective@0.4.1':
@@ -1345,23 +1345,23 @@ packages:
     engines: {node: ^14.18.0 || >=16.10.0, npm: '>=5.10.0'}
     hasBin: true
 
-  '@otplib/core@13.4.1':
-    resolution: {integrity: sha512-KIXgK1hNtWJEBMTastbe1bpmuais+3f+ATeO8TkMs2rNkfGO1FbQy8+/UWVEu3TR/iTJerU0idkPudaPmLP2BA==}
+  '@otplib/core@13.6.0':
+    resolution: {integrity: sha512-TL6/FKKzR55Vr7zo3YGFtPMCSV3SpYPtuvE3T1XcwjFczD9pHU4dYYQBl0AcNvGcqAt4/fPqhZEFfB2OBcnlPA==}
 
-  '@otplib/hotp@13.4.1':
-    resolution: {integrity: sha512-g9q04SwpG5ZtMnVkUcgcoAlwCH4YLROZN1qhyBwgkBzqYYVSYhpP6gSGaxGHwePLt1c+e6NqDlgIZN+e1/XPuA==}
+  '@otplib/hotp@13.6.0':
+    resolution: {integrity: sha512-oPpaQBkAYjBxAs+FWdGNumsEwWJhIZVcsv0vEi+w4OzzLQ6UDZ2qXZNSeF9NljTj6/8d4e1Z4o6RgJa3aIxAOA==}
 
-  '@otplib/plugin-base32-scure@13.4.1':
-    resolution: {integrity: sha512-Fs/r5qisC05SRhT6xWXaypB6PVC0vgWf6zztmi0J5RnQ09OJiPDWCJFH6cDm6ANsrdvB9di7X+Jb7L13BoEbUA==}
+  '@otplib/plugin-base32-scure@13.6.0':
+    resolution: {integrity: sha512-s6uMbj4MBebvAPnBns1y2RhQ765/U04qHlZmFLV02dlD1S06pU46g/7tHX0vkCx5Pnty723loXto/PM5gFEEdg==}
 
-  '@otplib/plugin-crypto-noble@13.4.1':
-    resolution: {integrity: sha512-PJfVW8/1hdS6CfxLheKPZSLTwDq4TijZbN4yRjxlv0ODdzmxpM+wGwWr1JXMdy0xJPxLziydQD5gdVqrR4/gAg==}
+  '@otplib/plugin-crypto-noble@13.6.0':
+    resolution: {integrity: sha512-m/8mOhtIhsr4zLtb9MlLI6+w7ZNiKSFnT8Dv7eHR9TCyf2Sxva5e+MbV0wONmF7ZLuvo9F3DtzfPjc748PhJcw==}
 
-  '@otplib/totp@13.4.1':
-    resolution: {integrity: sha512-QOkBVPrf6AM4qZaReZPSk9/I8ATVdZpIISJz115MqeVtcrbcr5llPZ0J7804tpnjnp1vCRkI5Qjd47HhgVteBQ==}
+  '@otplib/totp@13.6.0':
+    resolution: {integrity: sha512-bMlq0MaUaQE3lOSH352Mrzcwpau5pMf7pMLROS+llk2evpC/sE7SHl9ajBl+PiPnGGb6LGYEjDvKqX8caXkGdw==}
 
-  '@otplib/uri@13.4.1':
-    resolution: {integrity: sha512-xaIm7bvICMhoB2rZIR5luiaMdssWR5nY5nXnR1fdezUgZuEO58D6zrGzLp7pQuBmlpmL0HagnscDQFoskp9yiA==}
+  '@otplib/uri@13.6.0':
+    resolution: {integrity: sha512-CiLFMONTpCi3ara6yQQX3nlpYhafCALKJweA7+7Z+aDkRrW3QmD5a/9thKmQ0cGp2W70AMG/6BSTy82h74LHRw==}
 
   '@paralleldrive/cuid2@2.3.1':
     resolution: {integrity: sha512-XO7cAxhnTZl0Yggq6jOgjiOHhbgcO4NqFqwSmQpjK3b6TEE6Uj/jfSk6wzYyemh3+I0sHirKSetjQwn5cZktFw==}
@@ -1465,8 +1465,8 @@ packages:
   '@scarf/scarf@1.4.0':
     resolution: {integrity: sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ==}
 
-  '@scure/base@2.2.0':
-    resolution: {integrity: sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg==}
+  '@scure/base@2.4.0':
+    resolution: {integrity: sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==}
 
   '@sinclair/typebox@0.34.48':
     resolution: {integrity: sha512-kKJTNuK3AQOrgjjotVxMrCn1sUJwM76wMszfq1kdU4uYVJjvEWuFQ6HgvLt4Xz3fSmZlTOxJ/Ie13KnIcWQXFA==}
@@ -1612,6 +1612,9 @@ packages:
   '@smithy/smithy-client@4.12.3':
     resolution: {integrity: sha512-7k4UxjSpHmPN2AxVhvIazRSzFQjWnud3sOsXcFStzagww17j1cFQYqTSiQ8xuYK3vKLR1Ni8FzuT3VlKr3xCNw==}
     engines: {node: '>=18.0.0'}
+    deprecated: |-
+      Deprecated due to a bug in custom logger data redaction. Upgrade to the latest version. If you used a custom logger with
+        this version, review your logs and rotate any credentials or other secrets. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/types@4.13.0':
     resolution: {integrity: sha512-COuLsZILbbQsdrwKQpkkpyep7lCsByxwj7m0Mg5v66/ZTyenlfBc40/QFQ5chO0YN/PNEH1Bi3fGtfXPnYNeDw==}
@@ -3648,6 +3651,7 @@ packages:
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+    deprecated: This package is no longer needed on supported Node.js versions. Node.js 16+ includes AbortController and AbortSignal as built-in globals. All Node.js versions requiring this polyfill are end-of-life. Use the built-in globals instead.
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -3724,8 +3728,8 @@ packages:
     resolution: {integrity: sha512-5b6Y85tPxZZ7QytO+BQzysW31HJku27cRIlkbAXaNx+BdcVi+LlRFmVXzeF6a7JCwJpyw5c4b+YSVImQIrBpuQ==}
     engines: {node: '>=10'}
 
-  otplib@13.4.1:
-    resolution: {integrity: sha512-o5CxfDw6bh7hoDv0NUUIcc0RqzJ9ipfUrzeKheKJ+vs4rXZnDlA9n4a/7R1cDjpmLjKLix4BgNVRmoDkm5rLSQ==}
+  otplib@13.6.0:
+    resolution: {integrity: sha512-PCx6+14PYndCRk0G3JuJHmlExzENs43gafqMUVmSFmzMbEweVhBiYcBCL8B32ZMEDPZA4OsMxFEeAob1H+YFZg==}
 
   p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
@@ -6202,38 +6206,38 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
-  '@noble/hashes@2.2.0': {}
+  '@noble/hashes@2.4.0': {}
 
   '@nuxt/opencollective@0.4.1':
     dependencies:
       consola: 3.4.2
 
-  '@otplib/core@13.4.1': {}
+  '@otplib/core@13.6.0': {}
 
-  '@otplib/hotp@13.4.1':
+  '@otplib/hotp@13.6.0':
     dependencies:
-      '@otplib/core': 13.4.1
-      '@otplib/uri': 13.4.1
+      '@otplib/core': 13.6.0
+      '@otplib/uri': 13.6.0
 
-  '@otplib/plugin-base32-scure@13.4.1':
+  '@otplib/plugin-base32-scure@13.6.0':
     dependencies:
-      '@otplib/core': 13.4.1
-      '@scure/base': 2.2.0
+      '@otplib/core': 13.6.0
+      '@scure/base': 2.4.0
 
-  '@otplib/plugin-crypto-noble@13.4.1':
+  '@otplib/plugin-crypto-noble@13.6.0':
     dependencies:
-      '@noble/hashes': 2.2.0
-      '@otplib/core': 13.4.1
+      '@noble/hashes': 2.4.0
+      '@otplib/core': 13.6.0
 
-  '@otplib/totp@13.4.1':
+  '@otplib/totp@13.6.0':
     dependencies:
-      '@otplib/core': 13.4.1
-      '@otplib/hotp': 13.4.1
-      '@otplib/uri': 13.4.1
+      '@otplib/core': 13.6.0
+      '@otplib/hotp': 13.6.0
+      '@otplib/uri': 13.6.0
 
-  '@otplib/uri@13.4.1':
+  '@otplib/uri@13.6.0':
     dependencies:
-      '@otplib/core': 13.4.1
+      '@otplib/core': 13.6.0
 
   '@paralleldrive/cuid2@2.3.1':
     dependencies:
@@ -6356,7 +6360,7 @@ snapshots:
 
   '@scarf/scarf@1.4.0': {}
 
-  '@scure/base@2.2.0': {}
+  '@scure/base@2.4.0': {}
 
   '@sinclair/typebox@0.34.48': {}
 
@@ -8993,14 +8997,14 @@ snapshots:
       strip-ansi: 6.0.1
       wcwidth: 1.0.1
 
-  otplib@13.4.1:
+  otplib@13.6.0:
     dependencies:
-      '@otplib/core': 13.4.1
-      '@otplib/hotp': 13.4.1
-      '@otplib/plugin-base32-scure': 13.4.1
-      '@otplib/plugin-crypto-noble': 13.4.1
-      '@otplib/totp': 13.4.1
-      '@otplib/uri': 13.4.1
+      '@otplib/core': 13.6.0
+      '@otplib/hotp': 13.6.0
+      '@otplib/plugin-base32-scure': 13.6.0
+      '@otplib/plugin-crypto-noble': 13.6.0
+      '@otplib/totp': 13.6.0
+      '@otplib/uri': 13.6.0
 
   p-limit@2.3.0:
     dependencies:
