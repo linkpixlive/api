@@ -62,7 +62,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.10.0",
     "nest-winston": "^2.0.0",
-    "otplib": "^13.4.1",
+    "otplib": "^13.6.0",
     "pg": "^8.19.0",
     "prisma": "^7.4.1",
     "reflect-metadata": "^0.2.2",
